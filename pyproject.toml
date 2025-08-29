@@ -23,6 +23,8 @@ dependencies = [
     "nest-asyncio>=1.5.8",
     "cryptography>=41.0.0",
     "e2b>=0.17.0",
+    "psutil>=5.9.0",
+    "redis[asyncio]>=4.6.0",
 ]
 
 [tool.setuptools]

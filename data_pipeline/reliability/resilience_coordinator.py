@@ -12,7 +12,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 
 from .circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
-from .state_manager import get_state_manager
+from ..state_manager import get_state_manager
 
 logger = logging.getLogger(__name__)
 

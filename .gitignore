@@ -178,3 +178,12 @@ cython_debug/
 # Agentuity
 .agentuity
 .agentuity-crash-*.json
+
+# Private Keys and Sensitive Data
+keys/
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx

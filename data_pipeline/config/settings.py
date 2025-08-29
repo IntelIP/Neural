@@ -7,6 +7,7 @@ from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
+import os
 
 # Load environment variables
 env_path = Path(__file__).parent.parent.parent / '.env'
@@ -59,7 +60,7 @@ def get_config() -> KalshiConfig:
         KalshiConfig: Configuration object with all settings
     """
     # Get environment
-    environment = os.getenv('KALSHI_ENV', 'demo').lower()
+    environment = os.getenv('KALSHI_ENVIRONMENT', 'demo').lower()
     
     # Set URLs based on environment
     if environment == 'prod':
@@ -71,15 +72,50 @@ def get_config() -> KalshiConfig:
     
     # Override with explicit URL if provided
     api_base_url = os.getenv('KALSHI_API_BASE', api_base_url)
+    ws_url = os.getenv('KALSHI_WS_URL', ws_url)
     
     # Get credentials
     api_key_id = os.getenv('KALSHI_API_KEY_ID')
     private_key = os.getenv('KALSHI_PRIVATE_KEY')
     
+    # Support file-based private key via KALSHI_PRIVATE_KEY_FILE
+    if not private_key:
+        key_file = os.getenv('KALSHI_PRIVATE_KEY_FILE')
+        if key_file:
+            # Handle both absolute and relative paths
+            key_path = Path(key_file)
+            if not key_path.is_absolute():
+                # Make relative paths relative to project root
+                key_path = Path(__file__).parent.parent.parent / key_path
+            
+            # Expand user home directory if present
+            key_path = key_path.expanduser()
+            
+            if key_path.exists():
+                try:
+                    private_key = key_path.read_text().strip()
+                except Exception as e:
+                    raise ValueError(f"Failed to read private key from {key_path}: {e}")
+            else:
+                # Provide helpful error message
+                available_keys = list(Path(__file__).parent.parent.parent.glob("keys/*.key"))
+                if available_keys:
+                    key_names = [k.name for k in available_keys]
+                    raise ValueError(
+                        f"Private key file not found: {key_path}\n"
+                        f"Available keys in keys/ directory: {', '.join(key_names)}\n"
+                        f"Please check KALSHI_PRIVATE_KEY_FILE in .env"
+                    )
+                else:
+                    raise ValueError(
+                        f"Private key file not found: {key_path}\n"
+                        "No keys found in keys/ directory. Please add your private key files."
+                    )
+    
     if not api_key_id or not private_key:
         raise ValueError(
             "Missing required Kalshi credentials. "
-            "Please set KALSHI_API_KEY_ID and KALSHI_PRIVATE_KEY environment variables."
+            "Please set KALSHI_API_KEY_ID and either KALSHI_PRIVATE_KEY or KALSHI_PRIVATE_KEY_FILE environment variables."
         )
     
     return KalshiConfig(

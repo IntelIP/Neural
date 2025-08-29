@@ -12,9 +12,9 @@ from enum import Enum
 from .client import ESPNClient
 from .processor import PlayByPlayProcessor
 from .models import GameState, GameEvent, EventType
-from ..circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitOpenException
-from ..health_probe import http_health_check
-from ..rate_limiter import TokenBucket, AdaptiveRateLimiter
+from ...reliability.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitOpenException
+from ...reliability.health_monitor import http_health_check
+from ...reliability.rate_limiter import TokenBucket, AdaptiveRateLimiter
 
 logger = logging.getLogger(__name__)
 

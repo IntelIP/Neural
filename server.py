@@ -2,6 +2,17 @@ from agentuity import autostart
 import logging
 import os
 import sys
+import socket
+import time
+
+def is_port_in_use(port):
+    """Check if a port is already in use"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('', port))
+            return False
+        except socket.error:
+            return True
 
 if __name__ == "__main__":
     # Check if AGENTUITY_API_KEY is set
@@ -32,5 +43,20 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="[%(levelname)-5.5s] %(message)s",
     )
+
+    # Check if port is already in use
+    port = int(os.environ.get("PORT", 3500))
+    if is_port_in_use(port):
+        logging.warning(f"Port {port} is already in use. Waiting for it to be available...")
+        retries = 5
+        for i in range(retries):
+            time.sleep(2)
+            if not is_port_in_use(port):
+                logging.info(f"Port {port} is now available")
+                break
+            if i == retries - 1:
+                logging.error(f"Port {port} is still in use after {retries} attempts")
+                logging.error("Please kill the existing process or use a different port")
+                sys.exit(1)
 
     autostart()
