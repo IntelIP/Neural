@@ -1,0 +1,6 @@
+# Kalshi WebSocket Stream Runner Dependencies
+websockets==14.1
+cryptography==44.0.2
+rich==13.7.0  # Optional, for better UI
+websocket-client>=1.7.0  # For TwitterAPI.io WebSocket client
+httpx>=0.27.0  # For Twitter filter management

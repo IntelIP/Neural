@@ -1,4 +1,0 @@
-# Kalshi WebSocket Stream Runner Dependencies
-websockets==14.1
-cryptography==44.0.2
-rich==13.7.0  # Optional, for better UI

@@ -20,10 +20,10 @@ async def basic_sentiment_stream():
     logger = logging.getLogger(__name__)
     
     # Check for API key
-    if not os.getenv('TWITTERAPI_KEY'):
+    if not (os.getenv('TWITTERAPI_KEY') or os.getenv('TWITTER_BEARER_TOKEN')):
         logger.error(
-            "TWITTERAPI_KEY not set. Get your key from https://twitterapi.io "
-            "and set TWITTERAPI_KEY environment variable"
+            "Twitter API key not set. For this integration, add TWITTERAPI_KEY (TwitterAPI.io) "
+            "or set TWITTER_BEARER_TOKEN if you intend to reuse it as the API key."
         )
         return
     
@@ -109,8 +109,8 @@ async def game_sentiment_tracking():
     setup_logging(level="INFO")
     logger = logging.getLogger(__name__)
     
-    if not os.getenv('TWITTERAPI_KEY'):
-        logger.error("TWITTERAPI_KEY not set")
+    if not (os.getenv('TWITTERAPI_KEY') or os.getenv('TWITTER_BEARER_TOKEN')):
+        logger.error("Twitter API key not set (TWITTERAPI_KEY or TWITTER_BEARER_TOKEN)")
         return
     
     stream = TwitterStreamAdapter()
@@ -198,8 +198,8 @@ async def player_injury_monitoring():
     setup_logging(level="INFO")
     logger = logging.getLogger(__name__)
     
-    if not os.getenv('TWITTERAPI_KEY'):
-        logger.error("TWITTERAPI_KEY not set")
+    if not (os.getenv('TWITTERAPI_KEY') or os.getenv('TWITTER_BEARER_TOKEN')):
+        logger.error("Twitter API key not set (TWITTERAPI_KEY or TWITTER_BEARER_TOKEN)")
         return
     
     # Set up filter manager
