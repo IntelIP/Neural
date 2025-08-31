@@ -187,3 +187,31 @@ keys/
 *.cer
 *.p12
 *.pfx
+
+# Project Specific
+logs/
+*.log
+data/cache/
+data/backtest_results/
+temp/
+*.tmp
+
+# Redis
+dump.rdb
+redis.conf
+
+# OS Files
+.DS_Store
+Thumbs.db
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test outputs
+test_results/
+coverage/
+.pytest_cache/
