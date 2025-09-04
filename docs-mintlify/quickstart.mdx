@@ -1,0 +1,231 @@
+---
+title: 'Quick Start'
+description: 'Get up and running with Neural SDK in 5 minutes'
+---
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+<CardGroup cols={2}>
+  <Card title="Python 3.10+" icon="python">
+    Neural SDK requires Python 3.10 or higher
+  </Card>
+  <Card title="Kalshi Account" icon="user">
+    Sign up at [kalshi.com](https://kalshi.com) for API access
+  </Card>
+</CardGroup>
+
+## Installation
+
+<Steps>
+  <Step title="Install Neural SDK">
+    Choose your preferred installation method:
+    
+    <CodeGroup>
+    ```bash pip
+    pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@main
+    ```
+    
+    ```bash uv
+    uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@main
+    ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Set up environment variables">
+    Create a `.env` file in your project root:
+    
+    ```env
+    KALSHI_API_KEY_ID=your_api_key_here
+    KALSHI_API_SECRET=your_api_secret_here
+    KALSHI_ENVIRONMENT=production
+    ```
+    
+    <Note>
+      Get your API credentials from the [Kalshi dashboard](https://kalshi.com/account/api-keys)
+    </Note>
+  </Step>
+  
+  <Step title="Verify installation">
+    Test that everything is working:
+    
+    ```python
+    from neural_sdk import NeuralSDK
+    
+    # Initialize SDK
+    sdk = NeuralSDK.from_env()
+    print(f"✅ Neural SDK v{sdk.__version__} initialized")
+    
+    # Test WebSocket creation
+    websocket = sdk.create_websocket()
+    print("✅ WebSocket client created successfully")
+    ```
+  </Step>
+</Steps>
+
+## Your First Trading Bot
+
+Let's create a simple bot that monitors NFL markets and alerts on opportunities:
+
+```python
+import asyncio
+from neural_sdk import NeuralSDK
+
+async def nfl_opportunity_bot():
+    """Monitor NFL markets for trading opportunities"""
+    
+    # Initialize SDK
+    sdk = NeuralSDK.from_env()
+    websocket = sdk.create_websocket()
+    
+    # Track opportunities
+    opportunities = []
+    
+    @websocket.on_market_data
+    async def handle_market(data):
+        # Look for undervalued markets
+        if data.yes_price < 0.25 and data.volume > 10000:
+            opportunities.append({
+                'ticker': data.ticker,
+                'price': data.yes_price,
+                'volume': data.volume
+            })
+            print(f"🎯 Opportunity: {data.ticker}")
+            print(f"   Price: ${data.yes_price:.2f}")
+            print(f"   Volume: ${data.volume:,.0f}")
+    
+    # Connect and subscribe
+    print("🔌 Connecting to Kalshi WebSocket...")
+    await websocket.connect()
+    
+    print("📡 Subscribing to NFL markets...")
+    await websocket.subscribe_markets(['KXNFL*'])
+    
+    print("✅ Bot is running! Press Ctrl+C to stop")
+    
+    try:
+        await websocket.run_forever()
+    except KeyboardInterrupt:
+        print(f"\n📊 Found {len(opportunities)} opportunities")
+        await websocket.disconnect()
+
+# Run the bot
+if __name__ == "__main__":
+    asyncio.run(nfl_opportunity_bot())
+```
+
+## Next Steps
+
+Now that you have Neural SDK running, explore these resources:
+
+<CardGroup cols={2}>
+  <Card 
+    title="WebSocket Streaming" 
+    icon="bolt" 
+    href="/guides/websocket-streaming"
+  >
+    Learn about real-time data streaming
+  </Card>
+  <Card 
+    title="NFL Markets Guide" 
+    icon="football" 
+    href="/guides/nfl-markets"
+  >
+    Deep dive into NFL prediction markets
+  </Card>
+  <Card 
+    title="Backtesting" 
+    icon="chart-line" 
+    href="/guides/backtesting"
+  >
+    Test strategies with historical data
+  </Card>
+  <Card 
+    title="API Reference" 
+    icon="code" 
+    href="/api-reference/sdk/neural-sdk"
+  >
+    Complete API documentation
+  </Card>
+</CardGroup>
+
+## Common Patterns
+
+### Event-Driven Strategy
+
+```python
+@websocket.on_market_data
+async def momentum_strategy(data):
+    """React to market momentum"""
+    if data.price_change_1h > 0.10:  # 10% increase
+        await sdk.place_order(
+            ticker=data.ticker,
+            side='YES',
+            size=100
+        )
+```
+
+### Scheduled Analysis
+
+```python
+import schedule
+
+def analyze_markets():
+    """Run analysis every hour"""
+    markets = sdk.get_markets(sport='NFL')
+    for market in markets:
+        if market.volume < market.average_volume * 0.5:
+            print(f"Low volume alert: {market.ticker}")
+
+schedule.every().hour.do(analyze_markets)
+```
+
+### Risk Management
+
+```python
+from neural_sdk.trading import RiskManager
+
+risk_manager = RiskManager(
+    max_position_size=1000,
+    max_daily_loss=500,
+    position_limit=10
+)
+
+@websocket.on_market_data
+async def safe_trading(data):
+    if risk_manager.can_trade(data.ticker, 100):
+        # Execute trade
+        pass
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="ModuleNotFoundError">
+    If you see `ModuleNotFoundError`, ensure you've installed the latest version:
+    ```bash
+    pip install --force-reinstall git+https://github.com/IntelIP/Neural-Trading-Platform.git@main
+    ```
+  </Accordion>
+  
+  <Accordion title="Authentication Failed">
+    Check your `.env` file has the correct credentials:
+    ```python
+    import os
+    print(f"API Key: {os.getenv('KALSHI_API_KEY_ID')}")
+    print(f"Environment: {os.getenv('KALSHI_ENVIRONMENT')}")
+    ```
+  </Accordion>
+  
+  <Accordion title="WebSocket Connection Issues">
+    Ensure you're using the production environment:
+    ```python
+    config = SDKConfig(
+        environment="production",  # Not "demo" or "development"
+        api_key_id=os.getenv("KALSHI_API_KEY_ID"),
+        api_secret=os.getenv("KALSHI_API_SECRET")
+    )
+    ```
+  </Accordion>
+</AccordionGroup>

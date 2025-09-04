@@ -1,0 +1,15 @@
+{
+  "name": "neural-sdk-docs",
+  "version": "1.1.0",
+  "description": "Neural SDK Documentation",
+  "scripts": {
+    "dev": "mintlify dev",
+    "build": "mintlify build",
+    "preview": "mintlify preview",
+    "deploy": "mintlify deploy",
+    "generate": "python ../scripts/generate_mintlify_docs.py"
+  },
+  "devDependencies": {
+    "mintlify": "^4.0.0"
+  }
+}

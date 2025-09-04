@@ -1,0 +1,61 @@
+---
+title: 'BacktestResults'
+description: 'Results from backtesting run'
+---
+
+## Overview
+
+Results from backtesting run.
+
+## Methods
+
+### `duration()`
+
+Duration of backtest.
+
+<ResponseField name="result" type="timedelta">
+  Method result
+</ResponseField>
+
+---
+
+### `total_return()`
+
+Total return percentage.
+
+<ResponseField name="result" type="float">
+  Method result
+</ResponseField>
+
+---
+
+### `num_trades()`
+
+Total number of trades.
+
+<ResponseField name="result" type="int">
+  Method result
+</ResponseField>
+
+---
+
+### `plot(save_path)`
+
+Plot backtest results.
+
+<ParamField path="save_path" type="Optional[str]">
+  save_path parameter
+</ParamField>
+
+---
+
+### `export_report(path)`
+
+Export detailed HTML report.
+
+<ParamField path="path" type="str">
+  path parameter
+</ParamField>
+
+---
+

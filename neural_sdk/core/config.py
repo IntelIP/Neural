@@ -13,6 +13,19 @@ from typing import Any, Dict, Optional
 from .exceptions import ConfigurationError, ValidationError
 
 
+def _load_private_key_from_file(file_path: Optional[str]) -> Optional[str]:
+    """Load private key from file if path provided."""
+    if not file_path:
+        return None
+    
+    try:
+        with open(file_path, 'r') as f:
+            return f.read().strip()
+    except (FileNotFoundError, PermissionError, OSError) as e:
+        # Don't raise error, just return None so other credential methods can be tried
+        return None
+
+
 @dataclass
 class RiskLimits:
     """Risk management limits and thresholds."""
@@ -155,7 +168,13 @@ class SDKConfig:
 
         # API Credentials
         env_data["api_key_id"] = os.getenv(f"{prefix}API_KEY_ID")
-        env_data["api_secret"] = os.getenv(f"{prefix}API_SECRET")
+        # Support both API_SECRET and PRIVATE_KEY for backwards compatibility
+        env_data["api_secret"] = (
+            os.getenv(f"{prefix}API_SECRET") or 
+            os.getenv(f"{prefix}PRIVATE_KEY") or
+            # Also check for file-based private key
+            _load_private_key_from_file(os.getenv(f"{prefix}PRIVATE_KEY_FILE"))
+        )
 
         # Core Settings
         env_data["environment"] = os.getenv(f"{prefix}ENVIRONMENT", "development")

@@ -1,0 +1,491 @@
+---
+title: 'Backtesting'
+description: 'Test your trading strategies with historical data using Neural SDK'
+---
+
+## Overview
+
+Neural SDK provides a comprehensive backtesting engine that allows you to test your trading strategies against historical market data. This helps you validate your approach before risking real capital.
+
+## Quick Start
+
+### Basic Backtest
+
+```python
+from neural_sdk.backtesting import BacktestEngine, BacktestConfig
+from datetime import datetime, timedelta
+
+# Configure backtest
+config = BacktestConfig(
+    start_date=datetime(2024, 1, 1),
+    end_date=datetime(2024, 6, 1),
+    initial_capital=10000,
+    commission=0.01,  # 1% commission
+    markets=['NFL', 'NBA', 'POLITICS']
+)
+
+# Initialize backtest engine
+engine = BacktestEngine(config)
+
+# Define a simple strategy
+async def simple_momentum_strategy(market_data):
+    """Buy when price increases 5%, sell when it decreases 5%"""
+    
+    for market in market_data:
+        price_change = market.calculate_price_change(lookback=300)  # 5 minutes
+        
+        if price_change > 0.05:  # 5% increase
+            await engine.place_order('BUY', market.id, size=100)
+        elif price_change < -0.05:  # 5% decrease
+            await engine.place_order('SELL', market.id, size=100)
+
+# Run backtest
+results = await engine.run_backtest(simple_momentum_strategy)
+
+print(f"Total Return: {results.total_return:.2%}")
+print(f"Sharpe Ratio: {results.sharpe_ratio:.2f}")
+print(f"Max Drawdown: {results.max_drawdown:.2%}")
+```
+
+## Advanced Configuration
+
+### Comprehensive Backtest Setup
+
+```python
+from neural_sdk.backtesting import BacktestEngine, BacktestConfig
+from neural_sdk.data import HistoricalDataSource
+
+config = BacktestConfig(
+    # Time period
+    start_date=datetime(2023, 9, 1),  # Start of NFL season
+    end_date=datetime(2024, 2, 15),   # End of NFL season
+    
+    # Capital settings
+    initial_capital=50000,
+    max_position_size=5000,  # Max $5k per position
+    
+    # Trading costs
+    commission=0.005,  # 0.5% commission
+    bid_ask_spread=0.02,  # 2% spread
+    slippage=0.001,  # 0.1% slippage
+    
+    # Risk management
+    max_total_exposure=0.8,  # Max 80% of capital
+    max_market_exposure=0.1,  # Max 10% per market
+    
+    # Data settings
+    data_frequency='1min',  # 1-minute bars
+    warmup_period=timedelta(days=30),  # 30 days of warmup data
+    
+    # Markets to include
+    markets=['NFL_WINNER', 'NFL_SPREAD', 'NFL_TOTAL'],
+    
+    # Benchmark
+    benchmark='SPY'  # Compare to S&P 500
+)
+
+engine = BacktestEngine(config)
+```
+
+## Strategy Development
+
+### Creating Custom Strategies
+
+```python
+from neural_sdk.backtesting import BaseStrategy
+from neural_sdk.indicators import EMA, RSI, BollingerBands
+
+class NFLMomentumStrategy(BaseStrategy):
+    def __init__(self):
+        super().__init__()
+        
+        # Technical indicators
+        self.ema_short = EMA(period=5)
+        self.ema_long = EMA(period=20)
+        self.rsi = RSI(period=14)
+        self.bb = BollingerBands(period=20, std_dev=2)
+        
+        # Strategy parameters
+        self.momentum_threshold = 0.03
+        self.rsi_oversold = 30
+        self.rsi_overbought = 70
+        
+    async def on_market_data(self, data):
+        """Called for each new market data point"""
+        
+        for market in data.markets:
+            await self.analyze_market(market)
+    
+    async def analyze_market(self, market):
+        """Analyze individual market for signals"""
+        
+        # Update indicators
+        price = market.last_price
+        self.ema_short.update(price)
+        self.ema_long.update(price)
+        self.rsi.update(price)
+        self.bb.update(price)
+        
+        # Generate signals
+        signals = []
+        
+        # EMA crossover signal
+        if self.ema_short.value > self.ema_long.value:
+            if self.rsi.value < self.rsi_overbought:
+                signals.append(('BUY', 0.6, 'EMA bullish crossover'))
+        
+        # RSI oversold signal
+        if self.rsi.value < self.rsi_oversold:
+            if price < self.bb.lower_band:
+                signals.append(('BUY', 0.8, 'RSI oversold + BB breach'))
+        
+        # Execute strongest signal
+        if signals:
+            strongest_signal = max(signals, key=lambda x: x[1])
+            await self.execute_signal(market, *strongest_signal)
+    
+    async def execute_signal(self, market, action, confidence, reason):
+        """Execute trading signal"""
+        
+        # Calculate position size based on confidence
+        base_size = self.config.initial_capital * 0.02  # 2% base
+        position_size = base_size * confidence
+        
+        # Apply risk management
+        position_size = self.apply_risk_limits(market, position_size)
+        
+        if position_size > 0:
+            await self.place_order(
+                action=action,
+                market_id=market.id,
+                size=position_size,
+                reason=reason
+            )
+    
+    def apply_risk_limits(self, market, size):
+        """Apply position and risk limits"""
+        
+        # Current exposure to this market
+        current_exposure = self.get_market_exposure(market.id)
+        max_market_size = self.config.max_market_exposure * self.portfolio_value
+        available_size = max_market_size - current_exposure
+        
+        return min(size, available_size, self.config.max_position_size)
+```
+
+### Multi-Strategy Backtesting
+
+```python
+from neural_sdk.backtesting import MultiStrategy
+
+class NFLMultiStrategy(MultiStrategy):
+    def __init__(self):
+        super().__init__()
+        
+        # Initialize sub-strategies
+        self.momentum_strategy = NFLMomentumStrategy()
+        self.mean_reversion_strategy = MeanReversionStrategy()
+        self.sentiment_strategy = SentimentStrategy()
+        
+        # Strategy weights
+        self.weights = {
+            'momentum': 0.4,
+            'mean_reversion': 0.3,
+            'sentiment': 0.3
+        }
+    
+    async def on_market_data(self, data):
+        """Combine signals from all strategies"""
+        
+        for market in data.markets:
+            # Get signals from each strategy
+            signals = {}
+            signals['momentum'] = await self.momentum_strategy.get_signal(market)
+            signals['mean_reversion'] = await self.mean_reversion_strategy.get_signal(market)
+            signals['sentiment'] = await self.sentiment_strategy.get_signal(market)
+            
+            # Combine signals
+            combined_signal = self.combine_signals(signals)
+            
+            if abs(combined_signal.strength) > 0.6:  # Strong signal threshold
+                await self.execute_combined_signal(market, combined_signal)
+    
+    def combine_signals(self, signals):
+        """Weighted combination of strategy signals"""
+        
+        total_weight = 0
+        weighted_strength = 0
+        consensus_action = None
+        
+        for strategy_name, signal in signals.items():
+            if signal is not None:
+                weight = self.weights[strategy_name]
+                total_weight += weight
+                weighted_strength += signal.strength * weight
+                
+                # Track consensus
+                if consensus_action is None:
+                    consensus_action = signal.action
+                elif consensus_action != signal.action:
+                    weighted_strength *= 0.5  # Reduce strength for conflicting signals
+        
+        if total_weight > 0:
+            final_strength = weighted_strength / total_weight
+            return TradingSignal(consensus_action, final_strength)
+        
+        return None
+```
+
+## Performance Analysis
+
+### Detailed Results Analysis
+
+```python
+async def analyze_backtest_results(results):
+    """Comprehensive results analysis"""
+    
+    print("=== Backtest Results ===")
+    print(f"Start Date: {results.start_date}")
+    print(f"End Date: {results.end_date}")
+    print(f"Duration: {results.duration} days")
+    print()
+    
+    # Return metrics
+    print("=== Return Metrics ===")
+    print(f"Total Return: {results.total_return:.2%}")
+    print(f"Annualized Return: {results.annualized_return:.2%}")
+    print(f"Benchmark Return: {results.benchmark_return:.2%}")
+    print(f"Alpha: {results.alpha:.2%}")
+    print(f"Beta: {results.beta:.2f}")
+    print()
+    
+    # Risk metrics
+    print("=== Risk Metrics ===")
+    print(f"Volatility: {results.volatility:.2%}")
+    print(f"Sharpe Ratio: {results.sharpe_ratio:.2f}")
+    print(f"Sortino Ratio: {results.sortino_ratio:.2f}")
+    print(f"Max Drawdown: {results.max_drawdown:.2%}")
+    print(f"Max Drawdown Duration: {results.max_dd_duration} days")
+    print()
+    
+    # Trade statistics
+    print("=== Trade Statistics ===")
+    print(f"Total Trades: {results.total_trades}")
+    print(f"Winning Trades: {results.winning_trades} ({results.win_rate:.1%})")
+    print(f"Average Win: {results.avg_win:.2%}")
+    print(f"Average Loss: {results.avg_loss:.2%}")
+    print(f"Win/Loss Ratio: {results.win_loss_ratio:.2f}")
+    print(f"Profit Factor: {results.profit_factor:.2f}")
+    print()
+    
+    # Market performance
+    print("=== Performance by Market ===")
+    for market, perf in results.market_performance.items():
+        print(f"{market}: {perf.return_:.2%} ({perf.trades} trades)")
+    print()
+    
+    # Monthly performance
+    print("=== Monthly Performance ===")
+    for month, perf in results.monthly_performance.items():
+        print(f"{month}: {perf:.2%}")
+```
+
+### Risk Analysis
+
+```python
+from neural_sdk.backtesting import RiskAnalyzer
+
+async def detailed_risk_analysis(results):
+    """Detailed risk analysis of backtest results"""
+    
+    analyzer = RiskAnalyzer(results)
+    
+    # Value at Risk (VaR)
+    var_95 = analyzer.calculate_var(confidence=0.95)
+    var_99 = analyzer.calculate_var(confidence=0.99)
+    
+    print(f"VaR (95%): {var_95:.2%}")
+    print(f"VaR (99%): {var_99:.2%}")
+    
+    # Expected Shortfall
+    es_95 = analyzer.calculate_expected_shortfall(confidence=0.95)
+    print(f"Expected Shortfall (95%): {es_95:.2%}")
+    
+    # Rolling metrics
+    rolling_sharpe = analyzer.calculate_rolling_sharpe(window=30)
+    rolling_returns = analyzer.calculate_rolling_returns(window=30)
+    
+    # Correlation analysis
+    market_correlations = analyzer.calculate_market_correlations()
+    print("Market Correlations:")
+    for market1, market2, corr in market_correlations:
+        print(f"  {market1} vs {market2}: {corr:.3f}")
+    
+    # Drawdown analysis
+    drawdown_periods = analyzer.get_drawdown_periods()
+    print(f"\nTop 5 Drawdown Periods:")
+    for i, dd in enumerate(drawdown_periods[:5], 1):
+        print(f"  {i}. {dd.start_date} to {dd.end_date}: {dd.max_dd:.2%}")
+```
+
+## Optimization
+
+### Parameter Optimization
+
+```python
+from neural_sdk.backtesting import ParameterOptimizer
+from itertools import product
+
+async def optimize_strategy_parameters():
+    """Optimize strategy parameters using grid search"""
+    
+    # Define parameter ranges
+    param_ranges = {
+        'ema_short': [3, 5, 8, 13],
+        'ema_long': [13, 21, 34, 55],
+        'rsi_period': [10, 14, 18, 22],
+        'momentum_threshold': [0.02, 0.03, 0.04, 0.05],
+        'position_size': [0.01, 0.02, 0.03, 0.04]  # % of capital
+    }
+    
+    optimizer = ParameterOptimizer(
+        strategy_class=NFLMomentumStrategy,
+        param_ranges=param_ranges,
+        objective='sharpe_ratio',  # Optimize for Sharpe ratio
+        cv_folds=3  # 3-fold cross-validation
+    )
+    
+    # Run optimization
+    best_params = await optimizer.optimize(
+        start_date=datetime(2023, 9, 1),
+        end_date=datetime(2024, 2, 15)
+    )
+    
+    print("Best Parameters:")
+    for param, value in best_params.items():
+        print(f"  {param}: {value}")
+    
+    print(f"Best Sharpe Ratio: {optimizer.best_score:.3f}")
+    
+    return best_params
+```
+
+### Walk-Forward Analysis
+
+```python
+from neural_sdk.backtesting import WalkForwardAnalyzer
+
+async def walk_forward_analysis():
+    """Walk-forward analysis to test strategy robustness"""
+    
+    analyzer = WalkForwardAnalyzer(
+        strategy_class=NFLMomentumStrategy,
+        optimization_period=90,  # 90 days optimization
+        trading_period=30,       # 30 days out-of-sample trading
+        step_size=15             # Move forward 15 days each step
+    )
+    
+    results = await analyzer.run_analysis(
+        start_date=datetime(2023, 1, 1),
+        end_date=datetime(2024, 6, 1)
+    )
+    
+    print("=== Walk-Forward Analysis ===")
+    print(f"Total Periods: {len(results.periods)}")
+    print(f"Average IS Sharpe: {results.avg_in_sample_sharpe:.3f}")
+    print(f"Average OOS Sharpe: {results.avg_out_of_sample_sharpe:.3f}")
+    print(f"Correlation IS/OOS: {results.is_oos_correlation:.3f}")
+    
+    # Plot results
+    analyzer.plot_results(results)
+```
+
+## Integration with Live Trading
+
+### Strategy Validation
+
+```python
+from neural_sdk.backtesting import StrategyValidator
+
+async def validate_strategy_for_live():
+    """Validate strategy before live deployment"""
+    
+    validator = StrategyValidator()
+    
+    # Run multiple backtests
+    validation_results = await validator.validate_strategy(
+        strategy_class=NFLMomentumStrategy,
+        validation_periods=[
+            (datetime(2023, 1, 1), datetime(2023, 6, 1)),
+            (datetime(2023, 6, 1), datetime(2023, 12, 1)),
+            (datetime(2024, 1, 1), datetime(2024, 6, 1))
+        ]
+    )
+    
+    # Check consistency
+    sharpe_ratios = [r.sharpe_ratio for r in validation_results]
+    sharpe_std = np.std(sharpe_ratios)
+    
+    if sharpe_std < 0.5:  # Consistent performance
+        print("✅ Strategy shows consistent performance")
+        return True
+    else:
+        print("❌ Strategy performance is inconsistent")
+        return False
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Realistic Assumptions" icon="chart-line">
+    Include commissions, slippage, and bid-ask spreads
+  </Card>
+  <Card title="Out-of-Sample Testing" icon="test-tube">
+    Always test on unseen data before going live
+  </Card>
+  <Card title="Multiple Time Periods" icon="clock">
+    Test across different market conditions
+  </Card>
+  <Card title="Risk Management" icon="shield">
+    Include position sizing and risk controls
+  </Card>
+</CardGroup>
+
+## Common Pitfalls
+
+<AccordionGroup>
+  <Accordion title="Look-Ahead Bias">
+    **Problem**: Using future information in historical tests
+    
+    **Solution**: Ensure all data is available at the time of decision
+  </Accordion>
+  
+  <Accordion title="Survivorship Bias">
+    **Problem**: Only testing on markets that still exist
+    
+    **Solution**: Include delisted/expired markets in historical data
+  </Accordion>
+  
+  <Accordion title="Overfitting">
+    **Problem**: Strategy too tailored to historical data
+    
+    **Solution**: Use cross-validation and out-of-sample testing
+  </Accordion>
+  
+  <Accordion title="Ignoring Transaction Costs">
+    **Problem**: Unrealistic performance due to ignored costs
+    
+    **Solution**: Model realistic commissions, spreads, and slippage
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Live Trading" icon="play" href="/guides/live-trading">
+    Deploy your validated strategy
+  </Card>
+  <Card title="Risk Management" icon="shield" href="/api-reference/trading/risk-management">
+    Advanced risk management techniques
+  </Card>
+</CardGroup>

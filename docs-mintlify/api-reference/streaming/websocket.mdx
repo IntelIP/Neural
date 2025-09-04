@@ -1,0 +1,485 @@
+---
+title: 'NeuralWebSocket'
+description: 'Real-time market data streaming via WebSocket'
+---
+
+## Overview
+
+The `NeuralWebSocket` class provides real-time streaming of market data, trades, and order updates. It includes automatic reconnection, error handling, and efficient message processing.
+
+## Constructor
+
+Created via `NeuralSDK.create_websocket()` method.
+
+<CodeGroup>
+
+```python Python
+from neural_sdk import NeuralSDK
+
+sdk = NeuralSDK.from_env()
+websocket = sdk.create_websocket()
+```
+
+</CodeGroup>
+
+## Connection Methods
+
+### `connect()`
+
+Establishes WebSocket connection to the market data feed.
+
+<ResponseField name="None" type="None">
+  Async method that completes when connected
+</ResponseField>
+
+<CodeGroup>
+
+```python Example
+await websocket.connect()
+print("Connected to market data stream")
+```
+
+</CodeGroup>
+
+---
+
+### `disconnect()`
+
+Closes the WebSocket connection gracefully.
+
+<CodeGroup>
+
+```python Example
+await websocket.disconnect()
+print("Disconnected from stream")
+```
+
+</CodeGroup>
+
+---
+
+### `run_forever()`
+
+Maintains connection and processes messages indefinitely.
+
+<CodeGroup>
+
+```python Example
+try:
+    await websocket.run_forever()
+except KeyboardInterrupt:
+    await websocket.disconnect()
+```
+
+</CodeGroup>
+
+## Subscription Methods
+
+### `subscribe_markets(tickers)`
+
+Subscribe to market data for specific tickers.
+
+<ParamField path="tickers" type="List[str]" required>
+  List of market tickers or patterns to subscribe to
+  
+  - Use exact tickers: `["KXNFLGAME-PHI-WIN"]`
+  - Use wildcards: `["KXNFL*"]` for all NFL markets
+  - Mix patterns: `["KXNFL*", "KXNBA*", "SPECIFIC-MARKET"]`
+</ParamField>
+
+<CodeGroup>
+
+```python Example
+# Subscribe to specific markets
+await websocket.subscribe_markets([
+    "KXNFLGAME-PHI-WIN",
+    "KXNFLGAME-DAL-WIN"
+])
+
+# Subscribe to all NFL markets
+await websocket.subscribe_markets(["KXNFL*"])
+
+# Subscribe to multiple patterns
+await websocket.subscribe_markets([
+    "KXNFL*",      # All NFL
+    "KXNBA*",      # All NBA
+    "*EAGLES*"     # All Eagles-related
+])
+```
+
+</CodeGroup>
+
+---
+
+### `unsubscribe_markets(tickers)`
+
+Unsubscribe from market data.
+
+<ParamField path="tickers" type="List[str]" required>
+  List of tickers to unsubscribe from
+</ParamField>
+
+---
+
+### `subscribe_trades(tickers)`
+
+Subscribe to trade execution feed.
+
+<ParamField path="tickers" type="List[str]" required>
+  List of market tickers for trade data
+</ParamField>
+
+<CodeGroup>
+
+```python Example
+await websocket.subscribe_trades(["KXNFLGAME-PHI-WIN"])
+```
+
+</CodeGroup>
+
+---
+
+### `subscribe_orderbook(tickers, depth)`
+
+Subscribe to order book updates.
+
+<ParamField path="tickers" type="List[str]" required>
+  List of market tickers
+</ParamField>
+
+<ParamField path="depth" type="int" optional default="5">
+  Order book depth (1-10 levels)
+</ParamField>
+
+## Event Handlers
+
+Event handlers are decorated functions that process incoming data.
+
+### `@on_market_data`
+
+Handles market price updates.
+
+<ResponseField name="data" type="MarketData">
+  Market data object
+  
+  <Expandable title="MarketData fields">
+    <ResponseField name="ticker" type="string">
+      Market ticker
+    </ResponseField>
+    <ResponseField name="yes_price" type="float">
+      Current YES price
+    </ResponseField>
+    <ResponseField name="no_price" type="float">
+      Current NO price
+    </ResponseField>
+    <ResponseField name="volume" type="float">
+      Total volume
+    </ResponseField>
+    <ResponseField name="open_interest" type="float">
+      Open interest
+    </ResponseField>
+    <ResponseField name="timestamp" type="datetime">
+      Update timestamp
+    </ResponseField>
+    <ResponseField name="price_change_1h" type="float">
+      1-hour price change
+    </ResponseField>
+    <ResponseField name="price_change_24h" type="float">
+      24-hour price change
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+
+```python Example
+@websocket.on_market_data
+async def handle_market_update(data):
+    print(f"Market: {data.ticker}")
+    print(f"  YES: ${data.yes_price:.2f}")
+    print(f"  NO: ${data.no_price:.2f}")
+    print(f"  Volume: ${data.volume:,.0f}")
+    
+    # Trading logic
+    if data.yes_price < 0.30 and data.volume > 10000:
+        print(f"🎯 BUY SIGNAL: {data.ticker}")
+```
+
+</CodeGroup>
+
+---
+
+### `@on_trade`
+
+Handles executed trade notifications.
+
+<ResponseField name="trade" type="Trade">
+  Trade execution data
+  
+  <Expandable title="Trade fields">
+    <ResponseField name="ticker" type="string">
+      Market ticker
+    </ResponseField>
+    <ResponseField name="price" type="float">
+      Execution price
+    </ResponseField>
+    <ResponseField name="size" type="int">
+      Trade size
+    </ResponseField>
+    <ResponseField name="side" type="string">
+      Trade side: YES or NO
+    </ResponseField>
+    <ResponseField name="timestamp" type="datetime">
+      Execution time
+    </ResponseField>
+    <ResponseField name="trade_id" type="string">
+      Unique trade ID
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+
+```python Example
+@websocket.on_trade
+async def handle_trade(trade):
+    print(f"TRADE: {trade.ticker}")
+    print(f"  {trade.side} ${trade.size} @ ${trade.price:.2f}")
+    
+    # Track large trades
+    if trade.size > 1000:
+        print(f"🐋 WHALE ALERT: ${trade.size} traded!")
+```
+
+</CodeGroup>
+
+---
+
+### `@on_orderbook`
+
+Handles order book updates.
+
+<ResponseField name="orderbook" type="OrderBook">
+  Order book snapshot
+  
+  <Expandable title="OrderBook fields">
+    <ResponseField name="ticker" type="string">
+      Market ticker
+    </ResponseField>
+    <ResponseField name="bids" type="List[Level]">
+      Bid levels [price, size]
+    </ResponseField>
+    <ResponseField name="asks" type="List[Level]">
+      Ask levels [price, size]
+    </ResponseField>
+    <ResponseField name="timestamp" type="datetime">
+      Update timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+
+```python Example
+@websocket.on_orderbook
+async def handle_orderbook(book):
+    best_bid = book.bids[0] if book.bids else None
+    best_ask = book.asks[0] if book.asks else None
+    
+    if best_bid and best_ask:
+        spread = best_ask[0] - best_bid[0]
+        print(f"Spread: ${spread:.3f}")
+```
+
+</CodeGroup>
+
+---
+
+### `@on_error`
+
+Handles WebSocket errors.
+
+<ResponseField name="error" type="Exception">
+  Error object with details
+</ResponseField>
+
+<CodeGroup>
+
+```python Example
+@websocket.on_error
+async def handle_error(error):
+    logger.error(f"WebSocket error: {error}")
+    
+    # Implement recovery logic
+    if isinstance(error, ConnectionError):
+        await asyncio.sleep(5)
+        await websocket.connect()
+```
+
+</CodeGroup>
+
+---
+
+### `@on_connected`
+
+Called when WebSocket connects.
+
+<CodeGroup>
+
+```python Example
+@websocket.on_connected
+async def handle_connected():
+    print("✅ WebSocket connected")
+    
+    # Subscribe to default markets
+    await websocket.subscribe_markets(["KXNFL*"])
+```
+
+</CodeGroup>
+
+---
+
+### `@on_disconnected`
+
+Called when WebSocket disconnects.
+
+<CodeGroup>
+
+```python Example
+@websocket.on_disconnected
+async def handle_disconnected():
+    print("❌ WebSocket disconnected")
+    
+    # Clean up resources
+    await cleanup_positions()
+```
+
+</CodeGroup>
+
+## Complete Example
+
+<CodeGroup>
+
+```python Full Example
+import asyncio
+from neural_sdk import NeuralSDK
+
+async def run_trading_bot():
+    # Initialize
+    sdk = NeuralSDK.from_env()
+    websocket = sdk.create_websocket()
+    
+    # Track positions
+    positions = {}
+    
+    @websocket.on_connected
+    async def on_connect():
+        print("🔌 Connected to Kalshi")
+        await websocket.subscribe_markets(["KXNFL*"])
+        await websocket.subscribe_trades(["KXNFL*"])
+    
+    @websocket.on_market_data
+    async def on_market(data):
+        # Simple momentum strategy
+        if data.ticker not in positions:
+            if data.yes_price < 0.25 and data.volume > 5000:
+                print(f"📈 BUY {data.ticker} @ ${data.yes_price}")
+                positions[data.ticker] = {
+                    'entry': data.yes_price,
+                    'size': 100
+                }
+        else:
+            # Check exit
+            position = positions[data.ticker]
+            pnl_pct = (data.yes_price - position['entry']) / position['entry']
+            
+            if pnl_pct > 0.20:  # 20% profit
+                print(f"💰 SELL {data.ticker} @ ${data.yes_price}")
+                print(f"   Profit: {pnl_pct:.1%}")
+                del positions[data.ticker]
+    
+    @websocket.on_trade
+    async def on_trade(trade):
+        if trade.size > 500:
+            print(f"🐋 Large trade: {trade.ticker}")
+            print(f"   {trade.side} ${trade.size} @ ${trade.price}")
+    
+    @websocket.on_error
+    async def on_error(error):
+        print(f"❌ Error: {error}")
+    
+    # Connect and run
+    await websocket.connect()
+    
+    try:
+        await websocket.run_forever()
+    except KeyboardInterrupt:
+        print("\n👋 Shutting down...")
+        await websocket.disconnect()
+
+# Run the bot
+if __name__ == "__main__":
+    asyncio.run(run_trading_bot())
+```
+
+</CodeGroup>
+
+## Configuration Options
+
+<ParamField path="reconnect_interval" type="int" default="5">
+  Seconds between reconnection attempts
+</ParamField>
+
+<ParamField path="max_reconnect_attempts" type="int" default="10">
+  Maximum reconnection attempts before giving up
+</ParamField>
+
+<ParamField path="heartbeat_interval" type="int" default="30">
+  Seconds between heartbeat pings
+</ParamField>
+
+<ParamField path="message_buffer_size" type="int" default="1000">
+  Maximum queued messages
+</ParamField>
+
+<CodeGroup>
+
+```python Configuration
+websocket = sdk.create_websocket(
+    reconnect_interval=10,
+    max_reconnect_attempts=5,
+    heartbeat_interval=20
+)
+```
+
+</CodeGroup>
+
+## Performance Tips
+
+<AccordionGroup>
+  <Accordion title="Use pattern subscriptions">
+    Subscribe to patterns (`KXNFL*`) instead of individual markets when monitoring multiple tickers.
+  </Accordion>
+  
+  <Accordion title="Implement message throttling">
+    For high-frequency updates, throttle processing:
+    ```python
+    last_update = {}
+    
+    @websocket.on_market_data
+    async def throttled_handler(data):
+        now = time.time()
+        if now - last_update.get(data.ticker, 0) > 1:  # 1 second throttle
+            last_update[data.ticker] = now
+            await process_market(data)
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle backpressure">
+    Monitor message queue depth and adjust subscriptions if falling behind:
+    ```python
+    if websocket.queue_size > 500:
+        await websocket.unsubscribe_markets(low_priority_markets)
+    ```
+  </Accordion>
+</AccordionGroup>

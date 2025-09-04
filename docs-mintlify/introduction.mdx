@@ -1,0 +1,191 @@
+---
+title: 'Welcome to Neural SDK'
+description: 'Open-source SDK for algorithmic prediction market trading'
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Neural SDK Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Neural SDK Hero Dark"
+/>
+
+## Build Powerful Trading Algorithms
+
+Neural SDK is a comprehensive framework for building algorithmic trading systems for prediction markets, with specialized support for NFL markets, real-time WebSocket streaming, and advanced backtesting capabilities.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get up and running in under 5 minutes
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api-reference"
+  >
+    Complete API documentation with examples
+  </Card>
+  <Card
+    title="Real-Time Streaming"
+    icon="bolt"
+    href="/guides/websocket-streaming"
+  >
+    Stream live market data via WebSocket
+  </Card>
+  <Card
+    title="Backtesting"
+    icon="chart-line"
+    href="/guides/backtesting"
+  >
+    Test strategies with historical data
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="🔴 Real-time WebSocket Streaming" icon="bolt">
+    Connect to live market data feeds with low-latency WebSocket support. Stream NFL games, elections, economic indicators, and more with automatic reconnection and error handling.
+    
+    ```python
+    websocket = sdk.create_websocket()
+    await websocket.subscribe_markets(['KXNFL*'])
+    ```
+  </Accordion>
+  
+  <Accordion title="🏈 NFL Market Specialization" icon="football">
+    Built-in support for NFL prediction markets with automatic game detection, player props, and team-specific filtering.
+    
+    - Game winner markets
+    - Player performance props
+    - Score predictions
+    - Quarter-by-quarter markets
+  </Accordion>
+  
+  <Accordion title="📊 Advanced Backtesting Framework" icon="chart-line">
+    Test your strategies against historical data with comprehensive performance metrics, risk analysis, and portfolio simulation.
+    
+    - Multiple data source support (CSV, Parquet, Database)
+    - Event-driven simulation
+    - Transaction cost modeling
+    - Performance visualization
+  </Accordion>
+  
+  <Accordion title="🛡️ Risk Management Tools" icon="shield">
+    Built-in risk management features including position sizing, stop-loss orders, and portfolio exposure monitoring.
+    
+    - Dynamic position sizing
+    - Stop-loss and take-profit orders
+    - Maximum drawdown protection
+    - Correlation analysis
+  </Accordion>
+  
+  <Accordion title="🔌 Multi-Source Integration" icon="plug">
+    Seamlessly integrate data from multiple sources:
+    
+    - **Kalshi**: Prediction markets
+    - **ESPN**: Sports data and play-by-play
+    - **Twitter/X**: Sentiment analysis
+    - **Redis**: Real-time event streaming
+  </Accordion>
+</AccordionGroup>
+
+## Quick Example
+
+<CodeGroup>
+
+```python Python
+from neural_sdk import NeuralSDK
+
+# Initialize SDK
+sdk = NeuralSDK.from_env()
+
+# Stream real-time NFL markets
+websocket = sdk.create_websocket()
+
+@websocket.on_market_data
+async def handle_market(data):
+    if data.yes_price < 0.30:
+        print(f"🎯 Buy opportunity: {data.ticker} @ ${data.yes_price}")
+
+await websocket.connect()
+await websocket.subscribe_markets(['KXNFL*'])
+await websocket.run_forever()
+```
+
+```javascript JavaScript
+import { NeuralSDK } from 'neural-sdk';
+
+// Initialize SDK
+const sdk = NeuralSDK.fromEnv();
+
+// Stream real-time NFL markets
+const websocket = sdk.createWebsocket();
+
+websocket.onMarketData((data) => {
+  if (data.yesPrice < 0.30) {
+    console.log(`🎯 Buy opportunity: ${data.ticker} @ $${data.yesPrice}`);
+  }
+});
+
+await websocket.connect();
+await websocket.subscribeMarkets(['KXNFL*']);
+await websocket.runForever();
+```
+
+</CodeGroup>
+
+## Installation
+
+<Tabs>
+  <Tab title="pip">
+    ```bash
+    pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@main
+    ```
+  </Tab>
+  <Tab title="uv">
+    ```bash
+    uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@main
+    ```
+  </Tab>
+  <Tab title="Development">
+    ```bash
+    git clone https://github.com/IntelIP/Neural-Trading-Platform.git
+    cd Neural-Trading-Platform
+    pip install -e .
+    ```
+  </Tab>
+</Tabs>
+
+## What's Next?
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/guides/installation">
+    Set up Neural SDK in your environment
+  </Card>
+  <Card title="Authentication" icon="key" href="/guides/authentication">
+    Configure API credentials
+  </Card>
+  <Card title="First Strategy" icon="code" href="/examples/basic-usage">
+    Build your first trading strategy
+  </Card>
+</CardGroup>
+
+## Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/IntelIP/Neural-Trading-Platform/issues">
+    Report bugs and request features
+  </Card>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/neural-sdk">
+    Join our community for support
+  </Card>
+</CardGroup>

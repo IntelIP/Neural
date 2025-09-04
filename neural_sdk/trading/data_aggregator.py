@@ -353,7 +353,9 @@ class DataAggregator:
             return
 
         try:
-            async for tweet in self.twitter_client.stream_tweets():
+            # Connect to Twitter stream and get tweets
+            await self.twitter_client.connect()
+            async for tweet in self.twitter_client.get_tweets():
                 # Match tweet to markets based on content
                 for context in self.markets.values():
                     # Simple matching - in production would be more sophisticated
