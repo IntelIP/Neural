@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Set, Callable, Tuple
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from collections import defaultdict
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)

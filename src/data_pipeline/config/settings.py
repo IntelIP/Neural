@@ -7,7 +7,6 @@ from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
-import os
 
 # Load environment variables - try multiple .env files in order of preference
 project_root = Path(__file__).parent.parent.parent.parent

@@ -4,7 +4,6 @@ Simple, focused, no bloat - just publishes market data for agents
 """
 
 import json
-import asyncio
 import logging
 from typing import Dict, Any, Optional
 import redis.asyncio as redis

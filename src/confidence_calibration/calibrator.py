@@ -6,18 +6,15 @@ and uncertainty estimation in trading scenarios.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any, Callable
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from enum import Enum
 import logging
 import numpy as np
 from collections import defaultdict, deque
-import json
 from scipy import stats
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
-from sklearn.calibration import CalibratedClassifierCV
-import asyncio
 
 from ..training.agent_analytics import DecisionMetrics
 

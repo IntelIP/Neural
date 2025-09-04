@@ -6,10 +6,8 @@ Complete backtesting workflow with parameter optimization
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
-import json
-from pathlib import Path
+from datetime import datetime
+from typing import List
 import argparse
 
 import sys
@@ -344,28 +342,28 @@ class BacktestRunner:
         logger.info("PERFORMANCE METRICS")
         logger.info("="*60)
         
-        logger.info(f"\nReturns:")
+        logger.info("\nReturns:")
         logger.info(f"  Total Return: {metrics.total_return:.2%}")
         logger.info(f"  Annualized Return: {metrics.annualized_return:.2%}")
         
-        logger.info(f"\nRisk Metrics:")
+        logger.info("\nRisk Metrics:")
         logger.info(f"  Volatility: {metrics.volatility:.2%}")
         logger.info(f"  Max Drawdown: {metrics.max_drawdown:.2%}")
         logger.info(f"  VaR (95%): {metrics.var_95:.2%}")
         
-        logger.info(f"\nRisk-Adjusted Returns:")
+        logger.info("\nRisk-Adjusted Returns:")
         logger.info(f"  Sharpe Ratio: {metrics.sharpe_ratio:.2f}")
         logger.info(f"  Sortino Ratio: {metrics.sortino_ratio:.2f}")
         logger.info(f"  Calmar Ratio: {metrics.calmar_ratio:.2f}")
         
-        logger.info(f"\nTrade Statistics:")
+        logger.info("\nTrade Statistics:")
         logger.info(f"  Total Trades: {metrics.total_trades}")
         logger.info(f"  Win Rate: {metrics.win_rate:.1%}")
         logger.info(f"  Profit Factor: {metrics.profit_factor:.2f}")
         logger.info(f"  Expectancy: ${metrics.expectancy:.2f}")
         logger.info(f"  Avg Holding Period: {metrics.avg_holding_period:.1f} hours")
         
-        logger.info(f"\nKelly Metrics:")
+        logger.info("\nKelly Metrics:")
         logger.info(f"  Kelly Criterion: {metrics.kelly_criterion:.2%}")
         logger.info(f"  Optimal f: {metrics.optimal_f:.2%}")
 

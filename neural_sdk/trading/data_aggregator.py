@@ -7,19 +7,15 @@ DEPRECATED: Use neural_web_infra.stream_manager.StreamManager directly
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 # Import the new StreamManager
 from data_pipeline.orchestration.unified_stream_manager import DataSource
 from data_pipeline.orchestration.unified_stream_manager import (
-    EventType as StreamEventType,
-)
-from data_pipeline.orchestration.unified_stream_manager import (
     MarketContext,
     StreamManager,
-    UnifiedEvent,
 )
 
 logger = logging.getLogger(__name__)

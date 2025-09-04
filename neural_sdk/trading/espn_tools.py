@@ -210,8 +210,8 @@ async def correlate_with_neural():
         injuries = [e for e in events if e["type"] == "injury"]
 
         if injuries:
-            print(f"MARKET ALERT: Injury detected!")
+            print("MARKET ALERT: Injury detected!")
             print(f"Current win probability: {win_prob}")
-            print(f"Check Neural market for arbitrage opportunity")
+            print("Check Neural market for arbitrage opportunity")
 
     await espn.close()

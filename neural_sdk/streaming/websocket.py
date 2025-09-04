@@ -7,7 +7,6 @@ Provides a clean API for real-time market data streaming.
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from ..core.config import SDKConfig

@@ -5,10 +5,8 @@ Tests the NeuralWebSocket class and related streaming functionality
 without requiring actual network connections.
 """
 
-import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, Any
 
 # Mock data_pipeline imports before importing neural_sdk
 with patch.dict('sys.modules', {
@@ -24,7 +22,7 @@ with patch.dict('sys.modules', {
     # Import the classes we're testing
     from neural_sdk.streaming.websocket import NeuralWebSocket
     from neural_sdk.core.config import SDKConfig
-    from neural_sdk.core.exceptions import ConnectionError, SDKError
+    from neural_sdk.core.exceptions import ConnectionError
 
 
 class TestNeuralWebSocket:

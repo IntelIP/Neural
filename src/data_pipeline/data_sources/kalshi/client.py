@@ -40,8 +40,8 @@ class KalshiClient:
             from ...config.settings import KalshiConfig
             
             environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
-            api_base_url = f"https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
-            ws_url = f"wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            api_base_url = "https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
+            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
             
             config = KalshiConfig(
                 api_key_id=os.getenv("KALSHI_API_KEY_ID"),

@@ -10,7 +10,7 @@ import random
 import logging
 from typing import Optional, Callable, Any, Dict, List
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from collections import deque
 import threading
@@ -218,7 +218,7 @@ class CircuitBreaker:
             raise CircuitTimeoutException(
                 f"Operation timed out after {self.config.timeout}s"
             )
-        except Exception as e:
+        except Exception:
             await self._on_failure()
             raise
     

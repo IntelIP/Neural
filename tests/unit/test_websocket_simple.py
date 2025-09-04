@@ -5,7 +5,7 @@ Tests core functionality without data pipeline dependencies.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock
 import sys
 
 # Mock all data_pipeline modules at the module level
@@ -26,7 +26,7 @@ for module_name, mock in data_pipeline_mocks.items():
 
 # Now we can safely import
 from neural_sdk.core.config import SDKConfig
-from neural_sdk.core.exceptions import ConnectionError, SDKError
+from neural_sdk.core.exceptions import ConnectionError
 
 
 class MockNeuralWebSocket:

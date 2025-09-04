@@ -4,8 +4,7 @@ Adjusts stop-loss levels based on market conditions and sentiment momentum.
 """
 
 import logging
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)

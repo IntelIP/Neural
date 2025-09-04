@@ -26,7 +26,7 @@ from src.data_pipeline.window_aggregator import WindowAggregator
 
 # Import resilience components
 from src.data_pipeline.reliability.resilience_coordinator import (
-    get_resilience_coordinator, ServicePriority, DegradationLevel
+    get_resilience_coordinator, ServicePriority
 )
 from src.data_pipeline.reliability.health_monitor import get_health_monitor, websocket_health_check
 
@@ -200,8 +200,8 @@ class StreamManager:
             
             # Get environment settings - UPDATED with correct API URLs
             environment = os.getenv("KALSHI_ENVIRONMENT", "demo")
-            api_base_url = f"https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
-            ws_url = f"wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            api_base_url = "https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
+            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
             
             config = KalshiConfig(
                 api_key_id=kalshi_key_id,

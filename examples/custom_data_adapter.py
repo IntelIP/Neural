@@ -5,10 +5,9 @@ Shows how to create a custom data provider for the backtesting module.
 This example demonstrates connecting to a REST API for historical data.
 """
 
-import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 import requests
@@ -182,7 +181,7 @@ class MockAPIProvider(DataProvider):
     ) -> pd.DataFrame:
         """Generate mock API data."""
 
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         import numpy as np
 
@@ -387,7 +386,7 @@ def run_custom_provider_example():
 
     results = engine.run()
 
-    print(f"Backtest Results:")
+    print("Backtest Results:")
     print(f"  Total Return: {results.total_return:.2f}%")
     print(f"  Number of Trades: {results.num_trades}")
     print(f"  Sharpe Ratio: {results.metrics.get('sharpe_ratio', 0):.3f}")

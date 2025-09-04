@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from .client import KalshiClient
-from ...sports_config import Sport, get_sport_config, get_series_ticker
+from ...sports_config import Sport, get_sport_config
 
 logger = logging.getLogger(__name__)
 

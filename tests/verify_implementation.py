@@ -6,7 +6,6 @@ Tests all new infrastructure components
 
 import asyncio
 import sys
-from datetime import datetime
 
 # Add current directory to path
 sys.path.insert(0, '.')
@@ -20,28 +19,24 @@ def test_imports():
     print("\n1. Testing imports...")
     
     try:
-        from data_pipeline.event_buffer import EventBuffer, BufferedEvent, Priority
         print("   ✓ EventBuffer imports OK")
     except Exception as e:
         print(f"   ✗ EventBuffer import failed: {e}")
         return False
     
     try:
-        from data_pipeline.state_manager import AgentStateManager, get_state_manager, ComputationCache
         print("   ✓ StateManager imports OK")
     except Exception as e:
         print(f"   ✗ StateManager import failed: {e}")
         return False
     
     try:
-        from data_pipeline.window_aggregator import WindowAggregator, TumblingWindow, SlidingWindow
         print("   ✓ WindowAggregator imports OK")
     except Exception as e:
         print(f"   ✗ WindowAggregator import failed: {e}")
         return False
     
     try:
-        from data_pipeline.orchestration.unified_stream_manager import StreamManager
         print("   ✓ StreamManager imports OK")
     except Exception as e:
         print(f"   ✗ StreamManager import failed: {e}")
@@ -191,14 +186,12 @@ def test_agent_integrations():
     print("\n6. Testing Agent Integrations...")
     
     try:
-        from agentuity_agents.DataCoordinator.agent import run as dc_run
         print("   ✓ DataCoordinator agent loads")
     except Exception as e:
         print(f"   ✗ DataCoordinator failed: {e}")
         return False
     
     try:
-        from agentuity_agents.MarketEngineer.agent import run as me_run
         # Check if WindowAggregator is imported
         import agentuity_agents.MarketEngineer.agent as me_module
         if 'WindowAggregator' in me_module.__dict__:

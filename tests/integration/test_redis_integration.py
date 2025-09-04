@@ -8,7 +8,6 @@ import asyncio
 import json
 import logging
 import redis.asyncio as redis
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(

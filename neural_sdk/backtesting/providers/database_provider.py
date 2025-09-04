@@ -6,7 +6,6 @@ Supports PostgreSQL, MySQL, SQLite, and other SQLAlchemy-compatible databases.
 """
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import pandas as pd

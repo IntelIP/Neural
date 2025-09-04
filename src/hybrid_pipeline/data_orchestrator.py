@@ -6,18 +6,15 @@ based on training requirements, API costs, and performance metrics.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union, AsyncGenerator
+from typing import Dict, List, Optional, Any
 from enum import Enum
-import asyncio
 import logging
 from datetime import datetime, timedelta
-import json
 
 from ..synthetic_data.generators.game_engine import SyntheticGameEngine
 from ..synthetic_data.generators.market_simulator import MarketSimulator
 from ..synthetic_data.generators.scenario_builder import ScenarioBuilder
 from ..synthetic_data.storage.chromadb_manager import ChromaDBManager
-from ..synthetic_data.preprocessing.nfl_dataset_processor import ProcessedNFLPlay
 from ..sdk.core.base_adapter import StandardizedEvent
 from ..training.agent_analytics import AgentAnalytics
 

@@ -20,9 +20,9 @@ with patch.dict('sys.modules', {
     'data_pipeline.sports_config': MagicMock(),
 }):
     # Import the classes we're testing
-    from neural_sdk import NeuralSDK, NeuralWebSocket, NFLMarketStream
+    from neural_sdk import NeuralSDK, NeuralWebSocket
     from neural_sdk.core.config import SDKConfig
-    from neural_sdk.core.exceptions import ConnectionError, SDKError
+    from neural_sdk.core.exceptions import ConnectionError
 
 
 class TestWebSocketIntegration:

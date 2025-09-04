@@ -9,7 +9,6 @@ from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import threading
 
 logger = logging.getLogger(__name__)
 

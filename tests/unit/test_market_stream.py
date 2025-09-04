@@ -4,11 +4,9 @@ Unit tests for Neural SDK Market Streaming functionality.
 Tests the MarketStream and NFLMarketStream classes.
 """
 
-import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from typing import Dict, Any
 
 # Mock data_pipeline imports before importing neural_sdk
 with patch.dict('sys.modules', {

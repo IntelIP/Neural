@@ -11,8 +11,8 @@ Comprehensive financial metrics for strategy evaluation:
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd

@@ -17,7 +17,6 @@ from ..config import KalshiConfig
 from ..data_sources.kalshi.auth import KalshiAuth
 from .handlers import MessageHandler, DefaultMessageHandler
 from ..reliability.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitOpenException
-from ..reliability.health_monitor import websocket_health_check
 from ..reliability.flow_controller import CreditBasedFlowController
 from ..reliability.rate_limiter import TokenBucket
 

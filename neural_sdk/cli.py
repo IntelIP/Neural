@@ -6,7 +6,6 @@ and performing administrative tasks.
 """
 
 import asyncio
-import json
 import logging
 from pathlib import Path
 from typing import Optional
@@ -15,11 +14,10 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 from .core.client import NeuralSDK
 from .core.config import SDKConfig
-from .core.exceptions import ConfigurationError, SDKError
+from .core.exceptions import ConfigurationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -345,7 +343,6 @@ Last Update: {status['last_update']}
 
 async def _monitor_status(sdk: NeuralSDK):
     """Continuously monitor system status."""
-    import time
 
     try:
         while True:

@@ -15,12 +15,11 @@ Usage:
     python scripts/cleanup_technical_debt.py
 """
 
-import os
 import re
 import glob
 import logging
 from pathlib import Path
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Set
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -228,7 +227,7 @@ class TechnicalDebtCleaner:
         report = []
         report.append("# Technical Debt Cleanup Report")
         report.append("")
-        report.append(f"## Summary")
+        report.append("## Summary")
         report.append(f"- **Files processed:** {len(self.fixed_files)}")
         report.append(f"- **Issues found:** {sum(len(issues) for issues in self.issues_found.values())}")
         report.append("")

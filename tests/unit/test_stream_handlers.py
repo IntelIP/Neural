@@ -5,8 +5,6 @@ Tests the StreamEventHandler class and related event handling functionality.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime
 
 # Import the classes we're testing
 from neural_sdk.streaming.handlers import (

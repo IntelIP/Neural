@@ -9,14 +9,12 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from .config import SDKConfig
 from .exceptions import (
     ConfigurationError,
-    ConnectionError,
     SDKError,
-    TradingError,
     ValidationError,
 )
 

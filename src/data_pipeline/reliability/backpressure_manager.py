@@ -6,13 +6,11 @@ Automatically throttles producers when consumers lag
 
 import asyncio
 import psutil
-import time
 import logging
-from typing import Dict, Any, List, Optional, Callable, Tuple
+from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-import threading
 from collections import deque
 
 logger = logging.getLogger(__name__)

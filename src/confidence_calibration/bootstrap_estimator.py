@@ -5,13 +5,12 @@ Uses bootstrap sampling to estimate confidence intervals and
 uncertainty for agent decision-making scenarios.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any, Callable
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Any, Callable
 import numpy as np
 import asyncio
 import logging
 from datetime import datetime
-from collections import defaultdict
 import random
 
 

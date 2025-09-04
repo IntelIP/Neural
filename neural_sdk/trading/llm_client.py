@@ -6,8 +6,7 @@ Direct integration with local Ollama server for fine-tuned models
 import asyncio
 import json
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

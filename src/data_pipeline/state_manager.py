@@ -3,11 +3,10 @@ State Manager - Manages agent state with hot/warm/cold storage tiers
 Provides consistent state management across all agents using SDK KV storage
 """
 
-import json
 import logging
-from typing import Dict, Any, Optional, List, Callable
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from typing import Dict, Any, Optional, Callable
+from datetime import datetime
+from dataclasses import dataclass
 from collections import OrderedDict
 import hashlib
 

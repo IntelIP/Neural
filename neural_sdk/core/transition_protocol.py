@@ -6,8 +6,6 @@ with authentication, validation, and rollback capabilities.
 """
 
 import asyncio
-import hashlib
-import json
 import os
 import secrets
 import time
@@ -18,7 +16,6 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pyotp
-import redis.asyncio as redis
 
 from .environment_manager import Environment, EnvironmentManager
 

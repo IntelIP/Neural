@@ -9,14 +9,13 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 from enum import Enum
 import redis.asyncio as redis
 
 from .decision_tracker import DecisionRecord, DecisionOutcome, DecisionType, TrackingConfig
 from ..synthetic_data.generators.market_simulator import MarketSimulator, MarketState
-from ..training.agent_analytics import AgentAnalytics
 
 logger = logging.getLogger(__name__)
 

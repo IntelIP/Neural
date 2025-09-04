@@ -34,11 +34,28 @@ await websocket.subscribe_markets(['KXNFLGAME*'])  # All NFL games
 
 ### Installation
 
+#### For Team Members (Private Access)
 ```bash
-pip install neural-sdk
+# Install latest Neural SDK v1.1.0 with WebSocket streaming
+pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
 
-# Or install from GitHub
-pip install git+https://github.com/IntelIP/kalshi.git@feat/synthetic-training-integration
+# Or with uv (recommended - faster)
+uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+
+# For development
+git clone https://github.com/IntelIP/Neural-Trading-Platform.git
+cd Neural-Trading-Platform
+pip install -e .
+```
+
+#### Authentication Setup
+```bash
+# One-time setup for team members
+git config --global credential.helper store
+
+# Or use SSH (more secure)
+ssh-keygen -t ed25519 -C "your-email@company.com"
+# Add public key to GitHub account
 ```
 
 ### Basic Usage

@@ -8,13 +8,11 @@ import asyncio
 import random
 import logging
 import time
-from typing import Any
-from datetime import datetime
 
 # Import our resilience components
 from data_pipeline.reliability.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitOpenException
 from data_pipeline.reliability.resilience_coordinator import ResilienceCoordinator, ServicePriority
-from data_pipeline.reliability.health_monitor import HealthMonitor, HealthStatus
+from data_pipeline.reliability.health_monitor import HealthMonitor
 
 # Configure logging
 logging.basicConfig(

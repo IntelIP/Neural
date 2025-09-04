@@ -4,9 +4,8 @@ Implements sliding and tumbling windows for market data analysis
 Based on Apache Flink windowing model
 """
 
-import asyncio
 import logging
-from typing import Dict, Any, List, Optional, Callable, Tuple
+from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from collections import deque

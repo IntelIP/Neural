@@ -28,7 +28,6 @@ async def test_full_pipeline():
     from data_pipeline.orchestration.unified_stream_manager import StreamManager
     from agent_consumers.DataCoordinator.data_coordinator import DataCoordinatorAgent
     from agent_consumers.MarketEngineer.market_engineer import MarketEngineerAgent
-    from agent_consumers.base_consumer import AgentRedisOrchestrator
     
     # 1. Start StreamManager with Redis bridge
     logger.info("\n1. Starting StreamManager with Redis bridge...")
@@ -91,7 +90,7 @@ async def test_full_pipeline():
     
     # DataCoordinator stats
     dc_status = await data_coordinator.get_status()
-    logger.info(f"DataCoordinator:")
+    logger.info("DataCoordinator:")
     logger.info(f"  Events received: {dc_status['events_received']}")
     logger.info(f"  Events routed: {dc_status['events_routed']}")
     logger.info(f"  Tracked markets: {len(dc_status['tracked_markets'])}")
@@ -103,7 +102,7 @@ async def test_full_pipeline():
     # MarketEngineer stats
     if hasattr(market_engineer, 'redis_consumer'):
         me_stats = market_engineer.redis_consumer.get_stats()
-        logger.info(f"\nMarketEngineer:")
+        logger.info("\nMarketEngineer:")
         logger.info(f"  Messages received: {me_stats['messages_received']}")
         logger.info(f"  Messages processed: {me_stats['messages_processed']}")
         logger.info(f"  Opportunities found: {market_engineer.redis_consumer.opportunities_found}")
@@ -137,7 +136,7 @@ async def test_full_pipeline():
     logger.info("-" * 40)
     
     stream_stats = stream_manager.get_statistics()
-    logger.info(f"StreamManager:")
+    logger.info("StreamManager:")
     logger.info(f"  Events processed: {stream_stats['events_processed']}")
     logger.info(f"  Markets tracked: {len(stream_stats['markets'])}")
     

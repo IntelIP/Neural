@@ -5,8 +5,6 @@ Tests event handling functionality without external dependencies.
 """
 
 import pytest
-from unittest.mock import AsyncMock
-from datetime import datetime
 from enum import Enum
 
 

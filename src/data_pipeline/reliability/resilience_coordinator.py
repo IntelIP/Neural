@@ -206,7 +206,7 @@ class ResilienceCoordinator:
             result = await service.circuit_breaker.call(func, *args, **kwargs)
             return result
             
-        except Exception as e:
+        except Exception:
             # Try fallback if available
             if service.fallback_handler:
                 logger.info(f"Using fallback for service '{service_name}'")

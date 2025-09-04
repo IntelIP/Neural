@@ -4,7 +4,7 @@ Define sports and their Kalshi series tickers for standardized market discovery
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List
 from enum import Enum
 
 

@@ -5,28 +5,18 @@ Visual interface components for environment management with
 clear distinctions between training/sandbox and production modes.
 """
 
-import asyncio
-import os
-import sys
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from colorama import Back, Fore
-from colorama import Style as ColoramaStyle
 from colorama import init
 from rich.console import Console
 from rich.layout import Layout
-from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
-from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 
-from .environment_manager import Environment, EnvironmentManager, EnvironmentStatus
+from .environment_manager import Environment, EnvironmentManager
 
 # Initialize colorama
 init(autoreset=True)
@@ -122,8 +112,8 @@ class EnvironmentUI:
         # Create banner content
         banner_text = Text()
         banner_text.append(f"\n{theme['icon']} ", style=theme["primary"])
-        banner_text.append(f"KALSHI TRADING AGENT", style="bold white")
-        banner_text.append(f" - ", style="white")
+        banner_text.append("KALSHI TRADING AGENT", style="bold white")
+        banner_text.append(" - ", style="white")
         banner_text.append(f"{env.value.upper()}", style=f"bold {theme['primary']}")
         banner_text.append(f" {theme['icon']}\n", style=theme["primary"])
 
@@ -265,7 +255,7 @@ class EnvironmentUI:
         message = Text()
         message.append(f"\n{theme['icon']} ", style=theme["primary"])
         message.append("Operation Confirmation\n", style="bold white")
-        message.append(f"Operation: ", style="dim")
+        message.append("Operation: ", style="dim")
         message.append(f"{operation}\n", style="yellow")
 
         if details:
@@ -291,7 +281,7 @@ class EnvironmentUI:
 
         # Get confirmation
         return Confirm.ask(
-            f"Do you want to proceed?",
+            "Do you want to proceed?",
             default=False if env == Environment.PRODUCTION else True,
         )
 
@@ -360,13 +350,13 @@ class EnvironmentUI:
         # Create transition panel
         content = Text()
         content.append("Transition Plan\n\n", style="bold white")
-        content.append(f"From: ", style="dim")
+        content.append("From: ", style="dim")
         content.append(f"{from_env.value.upper()}\n", style="cyan")
-        content.append(f"To: ", style="dim")
+        content.append("To: ", style="dim")
         content.append(f"{to_env.value.upper()}\n", style=theme["primary"])
 
         if checks:
-            content.append(f"\nRequired Checks:\n", style="yellow")
+            content.append("\nRequired Checks:\n", style="yellow")
             for check in checks:
                 content.append(f"  • {check}\n", style="white")
 

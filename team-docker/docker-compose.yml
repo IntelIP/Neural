@@ -1,0 +1,22 @@
+# Neural SDK Team Docker Compose
+# Version: 1.1.0
+
+version: '3.8'
+
+services:
+  neural-trading:
+    build: .
+    environment:
+      - KALSHI_API_KEY_ID=${KALSHI_API_KEY_ID}
+      - KALSHI_API_SECRET=${KALSHI_API_SECRET}
+      - KALSHI_ENVIRONMENT=production
+    volumes:
+      - ./strategies:/app/strategies
+      - ./logs:/app/logs
+    restart: unless-stopped
+    
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

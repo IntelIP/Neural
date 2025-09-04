@@ -6,7 +6,7 @@ to test trading strategies with historical data.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -157,14 +157,14 @@ def run_basic_backtest():
     print(f"Total Return: {results.total_return:.2f}%")
     print(f"Number of Trades: {results.num_trades}")
 
-    print(f"\n=== KEY METRICS ===")
+    print("\n=== KEY METRICS ===")
     for metric, value in results.metrics.items():
         if isinstance(value, float):
             print(f"{metric.replace('_', ' ').title()}: {value:.4f}")
 
     # 7. Export detailed report
     results.export_report("backtest_report.html")
-    print(f"\nDetailed report saved to: backtest_report.html")
+    print("\nDetailed report saved to: backtest_report.html")
 
     return results
 
@@ -336,7 +336,7 @@ def analyze_strategy_performance(results):
     # Daily statistics
     daily_returns = results.daily_returns.dropna()
     if len(daily_returns) > 0:
-        print(f"\nDaily Return Statistics:")
+        print("\nDaily Return Statistics:")
         print(f"  Mean: {daily_returns.mean():.3f}%")
         print(f"  Std Dev: {daily_returns.std():.3f}%")
         print(f"  Best Day: +{daily_returns.max():.2f}%")
@@ -349,7 +349,7 @@ def analyze_strategy_performance(results):
 
     # Trade analysis
     if len(results.trades) > 0:
-        print(f"\nTrade Analysis:")
+        print("\nTrade Analysis:")
         trades_df = pd.DataFrame(
             [
                 {

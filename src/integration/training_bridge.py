@@ -5,7 +5,7 @@ Bridges synthetic data pipeline with Redis-based agent infrastructure,
 enabling seamless training with generated scenarios.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
 from enum import Enum
@@ -17,7 +17,6 @@ from collections import defaultdict
 
 from ..sdk.core.base_adapter import StandardizedEvent
 from ..synthetic_data.generators.scenario_builder import TrainingScenarioSet
-from ..synthetic_data.generators.market_simulator import TradingScenario
 from ..training.agent_analytics import AgentAnalytics, DecisionMetrics
 from ..training.memory_system import AgentMemorySystem
 from ..confidence_calibration.calibrator import ConfidenceCalibrator
