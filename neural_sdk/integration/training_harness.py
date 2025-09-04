@@ -16,9 +16,9 @@ import redis.asyncio as redis
 
 from ..synthetic_data.generators.game_engine import SyntheticGameEngine
 from ..synthetic_data.generators.market_simulator import MarketSimulator
-from ..training.memory_system import AgentMemorySystem
+# Training module imports commented out - not yet available
 from ..confidence_calibration.calibrator import ConfidenceCalibrator
-from ..training.agent_analytics import AgentAnalytics
+# Training module imports commented out - not yet available
 from .synthetic_injector import SyntheticDataInjector, InjectionConfig, EventTiming
 from .training_bridge import TrainingBridge, TrainingMode
 

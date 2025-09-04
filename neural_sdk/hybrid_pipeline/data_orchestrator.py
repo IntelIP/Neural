@@ -16,7 +16,7 @@ from ..synthetic_data.generators.market_simulator import MarketSimulator
 from ..synthetic_data.generators.scenario_builder import ScenarioBuilder
 from ..synthetic_data.storage.chromadb_manager import ChromaDBManager
 from ..sdk.core.base_adapter import StandardizedEvent
-from ..training.agent_analytics import AgentAnalytics
+# Training module imports commented out - not yet available
 
 
 class DataSource(Enum):

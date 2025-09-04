@@ -4,8 +4,8 @@ Example: Fetch markets using the HTTP client
 
 import logging
 
-from data_pipeline.data_sources.kalshi import KalshiClient
-from data_pipeline.utils import setup_logging
+from neural_sdk.data_pipeline.data_sources.kalshi import KalshiClient
+from neural_sdk.data_pipeline.utils import setup_logging
 
 
 def main():

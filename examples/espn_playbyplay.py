@@ -6,8 +6,8 @@ Demonstrates how to stream and analyze play-by-play data
 import asyncio
 import logging
 
-from data_pipeline.data_sources.espn import ESPNClient, ESPNStreamAdapter, EventType
-from data_pipeline.utils import setup_logging
+from neural_sdk.data_pipeline.data_sources.espn import ESPNClient, ESPNStreamAdapter, EventType
+from neural_sdk.data_pipeline.utils import setup_logging
 
 
 async def fetch_game_data():

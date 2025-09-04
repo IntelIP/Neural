@@ -7,12 +7,12 @@ import asyncio
 import logging
 import os
 
-from data_pipeline.data_sources.twitter import (
+from neural_sdk.data_pipeline.data_sources.twitter import (
     FilterManager,
     SentimentAnalyzer,
     TwitterStreamAdapter,
 )
-from data_pipeline.utils import setup_logging
+from neural_sdk.data_pipeline.utils import setup_logging
 
 
 async def basic_sentiment_stream():
@@ -245,7 +245,7 @@ async def player_injury_monitoring():
     analyzer = SentimentAnalyzer()
 
     # Set up WebSocket client
-    from data_pipeline.data_sources.twitter.client import AsyncTwitterWebSocketClient
+    from neural_sdk.data_pipeline.data_sources.twitter.client import AsyncTwitterWebSocketClient
 
     client = AsyncTwitterWebSocketClient()
 

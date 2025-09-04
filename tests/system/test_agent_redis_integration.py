@@ -25,7 +25,7 @@ async def test_full_pipeline():
     logger.info("=" * 60)
     
     # Import components
-    from data_pipeline.orchestration.unified_stream_manager import StreamManager
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import StreamManager
     from agent_consumers.DataCoordinator.data_coordinator import DataCoordinatorAgent
     from agent_consumers.MarketEngineer.market_engineer import MarketEngineerAgent
     
@@ -61,7 +61,7 @@ async def test_full_pipeline():
     
     # 5. Simulate market data
     logger.info("\n5. Simulating market data...")
-    from data_pipeline.orchestration.unified_stream_manager import UnifiedEvent, EventType, DataSource
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import UnifiedEvent, EventType, DataSource
     
     # Simulate price update
     test_event = UnifiedEvent(
@@ -165,7 +165,7 @@ async def test_redis_orchestrator():
     logger.info("=" * 60)
     
     from agent_consumers.base_consumer import AgentRedisOrchestrator, BaseAgentRedisConsumer
-    from data_pipeline.orchestration.redis_event_publisher import RedisPublisher
+    from neural_sdk.data_pipeline.orchestration.redis_event_publisher import RedisPublisher
     
     # Create test consumers
     class TestConsumer1(BaseAgentRedisConsumer):

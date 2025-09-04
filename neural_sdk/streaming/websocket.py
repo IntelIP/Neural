@@ -14,13 +14,13 @@ from ..core.exceptions import ConnectionError, SDKError
 
 # Import from data pipeline
 try:
-    from data_pipeline.streaming.websocket import KalshiWebSocket
-    from data_pipeline.streaming.handlers import DefaultMessageHandler
-    from data_pipeline.data_sources.kalshi.market_discovery import (
+    from neural_sdk.data_pipeline.streaming.websocket import KalshiWebSocket
+    from neural_sdk.data_pipeline.streaming.handlers import DefaultMessageHandler
+    from neural_sdk.data_pipeline.data_sources.kalshi.market_discovery import (
         KalshiMarketDiscovery,
         SportMarket
     )
-    from data_pipeline.sports_config import Sport
+    from neural_sdk.data_pipeline.sports_config import Sport
 except ImportError as e:
     raise SDKError(
         f"Data pipeline not available: {e}. "

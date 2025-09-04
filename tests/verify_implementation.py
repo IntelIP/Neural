@@ -48,7 +48,7 @@ async def test_event_buffer():
     """Test EventBuffer functionality"""
     print("\n2. Testing EventBuffer...")
     
-    from data_pipeline.event_buffer import EventBuffer, BufferedEvent, Priority
+    from neural_sdk.data_pipeline.event_buffer import EventBuffer, BufferedEvent, Priority
     
     buffer = EventBuffer(size=100)
     
@@ -85,7 +85,7 @@ async def test_window_aggregator():
     """Test WindowAggregator functionality"""
     print("\n3. Testing WindowAggregator...")
     
-    from data_pipeline.window_aggregator import WindowAggregator
+    from neural_sdk.data_pipeline.window_aggregator import WindowAggregator
     
     aggregator = WindowAggregator()
     
@@ -119,7 +119,7 @@ def test_state_manager():
     """Test StateManager functionality"""
     print("\n4. Testing StateManager...")
     
-    from data_pipeline.state_manager import get_state_manager
+    from neural_sdk.data_pipeline.state_manager import get_state_manager
     
     state_manager = get_state_manager()
     
@@ -150,7 +150,7 @@ def test_stream_manager():
     """Test StreamManager initialization"""
     print("\n5. Testing StreamManager...")
     
-    from data_pipeline.orchestration.unified_stream_manager import StreamManager
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import StreamManager
     
     sm = StreamManager()
     

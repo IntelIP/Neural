@@ -64,7 +64,7 @@ async def redis_subscriber():
 
 async def test_publisher():
     """Publish test messages to verify pipeline"""
-    from data_pipeline.orchestration.redis_event_publisher import RedisPublisher
+    from neural_sdk.data_pipeline.orchestration.redis_event_publisher import RedisPublisher
     
     publisher = RedisPublisher()
     await publisher.connect()
@@ -115,7 +115,7 @@ async def test_publisher():
 
 async def test_stream_manager():
     """Test StreamManager with Redis integration"""
-    from data_pipeline.orchestration.unified_stream_manager import StreamManager
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import StreamManager
     
     # Create manager
     manager = StreamManager()

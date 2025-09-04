@@ -12,8 +12,8 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 # Import the new StreamManager
-from data_pipeline.orchestration.unified_stream_manager import DataSource
-from data_pipeline.orchestration.unified_stream_manager import (
+from neural_sdk.data_pipeline.orchestration.unified_stream_manager import DataSource
+from neural_sdk.data_pipeline.orchestration.unified_stream_manager import (
     MarketContext,
     StreamManager,
 )

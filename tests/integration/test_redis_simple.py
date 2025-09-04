@@ -5,7 +5,7 @@ import asyncio
 import json
 import sys
 import redis.asyncio as redis
-from data_pipeline.orchestration.redis_event_publisher import RedisPublisher
+from neural_sdk.data_pipeline.orchestration.redis_event_publisher import RedisPublisher
 
 # Force unbuffered output
 sys.stdout = sys.stderr
@@ -70,7 +70,7 @@ async def test_pub_sub():
 
 async def test_stream_manager_redis():
     """Test StreamManager Redis integration"""
-    from data_pipeline.orchestration.unified_stream_manager import StreamManager
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import StreamManager
     
     print("\nTesting StreamManager with Redis...")
     
@@ -89,7 +89,7 @@ async def test_stream_manager_redis():
     print("✓ Redis bridge started")
     
     # Manually emit a test event
-    from data_pipeline.orchestration.unified_stream_manager import UnifiedEvent, EventType, DataSource
+    from neural_sdk.data_pipeline.orchestration.unified_stream_manager import UnifiedEvent, EventType, DataSource
     from datetime import datetime
     
     test_event = UnifiedEvent(

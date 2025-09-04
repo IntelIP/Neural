@@ -16,7 +16,12 @@ from scipy import stats
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
-from ..training.agent_analytics import DecisionMetrics
+# # Training module imports commented out - not yet available
+
+# Temporary placeholder until training module is available
+class DecisionMetrics:
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 class CalibrationMethod(Enum):

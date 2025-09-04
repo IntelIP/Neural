@@ -6,9 +6,9 @@ Demonstrates real-time correlation between game events and market movements
 import asyncio
 import logging
 
-from data_pipeline.data_sources.espn.models import EventType
-from data_pipeline.unified_stream import MarketCorrelation, UnifiedStreamManager
-from data_pipeline.utils import setup_logging
+from neural_sdk.data_pipeline.data_sources.espn.models import EventType
+from neural_sdk.data_pipeline.unified_stream import MarketCorrelation, UnifiedStreamManager
+from neural_sdk.data_pipeline.utils import setup_logging
 
 
 async def track_game_with_markets():
@@ -182,7 +182,7 @@ async def simulate_correlation_scenarios():
     setup_logging(level="INFO")
     logger = logging.getLogger(__name__)
 
-    from data_pipeline.data_sources.espn.models import GameEvent, GameState
+    from neural_sdk.data_pipeline.data_sources.espn.models import GameEvent, GameState
 
     # Create a mock game state
     game_state = GameState(

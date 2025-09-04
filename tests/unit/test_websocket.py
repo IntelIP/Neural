@@ -172,7 +172,7 @@ class TestNeuralWebSocket:
         await websocket.subscribe_nfl_team(team_code)
         
         # Should call find_team_markets and subscribe to results
-        from data_pipeline.sports_config import Sport
+        from neural_sdk.data_pipeline.sports_config import Sport
         mock_market_discovery.find_team_markets.assert_called_once_with(Sport.NFL, team_code)
         
         expected_tickers = ["KXNFLGAME-PHI-WINNER", "KXNFLGAME-PHI-SPREAD"]

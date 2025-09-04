@@ -5,8 +5,8 @@ Example: Stream real-time market data from Kalshi
 import asyncio
 import logging
 
-from data_pipeline.streaming import KalshiWebSocket
-from data_pipeline.utils import setup_logging
+from neural_sdk.data_pipeline.streaming import KalshiWebSocket
+from neural_sdk.data_pipeline.utils import setup_logging
 
 
 async def main():
