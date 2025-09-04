@@ -219,3 +219,15 @@ Thumbs.db
 test_results/
 coverage/
 .pytest_cache/
+
+# Temporary development files
+*_temp.py
+*_test.py
+verify_*.py
+test_*.py
+execute_*.py
+
+# Development artifacts
+scripts/temp/
+tools/temp/
+*.backup
