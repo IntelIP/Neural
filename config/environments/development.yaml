@@ -1,0 +1,87 @@
+# Development Environment Configuration
+# For local development and testing
+
+name: "Development"
+environment: "development"
+redis_db: 4
+redis_prefix: "dev:"
+
+api_endpoints:
+  kalshi: "http://localhost:8000/mock/kalshi"
+  odds: "http://localhost:8001/mock/odds"
+  sportsdata: "http://localhost:8002/mock/sportsdata"
+  twitter: "http://localhost:8003/mock/twitter"
+
+rate_limits:
+  kalshi: 100000
+  odds: 100000
+  sportsdata: 100000
+  twitter: 100000
+
+# Safety and Security
+safety_checks: false
+require_confirmation: false
+require_mfa: false
+
+# Allowed Operations
+allowed_operations:
+  - "*"  # All operations allowed in development
+
+# Restricted Operations
+restricted_operations: []  # No restrictions in development
+
+# Data Management
+data_retention_hours: 1  # Minimal retention
+backup_enabled: false
+backup_frequency_hours: 0
+
+# Trading Limits (No limits for development)
+max_position_size: 1.0
+max_daily_trades: 100000
+max_concurrent_positions: 10000
+max_order_value: 10000000.0
+min_order_value: 0.001
+
+# Risk Management (Disabled for development)
+stop_loss_percentage: 1.0
+max_drawdown_percentage: 1.0
+position_sizing_method: "fixed"
+kelly_fraction: 1.0
+
+# Logging and Monitoring
+enable_logging: true
+log_level: "DEBUG"
+telemetry_enabled: false
+alert_enabled: false
+alert_channels: []
+
+# Feature Flags
+features:
+  auto_trading: true
+  paper_trading: true
+  backtesting: true
+  synthetic_data: true
+  debug_mode: true
+  performance_profiling: true
+  real_time_analytics: false
+  emergency_stop: false
+  development_mode: true
+  hot_reload: true
+  mock_apis: true
+  verbose_logging: true
+  
+# Development Specific Settings
+development:
+  auto_reload: true
+  debug_toolbar: true
+  sql_echo: true
+  mock_delay_ms: 0
+  bypass_cache: true
+  show_stack_traces: true
+  
+# Monitoring Thresholds (Disabled for development)
+monitoring:
+  latency_threshold_ms: 10000
+  error_rate_threshold: 1.0
+  memory_threshold_gb: 16
+  cpu_threshold_percent: 100

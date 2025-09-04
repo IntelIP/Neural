@@ -1,332 +1,249 @@
-# 🏈 Neural Trading Platform - Autonomous Sports Event Trading
+# 🧠 Neural SDK
 
-> **Real-time algorithmic trading system for Kalshi sports prediction markets**  
-> Monitors multiple data sources • Detects market inefficiencies • Executes trades in <3 seconds
+> **Open-source Python SDK for algorithmic prediction market trading**  
+> Build sophisticated trading strategies with real-time data streaming and comprehensive backtesting
 
-
-## 🎯 What This Does
-
-This platform automatically trades sports prediction markets on Kalshi by detecting and exploiting information asymmetries faster than human traders.
-
-### Real Example
-```
-18:35:22 - ESPN: "Touchdown Chiefs! Mahomes 45-yard pass"
-18:35:22 - Platform detects event (100ms)
-18:35:22 - Checks Kalshi price: still at 0.65 (hasn't moved)
-18:35:23 - Places BUY order: 1,923 shares @ 0.65
-18:35:24 - Order filled
-18:35:37 - Kalshi price moves to 0.70
-18:35:37 - Profit: +7.7% in 15 seconds
-```
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/neural-sdk.svg)](https://badge.fury.io/py/neural-sdk)
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.10+
-- Redis server
-- Kalshi account (for live trading)
-- Free API keys for data sources
+### Installation
 
-### 1. Clone & Setup
 ```bash
-git clone https://github.com/IntelIP/Neural-Trading-Platform.git
-cd Neural-Trading-Platform
-pip install -r requirements.txt
+pip install neural-sdk
+
+# Or install from GitHub
+pip install git+https://github.com/IntelIP/kalshi.git@feat/synthetic-training-integration
 ```
 
-### 2. Configure APIs
-Create `.env` file:
-```bash
-# Trading (required for live trading)
-KALSHI_API_KEY_ID=your_key_id
-KALSHI_API_KEY=your_api_key
+### Basic Usage
 
-# Data Sources (weather API included free)
-OPENWEATHER_API_KEY=78596505b0f5fea89e98ebcbf3bd6e21  # Working key
-REDDIT_CLIENT_ID=your_reddit_id         # Optional
-REDDIT_CLIENT_SECRET=your_reddit_secret # Optional
+```python
+from neural_sdk import NeuralSDK
+
+# Initialize SDK
+sdk = NeuralSDK.from_env()
+
+# Create a simple strategy
+@sdk.strategy
+async def momentum_strategy(market_data):
+    for symbol, price in market_data.prices.items():
+        if 'NFL' in symbol and price < 0.3:
+            return sdk.create_signal('BUY', symbol, size=100)
+
+# Start trading
+await sdk.start_trading()
 ```
 
-### 3. Start Redis
-```bash
-# macOS
-brew install redis && brew services start redis
+### Backtesting
 
-# Linux
-sudo apt-get install redis-server && sudo systemctl start redis
+```python
+from neural_sdk.backtesting import BacktestEngine, BacktestConfig
 
-# Verify
-redis-cli ping  # Should return PONG
+# Configure backtest
+config = BacktestConfig(
+    start_date="2024-01-01",
+    end_date="2024-12-31", 
+    initial_capital=10000
+)
+
+# Run backtest
+engine = BacktestEngine(config)
+engine.add_strategy(my_strategy)
+engine.load_data("csv", path="historical_data.csv")
+
+results = engine.run()
+print(f"Total Return: {results.total_return:.2f}%")
+print(f"Sharpe Ratio: {results.metrics['sharpe_ratio']:.3f}")
 ```
 
-### 4. Test the System
-```bash
-# Test weather monitoring (working API included)
-python scripts/quick_weather_demo.py
-
-# Full SDK demo
-python scripts/demo_sdk.py
-
-# Paper trading mode
-python scripts/run_agents.py --paper-trading
-```
-
-## 🏗️ How It Works
+## 🏗️ Architecture
 
 ```mermaid
 graph LR
     A[Data Sources] --> B[SDK Adapters]
-    B --> C[Redis Pub/Sub]
-    C --> D[Trading Agents]
-    D --> E[Kalshi API]
+    B --> C[Strategy Engine]
+    C --> D[Kalshi API]
     
-    A1[DraftKings<br/>Odds] --> B
-    A2[Weather<br/>Conditions] --> B
-    A3[Reddit<br/>Sentiment] --> B
-    A4[ESPN<br/>GameCast] --> B
+    A1[Weather API] --> B
+    A2[Reddit Sentiment] --> B
+    A3[Sports APIs] --> B
     
-    D1[DataCoordinator] --> D
-    D2[StrategyAnalyst] --> D
-    D3[TradeExecutor] --> D
-    D4[RiskManager] --> D
+    E[Backtesting Engine] --> F[Performance Analytics]
 ```
 
-### Data Flow Timeline
-| Step | Component | Latency | Action |
-|------|-----------|---------|--------|
-| 1 | ESPN GameCast | 0ms | "Touchdown!" event detected |
-| 2 | SDK Adapter | +100ms | Converts to StandardizedEvent |
-| 3 | Redis Pub/Sub | +10ms | Distributes to subscribers |
-| 4 | DataCoordinator | +200ms | Correlates with Kalshi price |
-| 5 | StrategyAnalyst | +300ms | Calculates expected move |
-| 6 | TradeExecutor | +200ms | Places order via API |
-| **Total** | **End-to-end** | **810ms** | **Sub-second execution** |
+## 📊 Features
 
-## 📊 Data Source SDK
+### Core Trading
+- **Real-time market data** streaming from multiple sources
+- **Strategy framework** with easy-to-use decorators
+- **Risk management** with position limits and stop-losses
+- **Order execution** with realistic slippage simulation
 
-The platform's edge comes from its modular Data Source SDK that makes adding new data sources trivial:
+### Backtesting
+- **Event-driven engine** for accurate historical testing
+- **Multiple data sources**: CSV, Parquet, SQL, S3
+- **Performance metrics**: Sharpe ratio, drawdown, win rate
+- **Portfolio simulation** with realistic costs and slippage
 
-### Currently Implemented
+### Data Integration
+- **Plugin architecture** for custom data sources
+- **Built-in adapters** for weather, Reddit, sports APIs
+- **Data caching** for improved performance
+- **Format standardization** across all sources
 
-| Source | Status | Latency | Purpose | API Required |
-|--------|--------|---------|---------|--------------|
-| **Weather** | ✅ Working | 2s | Wind/rain affects scoring | Included (free) |
-| **DraftKings** | ✅ Ready | 500ms | Sharp money movements | None (public) |
-| **Reddit** | ⚙️ Configured | 2-5s | Sentiment extremes | Yes (free) |
-| **ESPN** | 🔄 Planned | 1-2s | Official game events | Development |
+## 🛠️ Data Sources
 
-### Add Your Own Source (50 lines)
+| Source | Status | Purpose | Setup |
+|--------|--------|---------|-------|
+| **Weather API** | ✅ Ready | Weather impacts on sports | Free API key |
+| **Reddit** | ✅ Ready | Sentiment analysis | Free API credentials |
+| **Custom CSV** | ✅ Ready | Historical data | Local files |
+| **Parquet** | ✅ Ready | High-performance data | S3 or local |
+| **PostgreSQL** | ⚙️ Optional | Large datasets | Database connection |
+
+## 📈 Strategy Examples
+
+### Momentum Strategy
 ```python
-from src.sdk import DataSourceAdapter, StandardizedEvent, EventType
-
-class MyAdapter(DataSourceAdapter):
-    async def connect(self):
-        self.client = YourAPIClient(self.config['api_key'])
-        return await self.client.connect()
-    
-    async def stream(self):
-        while self.is_connected:
-            data = await self.fetch_data()
-            
-            # Detect trading opportunity
-            if self.is_significant(data):
-                yield StandardizedEvent(
-                    source="MySource",
-                    event_type=EventType.CUSTOM,
-                    data=data,
-                    confidence=0.85,
-                    impact="high"
-                )
-            
-            await asyncio.sleep(self.config['interval'])
+def momentum_strategy(market_data):
+    \"\"\"Buy markets trending upward below 60 cents\"\"\"
+    for symbol, price in market_data.prices.items():
+        if price < 0.6 and market_data.is_trending_up(symbol):
+            return {'action': 'BUY', 'symbol': symbol, 'size': 50}
 ```
 
-## 🤖 Trading Intelligence
-
-### Signal Generation
-The platform correlates events across sources to identify opportunities:
-
-```python
-# Example: Weather + Odds Correlation
-if weather.wind_speed > 20 and not draftkings.total_moved:
-    signal = Signal(
-        action="BET_UNDER",
-        confidence=0.75,
-        edge=0.04,  # 4% expected value
-        reason="High wind not priced into total"
-    )
+### Mean Reversion
+```python  
+def mean_reversion_strategy(market_data):
+    \"\"\"Buy undervalued markets, sell overvalued\"\"\"
+    for symbol, price in market_data.prices.items():
+        if price < 0.3:  # Undervalued
+            return {'action': 'BUY', 'symbol': symbol, 'size': 100}
+        elif price > 0.7:  # Overvalued  
+            return {'action': 'SELL', 'symbol': symbol, 'size': 100}
 ```
 
-### Position Sizing (Kelly Criterion)
-```python
-# Never use full Kelly - too risky
-position = kelly_fraction * 0.25  # 25% of Kelly
-position = min(position, 0.05 * capital)  # Max 5% per trade
-```
+## 🔧 Configuration
 
-### Risk Management
-- **Stop Loss**: -5% automatic exit
-- **Daily Limit**: -20% circuit breaker
-- **Correlation Check**: Reduce correlated positions
-- **Max Positions**: 10 concurrent trades
-
-## 📈 Performance Metrics
-
-### Backtested Results (30 days)
-| Metric | Value | Target |
-|--------|-------|--------|
-| **Win Rate** | 67.3% | >65% |
-| **Sharpe Ratio** | 2.14 | >2.0 |
-| **Avg Return/Trade** | +1.8% | >1.5% |
-| **Max Drawdown** | -18.2% | <20% |
-| **Trades/Day** | 12 | 10-20 |
-
-### Live Performance Tracking
+### Environment Setup
 ```bash
-# Monitor real-time performance
-python scripts/monitor_performance.py
+# Create .env file
+NEURAL_API_KEY_ID=your_neural_api_key
+NEURAL_PRIVATE_KEY_FILE=./keys/neural_private.key
 
-# Run backtest on strategy
-python scripts/run_backtest.py --strategy sharp_money --days 30
+# Optional: Data source APIs
+OPENWEATHER_API_KEY=your_weather_key
+REDDIT_CLIENT_ID=your_reddit_id
+REDDIT_CLIENT_SECRET=your_reddit_secret
 ```
 
-## 🎮 Configuration Examples
+### SDK Configuration
+```python
+from neural_sdk import SDKConfig
 
-### Monitor Specific Game
-```yaml
-# config/game_config.yaml
-game_monitoring:
-  mode: "single_game"
-  game:
-    sport: "NFL"
-    home_team: "Kansas City Chiefs"
-    away_team: "Buffalo Bills"
-    
-  kalshi_markets:
-    - "NFL-KC-BUF-WINNER"
-    - "NFL-KC-BUF-TOTAL"
-```
+config = SDKConfig(
+    max_position_size=0.05,  # Max 5% per position
+    daily_loss_limit=0.20,   # Stop at 20% daily loss
+    commission=0.02,         # Kalshi's 2% fee
+    slippage=0.01           # 1% estimated slippage
+)
 
-### Weather Impact Settings
-```yaml
-# config/data_sources.yaml
-weather:
-  enabled: true
-  thresholds:
-    wind_speed: 15      # mph - affects passing
-    precipitation: 0.1   # in/hr - affects scoring
-```
-
-## 🧪 Testing
-
-```bash
-# Unit tests
-pytest tests/unit/
-
-# Integration tests
-pytest tests/integration/
-
-# Test specific adapter
-python scripts/test_weather_adapter.py
-
-# Load testing
-python tests/load/stress_test.py
+sdk = KalshiSDK(config)
 ```
 
 ## 📚 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Getting Started](docs/GETTING_STARTED.md) | Installation and first trade |
-| [System Overview](docs/SYSTEM_OVERVIEW.md) | Architecture deep dive |
-| [SDK Documentation](docs/SDK_DOCUMENTATION.md) | Build custom adapters |
-| [Trading Logic](docs/TRADING_LOGIC.md) | How decisions are made |
-| [Data Sources Guide](docs/DATA_SOURCES_GUIDE.md) | Configure each source |
+| [**Getting Started**](docs/getting_started.md) | Installation and first strategy |
+| [**API Reference**](docs/api_reference.md) | Complete SDK documentation |
+| [**Backtesting Guide**](docs/backtesting.md) | Historical testing framework |
+| [**Data Sources**](docs/data_sources.md) | Setting up data feeds |
+| [**Strategy Development**](docs/strategies.md) | Building trading algorithms |
 
-## 🚦 Project Status
+## 🧪 Testing
 
-### ✅ Completed
-- Data Source SDK framework
-- Weather monitoring (OpenWeatherMap API)
-- DraftKings odds adapter
-- Reddit sentiment adapter
-- Redis pub/sub message bus
-- Kelly Criterion position sizing
-- Risk management system
-- Comprehensive documentation
+```bash
+# Run all tests
+pytest tests/
 
-### 🔄 In Development
-- ESPN GameCast integration
-- Machine learning signal enhancement
-- Multi-sport expansion (NBA, MLB)
+# Run specific test suite  
+pytest tests/unit/test_backtesting.py
 
-### 📅 Roadmap
-- Q4 2024: Production deployment
-- Q1 2025: ML model integration
-- Q2 2025: Mobile monitoring app
+# Run with coverage
+pytest --cov=kalshi_trading_sdk tests/
+```
 
-## 🛠️ Tech Stack
+## 📊 Performance Metrics
 
-- **Python 3.10+** - Async/await for speed
-- **Redis** - 10,000 msg/sec pub/sub
-- **Agentuity** - Agent orchestration
-- **aiohttp** - Async HTTP client
-- **asyncpraw** - Reddit streaming
-- **pandas/numpy** - Data analysis
-- **TextBlob** - Sentiment analysis
+The SDK calculates comprehensive metrics for strategy evaluation:
 
-## 📊 System Requirements
+- **Return Metrics**: Total return, CAGR, Sharpe ratio
+- **Risk Metrics**: Max drawdown, volatility, VaR
+- **Trade Analysis**: Win rate, average win/loss, profit factor
+- **Time Analysis**: Best/worst days, consecutive wins/losses
 
-### Minimum (Development)
-- 2 CPU cores
-- 4 GB RAM
-- 10 GB storage
-- 10 Mbps internet
+## 🌟 Example Results
 
-### Recommended (Production)
-- 4+ CPU cores
-- 8 GB RAM
-- 50 GB SSD
-- 100 Mbps internet
-- Redis dedicated instance
+```
+BACKTEST RESULTS
+================
+Period: 2024-01-01 to 2024-12-31
+Initial Capital: $10,000.00
+Final Value: $12,750.00
+
+Total Return: +27.5%
+Sharpe Ratio: 1.85
+Max Drawdown: -8.2%
+Win Rate: 68.5%
+Total Trades: 156
+```
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Areas Needing Help
-- ESPN WebSocket integration
-- Additional sports adapters
-- ML model development
-- Performance optimization
+### Development Setup
+```bash
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
 
-## 📝 License
+# Install development dependencies
+pip install -e ".[dev]"
 
-MIT License - see [LICENSE](LICENSE) file
+# Run pre-commit hooks
+pre-commit install
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## ⚠️ Disclaimer
 
-**IMPORTANT**: This software is for educational purposes. Sports event trading involves significant risk of loss. 
+**Important**: This software is for educational and research purposes. Trading involves substantial risk of loss. 
 
 - Always start with paper trading
-- Never risk more than you can afford to lose
+- Never risk more than you can afford to lose  
 - Past performance doesn't guarantee future results
-- The platform is not financial advice
+- The SDK is not financial advice
+
+## 🔗 Links
+
+- **Documentation**: [https://kalshi-trading-sdk.readthedocs.io/](https://kalshi-trading-sdk.readthedocs.io/)
+- **PyPI Package**: [https://pypi.org/project/kalshi-trading-sdk/](https://pypi.org/project/kalshi-trading-sdk/)
+- **Issues**: [https://github.com/kalshi/kalshi-trading-sdk/issues](https://github.com/kalshi/kalshi-trading-sdk/issues)
+- **Discussions**: [https://github.com/kalshi/kalshi-trading-sdk/discussions](https://github.com/kalshi/kalshi-trading-sdk/discussions)
 
 ## 🏆 Acknowledgments
 
 - Kalshi for providing the trading platform
-- OpenWeatherMap for weather data (API key included)
-- Reddit community for sentiment data
-- DraftKings for odds reference data
-
-## 📞 Support
-
-- 📖 [Documentation](docs/)
-- 💬 [GitHub Issues](https://github.com/IntelIP/Neural-Trading-Platform/issues)
-- 📧 Contact: [your-email]
+- Contributors and beta testers
+- Open source community for excellent libraries
 
 ---
 
-**Built for algorithmic trading**  
-*Trade responsibly. Speed matters. Edge wins.*
+**Built for algorithmic trading • Trade responsibly • Performance matters**

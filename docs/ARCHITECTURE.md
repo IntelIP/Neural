@@ -1,7 +1,7 @@
-# Kalshi Trading Agent Architecture
+# Neural Trading Agent Architecture
 
 ## Overview
-A practical multi-agent system for automated sports betting on Kalshi, with clear separation between always-on monitoring agents and on-demand analysis agents.
+A practical multi-agent system for automated sports betting on Neural, with clear separation between always-on monitoring agents and on-demand analysis agents.
 
 ## Agent Types
 
@@ -13,7 +13,7 @@ A practical multi-agent system for automated sports betting on Kalshi, with clea
 **Responsibilities:**
 - Monitor ESPN for live games and scores
 - Track Twitter sentiment in real-time
-- Watch Kalshi market prices and volumes
+- Watch Neural market prices and volumes
 - Store historical data for analysis
 - Detect anomalies and significant events
 
@@ -36,8 +36,8 @@ class DataCollectionAgent:
             # Monitor Twitter
             sentiment = await self.consume_twitter_stream()
             
-            # Monitor Kalshi
-            markets = await self.consume_kalshi_stream()
+            # Monitor Neural
+            markets = await self.consume_neural_stream()
             
             # Detect triggers
             if self.detect_opportunity(espn_data, sentiment, markets):
@@ -110,7 +110,7 @@ class GameAnalystAgent:
         injuries = await self.get_injury_report(teams)
         
         # 3. Market Analysis
-        market_data = await self.get_kalshi_markets(game_id)
+        market_data = await self.get_neural_markets(game_id)
         implied_prob = self.calculate_implied_probability(market_data)
         
         # 4. Sentiment Analysis
@@ -408,7 +408,7 @@ data_collector:
   enabled: true
   mode: always_on
   redis_channels:
-    - kalshi:markets
+    - neural:markets
     - espn:games
     - twitter:sentiment
   

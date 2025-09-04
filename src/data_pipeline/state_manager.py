@@ -1,6 +1,6 @@
 """
 State Manager - Manages agent state with hot/warm/cold storage tiers
-Provides consistent state management across all agents using Agentuity KV storage
+Provides consistent state management across all agents using SDK KV storage
 """
 
 import json
@@ -170,7 +170,7 @@ class AgentStateManager:
     
     async def save_state(
         self, 
-        context,  # Agentuity context
+        context,  # SDK context
         namespace: str,
         key: str,
         value: Any,
@@ -180,7 +180,7 @@ class AgentStateManager:
         Save state to appropriate tier
         
         Args:
-            context: Agentuity context with KV access
+            context: SDK context with KV access
             namespace: Storage namespace
             key: State key
             value: State value
@@ -210,7 +210,7 @@ class AgentStateManager:
     
     async def restore_state(
         self,
-        context,  # Agentuity context
+        context,  # SDK context
         namespace: str,
         key: str,
         default: Any = None
@@ -219,7 +219,7 @@ class AgentStateManager:
         Restore state from storage tiers
         
         Args:
-            context: Agentuity context with KV access
+            context: SDK context with KV access
             namespace: Storage namespace
             key: State key
             default: Default value if not found
@@ -255,7 +255,7 @@ class AgentStateManager:
         Save complete agent state
         
         Args:
-            context: Agentuity context
+            context: SDK context
             agent_name: Name of the agent
             state: Agent state dictionary
             
@@ -275,7 +275,7 @@ class AgentStateManager:
         Restore agent state
         
         Args:
-            context: Agentuity context
+            context: SDK context
             agent_name: Name of the agent
             
         Returns:
@@ -337,7 +337,7 @@ class ComputationCache:
         Get cached value or compute it
         
         Args:
-            context: Agentuity context
+            context: SDK context
             key: Cache key
             compute_fn: Async function to compute value
             ttl: Time to live in seconds (default 5 minutes)

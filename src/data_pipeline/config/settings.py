@@ -9,9 +9,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(env_path)
+# Load environment variables - try multiple .env files in order of preference
+project_root = Path(__file__).parent.parent.parent.parent
+env_files = ['.env', '.env.demo', '.env.production']
+
+for env_file in env_files:
+    env_path = project_root / env_file
+    if env_path.exists():
+        load_dotenv(env_path)
+        break
 
 
 @dataclass
@@ -64,8 +70,8 @@ def get_config() -> KalshiConfig:
     
     # Set URLs based on environment
     if environment == 'prod':
-        api_base_url = 'https://api.kalshi.co/trade-api/v2/'
-        ws_url = 'wss://api.kalshi.co/trade-api/ws/v2'
+        api_base_url = 'https://api.elections.kalshi.com/trade-api/v2/'
+        ws_url = 'wss://api.elections.kalshi.com/trade-api/ws/v2'
     else:  # demo
         api_base_url = 'https://demo-api.kalshi.co/trade-api/v2/'
         ws_url = 'wss://demo-api.kalshi.co/trade-api/ws/v2'
@@ -86,7 +92,7 @@ def get_config() -> KalshiConfig:
             key_path = Path(key_file)
             if not key_path.is_absolute():
                 # Make relative paths relative to project root
-                key_path = Path(__file__).parent.parent.parent / key_path
+                key_path = Path(__file__).parent.parent.parent.parent / key_path
             
             # Expand user home directory if present
             key_path = key_path.expanduser()
@@ -98,7 +104,7 @@ def get_config() -> KalshiConfig:
                     raise ValueError(f"Failed to read private key from {key_path}: {e}")
             else:
                 # Provide helpful error message
-                available_keys = list(Path(__file__).parent.parent.parent.glob("keys/*.key"))
+                available_keys = list(Path(__file__).parent.parent.parent.parent.glob("keys/*.key"))
                 if available_keys:
                     key_names = [k.name for k in available_keys]
                     raise ValueError(

@@ -1,10 +1,27 @@
 [project]
-name = "kalshi-agentic-agent"
-version = "0.1.0"
-description = "Autonomous Agent for Trading Sport Event Contracts on the Kalshi Platform"
+name = "neural-sdk"
+version = "1.0.0"
+description = "Neural - Open-source SDK for algorithmic prediction market trading"
+authors = [
+    {name = "Neural SDK Team", email = "sdk@neural.dev"}
+]
+license = {text = "MIT"}
 requires-python = ">=3.10, <3.13"
+keywords = ["trading", "neural", "prediction-markets", "algorithmic", "sdk", "backtesting", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+]
 dependencies = [
-    "agentuity>=0.0.103",
     "kalshi-python>=2.0.0",
     "websockets>=11.0",
     "websocket-client>=1.6.0",
@@ -20,15 +37,137 @@ dependencies = [
     "pyyaml>=6.0.1",
     "pytz>=2023.3",
     "python-dateutil>=2.8.2",
-    "nest-asyncio>=1.5.8",
-    "cryptography>=41.0.0",
-    "e2b>=0.17.0",
-    "psutil>=5.9.0",
     "redis[asyncio]>=4.6.0",
+    "structlog>=23.1.0",
+    "typer>=0.9.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "types-PyYAML",
+    "types-colorama",
+    "pandas-stubs",
+    "pre-commit>=3.0.0",
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+]
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.18.0",
+]
+llm = [
+    "agno>=0.1.0",  # Optional LLM integration
+]
+s3 = [
+    "boto3>=1.26.0",  # S3 data provider
+]
+database = [
+    "sqlalchemy>=2.0.0",  # Database data provider
+    "psycopg2-binary>=2.9.0",  # PostgreSQL support
+]
+parquet = [
+    "pyarrow>=10.0.0",  # High-performance parquet support
+]
+plotting = [
+    "matplotlib>=3.5.0",  # Plotting support
+    "seaborn>=0.11.0",    # Enhanced plotting
+]
+all = [
+    "boto3>=1.26.0",
+    "sqlalchemy>=2.0.0", 
+    "psycopg2-binary>=2.9.0",
+    "pyarrow>=10.0.0",
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/neural/neural-sdk"
+Documentation = "https://neural-sdk.readthedocs.io/"
+Repository = "https://github.com/neural/neural-sdk"
+Issues = "https://github.com/neural/neural-sdk/issues"
+Changelog = "https://github.com/neural/neural-sdk/blob/main/CHANGELOG.md"
+
+[project.scripts]
+neural-sdk = "neural_sdk.cli:main"
+
 [tool.setuptools]
-packages = ["agents", "agentuity_agents", "tools", "kalshi_web_infra"]
+packages = {"find" = {}}
 
 [tool.setuptools.package-data]
-"*" = ["*.py"]
+"*" = ["*.py", "*.yaml", "*.json"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["neural_sdk"]
+known_third_party = ["pydantic", "redis", "aiohttp"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "neural_sdk.*"
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=neural_sdk",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=80"
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests"
+]

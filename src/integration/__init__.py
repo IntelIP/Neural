@@ -21,16 +21,33 @@ from .training_harness import (
     TrainingScenario,
     HarnessConfig
 )
-# from .decision_tracker import (
-#     DecisionTracker,
-#     DecisionRecord,
-#     TrackingConfig
-# )
-# from .training_controller import (
-#     TrainingModeController,
-#     ModeConfig,
-#     DataSourceMode
-# )
+from .decision_tracker import (
+    DecisionTracker,
+    DecisionRecord,
+    TrackingConfig,
+    DecisionType,
+    DecisionOutcome,
+    SignalSource,
+    MarketContext,
+    DecisionReasoning
+)
+from .decision_replay import (
+    DecisionReplayEngine,
+    ReplayConfig,
+    ReplayMode,
+    ReplaySpeed,
+    ReplayResult
+)
+from .training_controller import (
+    TrainingModeController,
+    ModeConfig,
+    DataSourceMode,
+    TransitionState,
+    AgentState,
+    AgentInfo,
+    TransitionPlan,
+    ModeStatus
+)
 
 __all__ = [
     'TrainingBridge',
@@ -46,7 +63,22 @@ __all__ = [
     'DecisionTracker',
     'DecisionRecord',
     'TrackingConfig',
+    'DecisionType',
+    'DecisionOutcome',
+    'SignalSource',
+    'MarketContext',
+    'DecisionReasoning',
+    'DecisionReplayEngine',
+    'ReplayConfig',
+    'ReplayMode',
+    'ReplaySpeed',
+    'ReplayResult',
     'TrainingModeController',
     'ModeConfig',
-    'DataSourceMode'
+    'DataSourceMode',
+    'TransitionState',
+    'AgentState',
+    'AgentInfo',
+    'TransitionPlan',
+    'ModeStatus'
 ]

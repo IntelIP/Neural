@@ -107,7 +107,7 @@ class SignalGenerator:
     def generate_signal(self, correlation: Correlation) -> Optional[Signal]:
         """Create signal from correlated events."""
         
-        # Pattern 1: DraftKings moves, Kalshi hasn't
+        # Pattern 1: DraftKings moves, Neural hasn't
         if self.is_arbitrage_opportunity(correlation):
             return Signal(
                 type=SignalType.ARBITRAGE,
@@ -145,10 +145,10 @@ class SignalGenerator:
     def is_arbitrage_opportunity(self, correlation):
         """Check for price discrepancy."""
         dk_event = correlation.get_event("DraftKings")
-        kalshi_event = correlation.get_event("Kalshi")
+        neural_event = correlation.get_event("Neural")
         
-        if dk_event and not kalshi_event:
-            # DraftKings moved, Kalshi hasn't yet
+        if dk_event and not neural_event:
+            # DraftKings moved, Neural hasn't yet
             if dk_event.data['magnitude'] == 'large':
                 return True
                 
@@ -439,7 +439,7 @@ class OrderExecutor:
             'size': size,
             'time_in_force': 'IOC'  # Immediate or cancel
         }
-        return await self.kalshi_client.place_order(order)
+        return await self.neural_client.place_order(order)
         
     async def aggressive_limit(self, signal, size):
         """Place limit at or better than market."""
@@ -457,7 +457,7 @@ class OrderExecutor:
             'price': limit_price,
             'time_in_force': 'GTC'  # Good till cancelled
         }
-        return await self.kalshi_client.place_order(order)
+        return await self.neural_client.place_order(order)
 ```
 
 ### Order Management

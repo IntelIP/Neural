@@ -8,7 +8,12 @@ import requests
 from urllib.parse import urljoin
 
 from .auth import KalshiAuth
-from ...config import KalshiConfig
+
+# Import for type hints - will be redefined in __init__ if needed
+try:
+    from ...config.settings import KalshiConfig
+except ImportError:
+    KalshiConfig = None
 
 
 class KalshiClient:
@@ -23,8 +28,28 @@ class KalshiClient:
             auth: Optional KalshiAuth instance
         """
         if config is None:
-            from ...config import get_config
-            config = get_config()
+            # Create basic config from environment
+            import os
+            from pathlib import Path
+            from dotenv import load_dotenv
+            
+            # Load env
+            env_path = Path(__file__).parent.parent.parent.parent.parent / '.env'
+            load_dotenv(env_path)
+            
+            from ...config.settings import KalshiConfig
+            
+            environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
+            api_base_url = f"https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
+            ws_url = f"wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            
+            config = KalshiConfig(
+                api_key_id=os.getenv("KALSHI_API_KEY_ID"),
+                private_key=os.getenv("KALSHI_PRIVATE_KEY"),
+                environment=environment,
+                api_base_url=api_base_url,
+                ws_url=ws_url
+            )
         
         self.config = config
         self.auth = auth or KalshiAuth(config)
@@ -54,15 +79,21 @@ class KalshiClient:
         if not path.startswith('/'):
             path = '/' + path
         
-        # Get authentication headers
-        headers = self.auth.get_auth_headers(method, path)
+        # Get authentication headers with full path for signing
+        # The signature needs the full path including /trade-api/v2
+        full_path = path
+        if '/trade-api/v2' in self.base_url and not path.startswith('/trade-api/v2'):
+            full_path = '/trade-api/v2' + path
+        
+        headers = self.auth.get_auth_headers(method, full_path)
         
         # Add content type for JSON requests
         if json_data is not None:
             headers['Content-Type'] = 'application/json'
         
-        # Build full URL
-        url = urljoin(self.base_url, path.lstrip('/'))
+        # Build full URL - ensure base_url ends with / for proper joining
+        base_url = self.base_url.rstrip('/') + '/'
+        url = urljoin(base_url, path.lstrip('/'))
         
         # Make request
         response = self.session.request(
@@ -135,7 +166,7 @@ class KalshiClient:
         if status:
             params['status'] = status
         
-        return self.get('/trade-api/v2/markets', params=params)
+        return self.get('/markets', params=params)
     
     def get_all_markets(
         self,

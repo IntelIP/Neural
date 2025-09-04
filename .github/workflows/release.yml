@@ -104,7 +104,7 @@ jobs:
       - name: Install package
         run: |
           pip install dist/*.whl
-          python -c "import agent_consumers; print('✅ Package imported successfully')"
+          python -c "import sdk, data_pipeline; print('✅ Package imported successfully')"
 
   create-github-release:
     name: Create GitHub Release

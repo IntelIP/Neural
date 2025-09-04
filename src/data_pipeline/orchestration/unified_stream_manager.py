@@ -1,6 +1,6 @@
 """
 Stream Manager Service
-Unified streaming manager for all data sources - Agentuity compliant
+Unified streaming manager for all data sources - SDK compliant
 Single source of truth for WebSocket connections and data correlation
 """
 
@@ -127,7 +127,7 @@ class StreamManager:
     Unified Stream Manager - Single source of truth for all streaming data
     
     Manages all WebSocket connections, correlates data, and publishes to agents
-    via Agentuity messaging system.
+    via SDK messaging system.
     """
     
     def __init__(self, agent_context=None):
@@ -135,7 +135,7 @@ class StreamManager:
         Initialize Stream Manager
         
         Args:
-            agent_context: Agentuity AgentContext for messaging
+            agent_context: SDK AgentContext for messaging
         """
         self.agent_context = agent_context
         
@@ -147,7 +147,7 @@ class StreamManager:
         # Market contexts
         self.markets: Dict[str, MarketContext] = {}
         
-        # Event subscribers (for non-Agentuity use)
+        # Event subscribers (for non-SDK use)
         self.event_handlers: Dict[EventType, List[Callable]] = {}
         
         # State
@@ -198,10 +198,10 @@ class StreamManager:
             from src.data_pipeline.data_sources.kalshi.auth import KalshiAuth
             from src.data_pipeline.config.settings import KalshiConfig
             
-            # Get environment settings
+            # Get environment settings - UPDATED with correct API URLs
             environment = os.getenv("KALSHI_ENVIRONMENT", "demo")
-            api_base_url = f"https://trading-api.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
-            ws_url = f"wss://trading-api.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            api_base_url = f"https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
+            ws_url = f"wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
             
             config = KalshiConfig(
                 api_key_id=kalshi_key_id,
@@ -414,6 +414,153 @@ class StreamManager:
                 "away_team": away_team
             }
         ))
+    
+    async def track_sport(self, sport: str, limit: int = 50) -> List[str]:
+        """
+        Discover and track all markets for a sport
+        
+        Args:
+            sport: Sport name ("nfl", "cfp")
+            limit: Maximum number of markets to track
+        
+        Returns:
+            List of market tickers being tracked
+        """
+        from ..data_sources.kalshi.market_discovery import KalshiMarketDiscovery
+        from ..sports_config import Sport
+        
+        # Map string to enum
+        sport_enum = None
+        if sport.lower() == "nfl":
+            sport_enum = Sport.NFL
+        elif sport.lower() == "cfp":
+            sport_enum = Sport.CFP
+        else:
+            logger.error(f"Unsupported sport: {sport}")
+            return []
+        
+        # Discover markets
+        discovery = KalshiMarketDiscovery()
+        markets = await discovery.discover_sport_markets(sport_enum)
+        
+        if not markets:
+            logger.warning(f"No active markets found for {sport}")
+            return []
+        
+        # Limit markets if requested
+        markets = markets[:limit]
+        
+        logger.info(f"Tracking {len(markets)} {sport.upper()} markets")
+        
+        # Track each market
+        tracked_tickers = []
+        for market in markets:
+            try:
+                await self.track_market(
+                    market_ticker=market.ticker,
+                    game_id=None,  # ESPN game ID not available from Kalshi
+                    home_team=market.home_team,
+                    away_team=market.away_team,
+                    sport=sport.lower()
+                )
+                tracked_tickers.append(market.ticker)
+                logger.info(f"Tracking {market.display_name} ({market.ticker})")
+                
+            except Exception as e:
+                logger.error(f"Failed to track market {market.ticker}: {e}")
+        
+        return tracked_tickers
+    
+    async def track_nfl_markets(self, limit: int = 50) -> List[str]:
+        """Track NFL markets"""
+        return await self.track_sport("nfl", limit)
+    
+    async def track_cfp_markets(self, limit: int = 50) -> List[str]:
+        """Track CFP markets"""
+        return await self.track_sport("cfp", limit)
+    
+    async def track_team_markets(self, sport: str, team_name: str) -> List[str]:
+        """
+        Track all markets for a specific team
+        
+        Args:
+            sport: Sport name ("nfl", "cfp") 
+            team_name: Team name (e.g., "PHI", "DAL")
+        
+        Returns:
+            List of market tickers being tracked
+        """
+        from ..data_sources.kalshi.market_discovery import KalshiMarketDiscovery
+        from ..sports_config import Sport
+        
+        # Map string to enum
+        sport_enum = Sport.NFL if sport.lower() == "nfl" else Sport.CFP
+        
+        # Discover team markets
+        discovery = KalshiMarketDiscovery()
+        markets = await discovery.find_team_markets(sport_enum, team_name)
+        
+        logger.info(f"Found {len(markets)} markets for {team_name}")
+        
+        # Track each market
+        tracked_tickers = []
+        for market in markets:
+            try:
+                await self.track_market(
+                    market_ticker=market.ticker,
+                    home_team=market.home_team,
+                    away_team=market.away_team,
+                    sport=sport.lower()
+                )
+                tracked_tickers.append(market.ticker)
+                logger.info(f"Tracking {market.display_name} ({market.ticker})")
+                
+            except Exception as e:
+                logger.error(f"Failed to track market {market.ticker}: {e}")
+        
+        return tracked_tickers
+    
+    async def track_game_markets(self, sport: str, home_team: str, away_team: str) -> List[str]:
+        """
+        Track all markets for a specific game
+        
+        Args:
+            sport: Sport name ("nfl", "cfp")
+            home_team: Home team name
+            away_team: Away team name
+        
+        Returns:
+            List of market tickers being tracked
+        """
+        from ..data_sources.kalshi.market_discovery import KalshiMarketDiscovery
+        from ..sports_config import Sport
+        
+        # Map string to enum
+        sport_enum = Sport.NFL if sport.lower() == "nfl" else Sport.CFP
+        
+        # Discover game markets
+        discovery = KalshiMarketDiscovery()
+        markets = await discovery.find_game_markets(sport_enum, home_team, away_team)
+        
+        logger.info(f"Found {len(markets)} markets for {away_team} @ {home_team}")
+        
+        # Track each market
+        tracked_tickers = []
+        for market in markets:
+            try:
+                await self.track_market(
+                    market_ticker=market.ticker,
+                    home_team=market.home_team,
+                    away_team=market.away_team,
+                    sport=sport.lower()
+                )
+                tracked_tickers.append(market.ticker)
+                logger.info(f"Tracking {market.display_name} ({market.ticker})")
+                
+            except Exception as e:
+                logger.error(f"Failed to track market {market.ticker}: {e}")
+        
+        return tracked_tickers
     
     async def _handle_kalshi_message(self, message: Dict[str, Any]):
         """Process Kalshi WebSocket messages"""
@@ -1045,7 +1192,7 @@ class StreamManager:
         logger.info(f"Stream Manager stopped. Events processed: {self.events_processed}")
 
 
-# Standalone usage (for testing without Agentuity)
+# Standalone usage (for testing without SDK)
 async def example_usage():
     """Example of using StreamManager standalone"""
     

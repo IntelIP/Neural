@@ -7,7 +7,7 @@ Complete documentation for the Neural Trading Platform - organized by topic and 
 ### For New Users
 1. **[Getting Started](GETTING_STARTED.md)** - Installation, setup, and your first trade
 2. **[System Overview](SYSTEM_OVERVIEW.md)** - How the platform works end-to-end
-3. **[Quick Weather Demo](../scripts/quick_weather_demo.py)** - See real-time data in action
+3. **[Basic Usage Example](../examples/basic_usage.py)** - See the SDK in action
 
 ### For Developers
 1. **[SDK Documentation](SDK_DOCUMENTATION.md)** - Build custom data adapters
@@ -38,18 +38,12 @@ Complete documentation for the Neural Trading Platform - organized by topic and 
 - **[Backtesting](../scripts/run_backtest.py)** - Historical testing
 
 ### Development & Deployment
-- **[Git Workflow](GIT_WORKFLOW.md)** - Version control practices
-- **[GitHub Push Guide](GITHUB_PUSH_GUIDE.md)** - Deployment process
 - **[Contributing](../CONTRIBUTING.md)** - Contribution guidelines
+- **[Architecture](ARCHITECTURE.md)** - Technical deep dive
 
-### Platform & Vision
-- **[Platform Roadmap](../PLATFORM_ROADMAP.md)** - Future development plans
-- **[Investor Demo](../INVESTOR_DEMO.md)** - Platform capabilities
-- **[MVP Plan](MVP_PLAN.md)** - Minimum viable product
-
-### Agents & Components
-- **[Agents](AGENTS.md)** - Trading agent descriptions
-- **[CLAUDE.md](../CLAUDE.md)** - AI assistant guidelines
+### SDK Reference
+- **[API Reference](api_reference.md)** - Complete API documentation
+- **[Backtesting Guide](backtesting.md)** - Historical testing framework
 
 ## 🔑 Key Concepts
 
@@ -72,11 +66,10 @@ Data Sources → SDK Adapters → Redis → Agents → Trading
 
 ## 🧪 Examples & Demos
 
-### Scripts
-- **[demo_sdk.py](../scripts/demo_sdk.py)** - Full SDK demonstration
-- **[test_weather_adapter.py](../scripts/test_weather_adapter.py)** - Weather API testing
-- **[quick_weather_demo.py](../scripts/quick_weather_demo.py)** - Quick weather check
-- **[demo_investor.py](../scripts/demo_investor.py)** - Investor presentation
+### Examples
+- **[basic_usage.py](../examples/basic_usage.py)** - Full SDK demonstration
+- **[backtest_strategy.py](../examples/backtest_strategy.py)** - Backtesting example
+- **[custom_data_adapter.py](../examples/custom_data_adapter.py)** - Custom data integration
 
 ### Configuration Files
 - **[data_sources.yaml](../config/data_sources.yaml)** - Data source setup
@@ -96,7 +89,7 @@ Data Sources → SDK Adapters → Redis → Agents → Trading
 ### 🔄 In Progress
 - Reddit sentiment analysis
 - ESPN GameCast integration
-- Kalshi production trading
+- Neural production trading
 
 ### 📅 Planned
 - Machine learning models
@@ -107,8 +100,8 @@ Data Sources → SDK Adapters → Redis → Agents → Trading
 
 ### API Keys Required
 ```bash
-KALSHI_API_KEY_ID=xxx        # Trading
-KALSHI_API_KEY=xxx           # Trading
+NEURAL_API_KEY_ID=xxx        # Trading
+NEURAL_PRIVATE_KEY_FILE=xxx  # Trading
 OPENWEATHER_API_KEY=xxx      # Weather (included)
 REDDIT_CLIENT_ID=xxx         # Sentiment (optional)
 REDDIT_CLIENT_SECRET=xxx     # Sentiment (optional)
@@ -117,16 +110,13 @@ REDDIT_CLIENT_SECRET=xxx     # Sentiment (optional)
 ### Key Commands
 ```bash
 # Test SDK
-python scripts/demo_sdk.py
-
-# Start trading
-python scripts/run_agents.py
+python examples/basic_usage.py
 
 # Run backtest
-python scripts/run_backtest.py
+python examples/backtest_strategy.py
 
-# Monitor weather
-python scripts/quick_weather_demo.py
+# Custom data adapter
+python examples/custom_data_adapter.py
 ```
 
 ### Performance Targets

@@ -14,7 +14,7 @@ We've successfully redesigned and implemented a simplified agent architecture th
 ### 2. **Always-On Agents (24/7 Operation)**
 
 #### **DataCoordinator** (`agent_consumers/DataCoordinator/`)
-- Continuously monitors ESPN, Twitter, and Kalshi streams
+- Continuously monitors ESPN, Twitter, and Neural streams
 - Routes high-impact events to appropriate agents
 - Maintains unified data pipeline via StreamManager
 
@@ -112,7 +112,7 @@ External APIs → WebSocket Streams → Redis Pub/Sub
 4. GameAnalyst gathers data:
    - Historical performance
    - Current form and injuries
-   - Market data from Kalshi
+   - Market data from Neural
    - Sentiment from Twitter
    - Weather conditions
 5. LLM analyzes all factors
@@ -196,4 +196,4 @@ We've successfully transformed an over-engineered Agentuity-based system into a 
 4. **Ensures reliability** with proper separation of concerns
 5. **Enables scalability** through Redis pub/sub architecture
 
-The system is now production-ready for automated sports betting on Kalshi with proper risk management and intelligent decision-making.
+The system is now production-ready for automated sports betting on Neural with proper risk management and intelligent decision-making.

@@ -10,7 +10,7 @@ Each data source provides unique alpha for trading decisions. This guide explain
 
 ### 1. DraftKings Sportsbook
 
-**Purpose**: Professional odds movements often lead Kalshi markets by 5-30 seconds
+**Purpose**: Professional odds movements often lead Neural markets by 5-30 seconds
 
 **What It Provides**:
 - Real-time odds for all major sports

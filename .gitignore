@@ -131,6 +131,9 @@ celerybeat.pid
 .env
 .env.development
 .env.production
+.env.demo
+.env.*
+!*.example
 .venv
 env/
 venv/
@@ -191,6 +194,7 @@ keys/
 # Project Specific
 logs/
 *.log
+data/
 data/cache/
 data/backtest_results/
 temp/

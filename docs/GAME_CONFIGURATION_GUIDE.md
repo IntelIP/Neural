@@ -24,8 +24,8 @@ game_monitoring:
     start_time: "2024-01-21T18:30:00Z"
     venue: "Arrowhead Stadium"
     
-  # Kalshi markets to trade
-  kalshi_markets:
+  # Neural markets to trade
+  neural_markets:
     - "NFL-KC-BUF-WINNER"
     - "NFL-KC-BUF-SPREAD"
     - "NFL-KC-BUF-TOTAL"
@@ -213,7 +213,7 @@ auto_discovery:
   
   # Find games with these criteria
   criteria:
-    min_kalshi_volume: 10000  # Minimum liquidity
+    min_neural_volume: 10000  # Minimum liquidity
     min_edge_required: 0.03   # 3% edge
     sports: ["NFL", "NBA"]
     
@@ -586,7 +586,7 @@ def validate_game_config(config):
     errors = []
     
     # Check required fields
-    required = ['game_monitoring', 'kalshi_markets', 'data_sources']
+    required = ['game_monitoring', 'neural_markets', 'data_sources']
     for field in required:
         if field not in config:
             errors.append(f"Missing required field: {field}")

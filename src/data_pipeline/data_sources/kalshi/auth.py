@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
 
-from ...config import KalshiConfig
+from ...config.settings import KalshiConfig
 
 
 class KalshiAuth:
@@ -25,8 +25,39 @@ class KalshiAuth:
             config: Optional KalshiConfig instance. If not provided, will get from environment
         """
         if config is None:
-            from ..config import get_config
-            config = get_config()
+            # Use environment to create config
+            import os
+            from pathlib import Path
+            from dotenv import load_dotenv
+            
+            env_path = Path(__file__).parent.parent.parent.parent.parent / '.env'
+            load_dotenv(env_path)
+            
+            from ...config.settings import KalshiConfig
+            
+            environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
+            api_base_url = f"https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
+            ws_url = f"wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            
+            # Load private key from file  
+            private_key_file = os.getenv("KALSHI_PRIVATE_KEY_FILE", "./keys/kalshi_prod_private.key")
+            if not private_key_file.startswith('/'):
+                # Relative path - resolve from project root
+                key_path = Path(__file__).parent.parent.parent.parent.parent / private_key_file
+            else:
+                # Absolute path
+                key_path = Path(private_key_file)
+            
+            with open(key_path, 'r') as f:
+                private_key = f.read()
+            
+            config = KalshiConfig(
+                api_key_id=os.getenv("KALSHI_API_KEY_ID"),
+                private_key=private_key,
+                environment=environment,
+                api_base_url=api_base_url,
+                ws_url=ws_url
+            )
         
         self.config = config
         self.api_key_id = config.api_key_id

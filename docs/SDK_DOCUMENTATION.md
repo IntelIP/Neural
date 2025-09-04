@@ -245,7 +245,7 @@ config:
 
 **Events Generated**:
 - `ODDS_CHANGE`: When lines move significantly
-- Impact: Correlate with Kalshi prices
+- Impact: Correlate with Neural prices
 
 ### Reddit Adapter
 
@@ -470,11 +470,11 @@ class MultiSourceCorrelator:
                 await self.execute_trade(game_id, recent)
     
     def detect_opportunity(self, events):
-        # Check if DraftKings moved but Kalshi hasn't
+        # Check if DraftKings moved but Neural hasn't
         dk_events = [e for e in events if e.source == "DraftKings"]
-        kalshi_events = [e for e in events if e.source == "Kalshi"]
+        neural_events = [e for e in events if e.source == "Neural"]
         
-        if dk_events and not kalshi_events:
+        if dk_events and not neural_events:
             return True  # Opportunity!
 ```
 

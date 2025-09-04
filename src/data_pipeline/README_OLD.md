@@ -61,7 +61,7 @@ python kalshi_stream.py
 ## WebSocket URLs
 
 - **Demo**: `wss://demo-api.kalshi.co/trade-api/ws/v2`
-- **Production**: `wss://api.kalshi.co/trade-api/ws/v2`
+- **Production**: `wss://api.elections.kalshi.com/trade-api/ws/v2`
 
 ## Authentication
 

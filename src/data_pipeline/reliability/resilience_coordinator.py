@@ -74,7 +74,7 @@ class ResilienceCoordinator:
         Initialize resilience coordinator
         
         Args:
-            agent_context: Optional Agentuity context for KV storage
+            agent_context: Optional SDK context for KV storage
         """
         self.agent_context = agent_context
         self.services: Dict[str, ServiceConfig] = {}

@@ -41,6 +41,8 @@ class EventType(Enum):
     QUARTER_END = "quarter_end"
     HALF_END = "half_end"
     GAME_END = "game_end"
+    TWO_POINT_CONVERSION = "two_point_conversion"
+    PENALTY = "penalty"
 
 
 @dataclass

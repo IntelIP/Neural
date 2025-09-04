@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This platform is an automated trading system for Kalshi sports prediction markets. It ingests real-time data from multiple sources (game stats, odds, sentiment, weather), correlates events across sources to identify mispricing, and executes trades faster than human reaction time.
+This platform is an automated trading system for Neural sports prediction markets. It ingests real-time data from multiple sources (game stats, odds, sentiment, weather), correlates events across sources to identify mispricing, and executes trades faster than human reaction time.
 
 ---
 
@@ -12,7 +12,7 @@ This platform is an automated trading system for Kalshi sports prediction market
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DATA INGESTION LAYER                         │
 │                                                                      │
-│  KalshiWebSocket    ESPN GameCast    DraftKings    Reddit    Weather│
+│  NeuralWebSocket    ESPN GameCast    DraftKings    Reddit    Weather│
 │       ↓                  ↓              ↓           ↓          ↓    │
 │  [Market Prices]   [Game Events]   [Pro Odds]  [Sentiment] [Conditions]│
 └─────────────────┬───────────────────────────────────────────────────┘
@@ -30,7 +30,7 @@ This platform is an automated trading system for Kalshi sports prediction market
 │                      DISTRIBUTION LAYER                             │
 │                                                                      │
 │  Redis Pub/Sub Hub                                                  │
-│  ├── Channel: kalshi:markets                                       │
+│  ├── Channel: neural:markets                                       │
 │  ├── Channel: espn:games                                           │
 │  ├── Channel: signals:opportunities                                │
 │  └── 10,000 msg/sec throughput                                     │
@@ -48,7 +48,7 @@ This platform is an automated trading system for Kalshi sports prediction market
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      EXECUTION LAYER                                │
 │                                                                      │
-│  Kalshi Trading API                                                 │
+│  Neural Trading API                                                 │
 │  ├── Order Management                                              │
 │  ├── Position Tracking                                             │
 │  └── Settlement                                                    │
@@ -65,7 +65,7 @@ Each data source provides unique information:
 
 | Source | Data Type | Latency | Purpose |
 |--------|-----------|---------|---------|
-| **Kalshi WebSocket** | Market prices, trades | ~50ms | Current betting prices |
+| **Neural WebSocket** | Market prices, trades | ~50ms | Current betting prices |
 | **ESPN GameCast** | Play-by-play, scores | ~1-2s | Game events |
 | **DraftKings API** | Professional odds | ~500ms | Sharp money movements |
 | **Reddit Streams** | Game thread comments | ~2-5s | Crowd sentiment |
@@ -86,14 +86,14 @@ Redis Pub/Sub acts as our message bus:
 
 ```python
 # Publishing example
-redis_client.publish("kalshi:markets", {
+redis_client.publish("neural:markets", {
     "market": "NFL-KC-BUF",
     "yes_price": 0.65,
     "timestamp": "2024-01-21T18:30:45Z"
 })
 
 # Subscribing example
-pubsub.subscribe("kalshi:markets")
+pubsub.subscribe("neural:markets")
 for message in pubsub.listen():
     process_market_update(message)
 ```
@@ -114,7 +114,7 @@ Two types of agents:
 
 ### **Execution Layer**
 
-Interfaces with Kalshi API for trading:
+Interfaces with Neural API for trading:
 - Places market/limit orders
 - Manages existing positions
 - Handles order fills and cancellations
@@ -136,7 +136,7 @@ Let's trace a touchdown event through the system:
    └── Publishes to "espn:games" channel
    
 4. DataCoordinator Agent (T+0.3s)
-   ├── Correlates with current Kalshi price (0.65)
+   ├── Correlates with current Neural price (0.65)
    ├── Detects price hasn't moved yet
    └── Publishes opportunity signal
    
@@ -151,7 +151,7 @@ Let's trace a touchdown event through the system:
    └── Order filled (T+1.2s)
    
 7. Market Adjustment (T+15s)
-   └── Kalshi price moves to 0.70 (+7.7% profit)
+   └── Neural price moves to 0.70 (+7.7% profit)
 ```
 
 ---
@@ -207,7 +207,7 @@ Total time from event to trade execution:
 ### **Why Multiple Data Sources?**
 
 Each source provides unique alpha:
-- **Kalshi**: Current market consensus
+- **Neural**: Current market consensus
 - **ESPN**: Ground truth of game events  
 - **DraftKings**: Sharp money movements
 - **Reddit**: Retail sentiment extremes
