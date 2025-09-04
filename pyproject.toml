@@ -1,6 +1,6 @@
 [project]
 name = "neural-sdk"
-version = "1.0.0"
+version = "1.1.0"
 description = "Neural - Open-source SDK for algorithmic prediction market trading"
 authors = [
     {name = "Neural SDK Team", email = "sdk@neural.dev"}

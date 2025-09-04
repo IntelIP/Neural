@@ -147,6 +147,7 @@ class NeuralSDK:
         self._agents = {}
         self._strategies = {}
         self._data_sources = {}
+        self._websocket = None
         self._is_running = False
 
         # Event handlers
@@ -613,6 +614,112 @@ class NeuralSDK:
 
         return health
 
+    # WebSocket Methods
+    
+    def create_websocket(self):
+        """
+        Create a WebSocket client for real-time market data streaming.
+        
+        Returns:
+            NeuralWebSocket: WebSocket client instance
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            websocket = sdk.create_websocket()
+            
+            @websocket.on_market_data
+            async def handle_price_update(market_data):
+                print(f"Price: {market_data['yes_price']}")
+            
+            await websocket.connect()
+            await websocket.subscribe_markets(['NFL-*'])
+            ```
+        """
+        from ..streaming.websocket import NeuralWebSocket
+        return NeuralWebSocket(self.config)
+    
+    def create_nfl_stream(self):
+        """
+        Create an NFL-specific market stream.
+        
+        Returns:
+            NFLMarketStream: NFL market streaming client
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            nfl_stream = sdk.create_nfl_stream()
+            
+            await nfl_stream.connect()
+            await nfl_stream.subscribe_to_game("25SEP04DALPHI")
+            
+            game_summary = nfl_stream.get_game_summary("25SEP04DALPHI")
+            print(f"Win probability: {game_summary['win_probability']}")
+            ```
+        """
+        from ..streaming.market_stream import NFLMarketStream
+        return NFLMarketStream(self.config)
+    
+    async def start_streaming(self, markets: List[str] = None):
+        """
+        Start WebSocket streaming for specified markets.
+        
+        This is a convenience method that creates a WebSocket,
+        connects, and subscribes to markets in one call.
+        
+        Args:
+            markets: List of market tickers to subscribe to
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            
+            @sdk.on_market_data
+            async def handle_updates(market_data):
+                print(f"Update: {market_data}")
+            
+            await sdk.start_streaming(['NFL-*'])
+            ```
+        """
+        if self._websocket is None:
+            self._websocket = self.create_websocket()
+            
+            # Connect SDK handlers to WebSocket
+            for handler in self._market_data_handlers:
+                self._websocket.on_market_data(handler)
+            
+            for handler in self._trade_handlers:
+                self._websocket.on_trade(handler)
+        
+        await self._websocket.connect()
+        
+        if markets:
+            await self._websocket.subscribe_markets(markets)
+        
+        logger.info("✅ Neural SDK streaming started")
+    
+    async def stop_streaming(self):
+        """Stop WebSocket streaming."""
+        if self._websocket:
+            await self._websocket.disconnect()
+            self._websocket = None
+            logger.info("Neural SDK streaming stopped")
+    
+    def on_market_update(self, func: Callable) -> Callable:
+        """
+        Decorator to register market data update handler.
+        
+        This is an alias for on_market_data for WebSocket events.
+        
+        Args:
+            func: Handler function that processes market data updates
+            
+        Returns:
+            Decorated handler function
+        """
+        return self.on_market_data(func)
+    
     def __repr__(self) -> str:
         """String representation of the SDK."""
         return f"NeuralSDK(environment={self.config.environment}, running={self._is_running})"

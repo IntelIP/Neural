@@ -36,7 +36,7 @@ Example:
     ```
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Neural SDK Team"
 __email__ = "sdk@neural.dev"
 
@@ -54,6 +54,9 @@ from .core.exceptions import (
 from .strategies import BaseStrategy, StrategySignal
 from .utils import setup_logging
 
+# Import streaming functionality
+from .streaming import NeuralWebSocket, NFLMarketStream, MarketStream
+
 # Convenience imports for common use cases
 __all__ = [
     "NeuralSDK",
@@ -69,4 +72,8 @@ __all__ = [
     "BaseStrategy",
     "StrategySignal",
     "setup_logging",
+    # Streaming functionality
+    "NeuralWebSocket",
+    "NFLMarketStream", 
+    "MarketStream",
 ]

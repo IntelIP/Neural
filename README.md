@@ -1,11 +1,34 @@
 # 🧠 Neural SDK
 
 > **Open-source Python SDK for algorithmic prediction market trading**  
-> Build sophisticated trading strategies with real-time data streaming and comprehensive backtesting
+> Build sophisticated trading strategies with **real-time WebSocket streaming** and comprehensive backtesting
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/neural-sdk.svg)](https://badge.fury.io/py/neural-sdk)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/neural/neural-sdk/releases)
+
+## 🔥 What's New in v1.1.0
+
+**Real-time WebSocket Streaming is here!** Connect directly to Kalshi's WebSocket API for instant market data updates.
+
+```python
+from neural_sdk import NeuralSDK
+
+sdk = NeuralSDK.from_env()
+
+# NEW: Real-time WebSocket streaming
+websocket = sdk.create_websocket()
+
+@websocket.on_market_data
+async def handle_live_data(data):
+    print(f"🔴 LIVE: {data.ticker} = ${data.yes_price}")
+
+await websocket.connect()
+await websocket.subscribe_markets(['KXNFLGAME*'])  # All NFL games
+```
+
+**🏈 NFL Market Streaming**: Specialized support for NFL prediction markets with automatic game detection.
 
 ## 🚀 Quick Start
 
