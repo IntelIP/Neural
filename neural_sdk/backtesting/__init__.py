@@ -10,8 +10,13 @@ Features:
 - Performance analytics
 - Risk metrics
 - Strategy comparison tools
+- Advanced portfolio optimization
+- Kelly Criterion allocation
+- Risk parity and concentration constraints
+- Monte Carlo simulation
+- Multi-asset optimization
 
-Example:
+Example - Basic Backtesting:
     ```python
     from neural_sdk.backtesting import BacktestEngine, BacktestConfig
 
@@ -28,17 +33,49 @@ Example:
     results = engine.run()
     metrics = engine.analyze()
     ```
+
+Example - Portfolio Optimization:
+    ```python
+    from neural_sdk.backtesting import PortfolioOptimizer, OptimizationConfig, Asset
+
+    config = OptimizationConfig(
+        total_budget=1000,
+        max_concentration=0.25,
+        strategies=['kelly', 'equal_weight', 'risk_parity']
+    )
+
+    optimizer = PortfolioOptimizer(config)
+    
+    # Add assets
+    assets = [
+        Asset("GAME1", "Team A vs Team B", 0.88, 0.12, 0.85),
+        Asset("GAME2", "Team C vs Team D", 0.61, 0.39, 0.65),
+    ]
+    optimizer.add_assets(assets)
+    
+    # Optimize portfolio
+    results = optimizer.optimize()
+    best_allocation = results.best_allocation
+    ```
 """
 
 from .data_loader import DataLoader
 from .engine import BacktestConfig, BacktestEngine, BacktestResults
 from .metrics import PerformanceMetrics
 from .portfolio import Portfolio, Position, Trade
+from .portfolio_optimization import (
+    PortfolioOptimizer,
+    OptimizationConfig,
+    OptimizationResults,
+    AllocationResult,
+    Asset,
+    AllocationStrategy
+)
 from .providers.base import DataProvider
 
 __all__ = [
     "BacktestEngine",
-    "BacktestConfig",
+    "BacktestConfig", 
     "BacktestResults",
     "Portfolio",
     "Position",
@@ -46,4 +83,11 @@ __all__ = [
     "PerformanceMetrics",
     "DataLoader",
     "DataProvider",
+    # Portfolio Optimization
+    "PortfolioOptimizer",
+    "OptimizationConfig",
+    "OptimizationResults", 
+    "AllocationResult",
+    "Asset",
+    "AllocationStrategy",
 ]
