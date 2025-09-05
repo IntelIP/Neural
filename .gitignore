@@ -214,6 +214,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.claude/
 
 # Test outputs
 test_results/
@@ -224,8 +225,25 @@ coverage/
 *_temp.py
 *_test.py
 verify_*.py
-test_*.py
 execute_*.py
+
+# Exclude temporary test files at root level only (not in tests/ directory)
+/test_*.py
+/temp_test_*.py
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Cache files
+*.cache.json
+*_cache.json
+
+# Debug and investigation scripts
+investigate_*.py
+debug_*.py
+/sports_market_discovery.py
 
 # Development artifacts
 scripts/temp/
