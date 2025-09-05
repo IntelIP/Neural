@@ -1,0 +1,181 @@
+---
+title: 'Authentication'
+description: 'Configure your Kalshi API credentials for Neural SDK'
+---
+
+## Overview
+
+Neural SDK requires Kalshi API credentials to access live market data and execute trades. This guide shows you how to configure authentication.
+
+## Getting API Credentials
+
+<Steps>
+  <Step title="Sign up for Kalshi">
+    Visit [Kalshi.com](https://kalshi.com) and create an account
+  </Step>
+  <Step title="Enable API Access">
+    Go to your account settings and request API access
+  </Step>
+  <Step title="Generate API Keys">
+    Once approved, generate your API Key ID and Secret
+  </Step>
+</Steps>
+
+## Configuration Methods
+
+<Tabs>
+  <Tab title="Environment Variables (Recommended)">
+    Set your credentials as environment variables:
+    
+    ```bash
+    export KALSHI_API_KEY_ID="your-key-id"
+    export KALSHI_API_SECRET="your-secret-key"
+    ```
+    
+    Then initialize the SDK:
+    
+    ```python
+    from neural_sdk import NeuralSDK
+    
+    # Automatically loads from environment
+    sdk = NeuralSDK.from_env()
+    ```
+  </Tab>
+  
+  <Tab title="Direct Configuration">
+    Pass credentials directly to the SDK:
+    
+    ```python
+    from neural_sdk import NeuralSDK
+    
+    sdk = NeuralSDK(
+        api_key_id="your-key-id",
+        api_secret="your-secret-key"
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Configuration File">
+    Create a `neural_config.yaml` file:
+    
+    ```yaml
+    kalshi:
+      api_key_id: "your-key-id"
+      api_secret: "your-secret-key"
+      base_url: "https://api.kalshi.com/v1"
+    ```
+    
+    Load the configuration:
+    
+    ```python
+    from neural_sdk import NeuralSDK
+    
+    sdk = NeuralSDK.from_config("neural_config.yaml")
+    ```
+  </Tab>
+</Tabs>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Environment Variables" icon="shield-check">
+    Store credentials in environment variables, not in code
+  </Card>
+  <Card title="File Permissions" icon="lock">
+    Secure configuration files with restricted permissions (600)
+  </Card>
+  <Card title="Repository Safety" icon="github">
+    Never commit API keys to version control
+  </Card>
+  <Card title="Key Rotation" icon="refresh">
+    Regularly rotate your API keys for security
+  </Card>
+</CardGroup>
+
+## Testing Connection
+
+Verify your authentication works:
+
+```python
+from neural_sdk import NeuralSDK
+
+# Initialize SDK
+sdk = NeuralSDK.from_env()
+
+# Test connection
+try:
+    markets = sdk.get_markets()
+    print(f"✅ Connected! Found {len(markets)} markets")
+except Exception as e:
+    print(f"❌ Authentication failed: {e}")
+```
+
+## Environment Setup
+
+<CodeGroup>
+
+```bash .env
+# Add to your .env file
+KALSHI_API_KEY_ID=your-key-id
+KALSHI_API_SECRET=your-secret-key
+```
+
+```bash Shell Script
+#!/bin/bash
+# setup_credentials.sh
+
+echo "Setting up Neural SDK credentials..."
+read -p "Enter your Kalshi API Key ID: " key_id
+read -s -p "Enter your Kalshi API Secret: " secret
+
+export KALSHI_API_KEY_ID="$key_id"
+export KALSHI_API_SECRET="$secret"
+
+echo "✅ Credentials configured!"
+```
+
+</CodeGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Invalid Credentials Error">
+    **Problem**: "Invalid API credentials" error
+    
+    **Solution**: 
+    - Verify your API Key ID and Secret are correct
+    - Check that your Kalshi account has API access enabled
+    - Ensure no extra spaces or characters in your credentials
+  </Accordion>
+  
+  <Accordion title="Rate Limiting">
+    **Problem**: Too many requests error
+    
+    **Solution**:
+    - Implement proper rate limiting in your code
+    - Use the SDK's built-in rate limiting features
+    - Consider upgrading your Kalshi API plan
+  </Accordion>
+  
+  <Accordion title="Environment Variables Not Loading">
+    **Problem**: SDK can't find environment variables
+    
+    **Solution**:
+    - Restart your terminal/IDE after setting variables
+    - Use `python -c "import os; print(os.environ.get('KALSHI_API_KEY_ID'))"` to test
+    - Check that variables are exported in your shell profile
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Once authentication is configured, you can:
+
+<CardGroup cols={2}>
+  <Card title="WebSocket Streaming" icon="wifi" href="/guides/websocket-streaming">
+    Connect to real-time market data
+  </Card>
+  <Card title="NFL Markets" icon="football-ball" href="/guides/nfl-markets">
+    Stream NFL prediction markets
+  </Card>
+</CardGroup>

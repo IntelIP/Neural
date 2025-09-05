@@ -1,0 +1,334 @@
+---
+title: 'NeuralSDK'
+description: 'Main Neural SDK client'
+---
+
+## Overview
+
+Main Neural SDK client.
+
+This is the primary interface for the Neural SDK. It provides
+a unified API for:
+- Market data streaming
+- Trading strategy deployment
+- Risk management
+- Portfolio monitoring
+- Agent orchestration
+
+Example:
+    ```python
+    from neural_sdk import NeuralSDK
+
+    # Initialize SDK
+    sdk = NeuralSDK.from_env()
+
+    # Create and deploy a strategy
+    @sdk.strategy
+    async def my_strategy(market_data):
+        if market_data.yes_price < 0.3:
+            return sdk.create_signal("BUY", market_data.ticker)
+
+    # Start trading
+    await sdk.start_trading_system()
+    ```
+
+## Constructor
+
+<ParamField path="config" type="SDKConfig" required>
+  config parameter
+</ParamField>
+
+<CodeGroup>
+
+```python Python
+from neural_sdk.client import NeuralSDK
+
+# Initialize NeuralSDK
+instance = NeuralSDK()
+```
+
+</CodeGroup>
+
+## Methods
+
+### `__init__(config)`
+
+Initialize the Neural SDK.
+
+Args:
+    config: SDK configuration object
+
+Raises:
+    ConfigurationError: If configuration is invalid
+
+<ParamField path="config" type="SDKConfig">
+  config parameter
+</ParamField>
+
+---
+
+### `from_env(cls, prefix)`
+
+Create SDK instance from environment variables.
+
+Args:
+    prefix: Environment variable prefix
+
+Returns:
+    Configured SDK instance
+
+<ParamField path="cls" type="None">
+  cls parameter
+</ParamField>
+
+<ParamField path="prefix" type="str">
+  prefix parameter
+</ParamField>
+
+<ResponseField name="result" type="'NeuralSDK'">
+  Method result
+</ResponseField>
+
+---
+
+### `from_config_file(cls, file_path)`
+
+Create SDK instance from configuration file.
+
+Args:
+    file_path: Path to YAML configuration file
+
+Returns:
+    Configured SDK instance
+
+<ParamField path="cls" type="None">
+  cls parameter
+</ParamField>
+
+<ParamField path="file_path" type="str">
+  file_path parameter
+</ParamField>
+
+<ResponseField name="result" type="'NeuralSDK'">
+  Method result
+</ResponseField>
+
+---
+
+### `create_signal(action, market_ticker, side, confidence, quantity, price_limit, reason)`
+
+Create a trading signal.
+
+Args:
+    action: Trading action ("BUY", "SELL", "HOLD")
+    market_ticker: Market ticker symbol
+    side: Market side ("YES" or "NO")
+    confidence: Signal confidence (0.0 to 1.0)
+    quantity: Order quantity
+    price_limit: Price limit for the order
+    reason: Reason for the signal
+    **metadata: Additional metadata
+
+Returns:
+    TradingSignal object
+
+<ParamField path="action" type="str">
+  action parameter
+</ParamField>
+
+<ParamField path="market_ticker" type="str">
+  market_ticker parameter
+</ParamField>
+
+<ParamField path="side" type="str">
+  side parameter
+</ParamField>
+
+<ParamField path="confidence" type="float">
+  confidence parameter
+</ParamField>
+
+<ParamField path="quantity" type="Optional[int]">
+  quantity parameter
+</ParamField>
+
+<ParamField path="price_limit" type="Optional[float]">
+  price_limit parameter
+</ParamField>
+
+<ParamField path="reason" type="Optional[str]">
+  reason parameter
+</ParamField>
+
+<ResponseField name="result" type="TradingSignal">
+  Method result
+</ResponseField>
+
+---
+
+### `strategy(func)`
+
+Decorator to register a trading strategy.
+
+Args:
+    func: Strategy function that takes market data and returns signals
+
+Returns:
+    Decorated strategy function
+
+Example:
+    ```python
+    @sdk.strategy
+    async def arbitrage_strategy(market_data):
+        if market_data.yes_price + market_data.no_price < 0.98:
+            return sdk.create_signal("BUY", market_data.ticker)
+    ```
+
+<ParamField path="func" type="Callable">
+  func parameter
+</ParamField>
+
+<ResponseField name="result" type="Callable">
+  Method result
+</ResponseField>
+
+---
+
+### `on_market_data(func)`
+
+Decorator to register market data handler.
+
+Args:
+    func: Handler function that processes market data
+
+Returns:
+    Decorated handler function
+
+<ParamField path="func" type="Callable">
+  func parameter
+</ParamField>
+
+<ResponseField name="result" type="Callable">
+  Method result
+</ResponseField>
+
+---
+
+### `on_signal(func)`
+
+Decorator to register signal handler.
+
+Args:
+    func: Handler function that processes trading signals
+
+Returns:
+    Decorated handler function
+
+<ParamField path="func" type="Callable">
+  func parameter
+</ParamField>
+
+<ResponseField name="result" type="Callable">
+  Method result
+</ResponseField>
+
+---
+
+### `on_trade(func)`
+
+Decorator to register trade handler.
+
+Args:
+    func: Handler function that processes trade results
+
+Returns:
+    Decorated handler function
+
+<ParamField path="func" type="Callable">
+  func parameter
+</ParamField>
+
+<ResponseField name="result" type="Callable">
+  Method result
+</ResponseField>
+
+---
+
+### `get_system_status()`
+
+Get overall system status.
+
+Returns:
+    Dictionary with system status information
+
+<ResponseField name="result" type="Dict[str, Any]">
+  Method result
+</ResponseField>
+
+---
+
+### `create_websocket()`
+
+Create a WebSocket client for real-time market data streaming.
+
+Returns:
+    NeuralWebSocket: WebSocket client instance
+    
+Example:
+    ```python
+    sdk = NeuralSDK.from_env()
+    websocket = sdk.create_websocket()
+    
+    @websocket.on_market_data
+    async def handle_price_update(market_data):
+        print(f"Price: {market_data['yes_price']}")
+    
+    await websocket.connect()
+    await websocket.subscribe_markets(['NFL-*'])
+    ```
+
+---
+
+### `create_nfl_stream()`
+
+Create an NFL-specific market stream.
+
+Returns:
+    NFLMarketStream: NFL market streaming client
+    
+Example:
+    ```python
+    sdk = NeuralSDK.from_env()
+    nfl_stream = sdk.create_nfl_stream()
+    
+    await nfl_stream.connect()
+    await nfl_stream.subscribe_to_game("25SEP04DALPHI")
+    
+    game_summary = nfl_stream.get_game_summary("25SEP04DALPHI")
+    print(f"Win probability: {game_summary['win_probability']}")
+    ```
+
+---
+
+### `on_market_update(func)`
+
+Decorator to register market data update handler.
+
+This is an alias for on_market_data for WebSocket events.
+
+Args:
+    func: Handler function that processes market data updates
+    
+Returns:
+    Decorated handler function
+
+<ParamField path="func" type="Callable">
+  func parameter
+</ParamField>
+
+<ResponseField name="result" type="Callable">
+  Method result
+</ResponseField>
+
+---
+

@@ -1,0 +1,92 @@
+# Data Source Configuration for Neural Trading Platform SDK
+# Configure your data sources here
+
+sources:
+  # DraftKings Sportsbook Odds
+  - name: draftkings
+    enabled: true
+    class: DraftKingsAdapter
+    module: sdk.adapters.draftkings
+    priority: 1  # Higher priority = processed first
+    config:
+      sports:
+        - NFL
+        - NBA
+        - MLB
+      poll_interval: 5  # seconds
+      min_odds_change: 0.03  # 3% minimum change to trigger event
+  
+  # Reddit Game Threads
+  - name: reddit
+    enabled: false  # Enable after adding credentials
+    class: RedditAdapter
+    module: sdk.adapters.reddit
+    priority: 2
+    config:
+      client_id: ${REDDIT_CLIENT_ID}
+      client_secret: ${REDDIT_CLIENT_SECRET}
+      user_agent: "NeuralTradingPlatform/1.0"
+      subreddits:
+        - nfl
+        - nba
+        - baseball
+        - hockey
+      min_comment_karma: 5
+      keywords:
+        touchdown: ["touchdown", "td", "score"]
+        injury: ["injury", "injured", "hurt", "down"]
+        big_play: ["holy shit", "wow", "incredible"]
+  
+  # ESPN Play-by-Play Data
+  - name: espn
+    enabled: true  # No API key needed - completely free!
+    class: ESPNAdapter
+    module: sdk.adapters.espn
+    priority: 1  # High priority for real-time game events
+    config:
+      sports:
+        - nfl
+        - nba
+      update_interval: 5  # Base polling interval in seconds
+      critical_interval: 3  # Interval during critical game moments
+      # Optional: Monitor specific games by ID
+      # games:
+      #   - "401547652"
+  
+  # Weather Conditions
+  - name: weather
+    enabled: true  # API key is working!
+    class: WeatherAdapter
+    module: sdk.adapters.weather
+    priority: 3
+    config:
+      api_key: ${OPENWEATHER_API_KEY}
+      update_interval: 300  # 5 minutes
+      thresholds:
+        wind_speed: 15  # mph
+        precipitation: 0.1  # inches/hour
+        temperature_change: 10  # degrees F
+        visibility: 1  # miles
+      stadiums:
+        - name: "Arrowhead Stadium"
+          team: "KC"
+          lat: 39.0489
+          lon: -94.4839
+          outdoor: true
+        - name: "Highmark Stadium"
+          team: "BUF"
+          lat: 42.7738
+          lon: -78.7870
+          outdoor: true
+        - name: "Lambeau Field"
+          team: "GB"
+          lat: 44.5013
+          lon: -88.0622
+          outdoor: true
+
+# Global settings
+settings:
+  event_queue_size: 10000
+  max_adapters: 10
+  health_check_interval: 60  # seconds
+  log_level: INFO

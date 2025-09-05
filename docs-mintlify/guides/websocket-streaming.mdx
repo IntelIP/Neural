@@ -1,0 +1,468 @@
+---
+title: 'WebSocket Streaming Guide'
+description: 'Real-time market data streaming with Neural SDK'
+---
+
+## Overview
+
+Neural SDK's WebSocket streaming provides real-time market data with ultra-low latency. This guide covers connection management, data handling, and best practices for production deployments.
+
+## Quick Start
+
+<Steps>
+  <Step title="Initialize WebSocket">
+    ```python
+    from neural_sdk import NeuralSDK
+    
+    sdk = NeuralSDK.from_env()
+    websocket = sdk.create_websocket()
+    ```
+  </Step>
+  
+  <Step title="Define Event Handlers">
+    ```python
+    @websocket.on_market_data
+    async def handle_market(data):
+        print(f"{data.ticker}: ${data.yes_price}")
+    
+    @websocket.on_trade
+    async def handle_trade(trade):
+        print(f"Trade: {trade.size} @ ${trade.price}")
+    ```
+  </Step>
+  
+  <Step title="Connect and Subscribe">
+    ```python
+    await websocket.connect()
+    await websocket.subscribe_markets(['KXNFL*'])
+    await websocket.run_forever()
+    ```
+  </Step>
+</Steps>
+
+## Connection Management
+
+### Automatic Reconnection
+
+The WebSocket client automatically reconnects on disconnection:
+
+```python
+websocket = sdk.create_websocket(
+    reconnect_interval=5,      # Wait 5 seconds between attempts
+    max_reconnect_attempts=10  # Try 10 times before giving up
+)
+
+@websocket.on_disconnected
+async def handle_disconnect():
+    logger.warning("Disconnected - will auto-reconnect")
+
+@websocket.on_connected
+async def handle_reconnect():
+    logger.info("Reconnected - resubscribing to markets")
+    await websocket.subscribe_markets(saved_subscriptions)
+```
+
+### Connection Health Monitoring
+
+```python
+import asyncio
+from datetime import datetime, timedelta
+
+class ConnectionMonitor:
+    def __init__(self, websocket):
+        self.websocket = websocket
+        self.last_message = datetime.now()
+        self.is_healthy = True
+    
+    @websocket.on_market_data
+    async def update_heartbeat(self, data):
+        self.last_message = datetime.now()
+    
+    async def monitor_health(self):
+        while True:
+            await asyncio.sleep(30)
+            
+            if datetime.now() - self.last_message > timedelta(minutes=1):
+                logger.warning("No messages for 1 minute")
+                self.is_healthy = False
+                await self.websocket.disconnect()
+                await self.websocket.connect()
+            else:
+                self.is_healthy = True
+
+monitor = ConnectionMonitor(websocket)
+asyncio.create_task(monitor.monitor_health())
+```
+
+## Subscription Patterns
+
+### Dynamic Subscriptions
+
+Subscribe and unsubscribe based on market conditions:
+
+```python
+active_markets = set()
+
+async def manage_subscriptions():
+    # Get trending markets
+    markets = sdk.get_markets({"volume_24h_min": 10000})
+    
+    new_tickers = [m.ticker for m in markets[:20]]  # Top 20
+    
+    # Calculate changes
+    to_subscribe = set(new_tickers) - active_markets
+    to_unsubscribe = active_markets - set(new_tickers)
+    
+    # Update subscriptions
+    if to_subscribe:
+        await websocket.subscribe_markets(list(to_subscribe))
+    if to_unsubscribe:
+        await websocket.unsubscribe_markets(list(to_unsubscribe))
+    
+    active_markets.update(to_subscribe)
+    active_markets.difference_update(to_unsubscribe)
+
+# Run every 5 minutes
+scheduler.schedule(manage_subscriptions, interval=300)
+```
+
+### Pattern-Based Subscriptions
+
+```python
+# Sport-specific patterns
+sports_patterns = {
+    'nfl': 'KXNFL*',
+    'nba': 'KXNBA*',
+    'mlb': 'KXMLB*',
+    'election': 'KXPOL*'
+}
+
+# Subscribe to specific sports
+async def subscribe_to_sports(sports):
+    patterns = [sports_patterns[s] for s in sports]
+    await websocket.subscribe_markets(patterns)
+
+await subscribe_to_sports(['nfl', 'nba'])
+```
+
+## Data Processing
+
+### Message Batching
+
+Process messages in batches for efficiency:
+
+```python
+from collections import defaultdict
+import asyncio
+
+class BatchProcessor:
+    def __init__(self, batch_size=100, batch_timeout=1.0):
+        self.batch_size = batch_size
+        self.batch_timeout = batch_timeout
+        self.buffer = defaultdict(list)
+        self.processing = False
+    
+    async def add_message(self, ticker, data):
+        self.buffer[ticker].append(data)
+        
+        if not self.processing:
+            asyncio.create_task(self.process_batches())
+    
+    async def process_batches(self):
+        self.processing = True
+        await asyncio.sleep(self.batch_timeout)
+        
+        for ticker, messages in self.buffer.items():
+            if messages:
+                await self.process_ticker_batch(ticker, messages)
+        
+        self.buffer.clear()
+        self.processing = False
+    
+    async def process_ticker_batch(self, ticker, messages):
+        # Process aggregated data
+        avg_price = sum(m.yes_price for m in messages) / len(messages)
+        max_price = max(m.yes_price for m in messages)
+        min_price = min(m.yes_price for m in messages)
+        
+        print(f"{ticker}: Avg=${avg_price:.2f}, Range=${min_price:.2f}-${max_price:.2f}")
+
+processor = BatchProcessor()
+
+@websocket.on_market_data
+async def batch_handler(data):
+    await processor.add_message(data.ticker, data)
+```
+
+### Rate Limiting
+
+Prevent overwhelming downstream systems:
+
+```python
+from asyncio import Semaphore
+
+class RateLimiter:
+    def __init__(self, max_per_second=10):
+        self.semaphore = Semaphore(max_per_second)
+        self.reset_task = None
+    
+    async def __aenter__(self):
+        await self.semaphore.acquire()
+        if not self.reset_task:
+            self.reset_task = asyncio.create_task(self.reset())
+    
+    async def __aexit__(self, *args):
+        pass
+    
+    async def reset(self):
+        await asyncio.sleep(1)
+        # Release all permits
+        for _ in range(self.semaphore._initial_value):
+            try:
+                self.semaphore.release()
+            except ValueError:
+                pass
+        self.reset_task = None
+
+rate_limiter = RateLimiter(max_per_second=5)
+
+@websocket.on_market_data
+async def rate_limited_handler(data):
+    async with rate_limiter:
+        await process_market_update(data)
+```
+
+## Error Handling
+
+### Comprehensive Error Recovery
+
+```python
+class ResilientWebSocket:
+    def __init__(self, sdk):
+        self.sdk = sdk
+        self.websocket = None
+        self.subscriptions = set()
+        self.error_count = 0
+        self.max_errors = 10
+    
+    async def initialize(self):
+        self.websocket = self.sdk.create_websocket()
+        self.setup_handlers()
+        await self.connect()
+    
+    def setup_handlers(self):
+        @self.websocket.on_error
+        async def handle_error(error):
+            self.error_count += 1
+            logger.error(f"WebSocket error #{self.error_count}: {error}")
+            
+            if self.error_count >= self.max_errors:
+                logger.critical("Too many errors - recreating WebSocket")
+                await self.recreate_websocket()
+            else:
+                await asyncio.sleep(min(2 ** self.error_count, 60))
+    
+    async def recreate_websocket(self):
+        try:
+            await self.websocket.disconnect()
+        except:
+            pass
+        
+        self.websocket = self.sdk.create_websocket()
+        self.setup_handlers()
+        self.error_count = 0
+        await self.connect()
+    
+    async def connect(self):
+        await self.websocket.connect()
+        
+        # Resubscribe to saved markets
+        if self.subscriptions:
+            await self.websocket.subscribe_markets(list(self.subscriptions))
+```
+
+### Circuit Breaker Pattern
+
+```python
+from enum import Enum
+from datetime import datetime, timedelta
+
+class CircuitState(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, timeout=60):
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout
+        self.failure_count = 0
+        self.state = CircuitState.CLOSED
+        self.last_failure = None
+    
+    async def call(self, func, *args, **kwargs):
+        if self.state == CircuitState.OPEN:
+            if datetime.now() - self.last_failure > timedelta(seconds=self.timeout):
+                self.state = CircuitState.HALF_OPEN
+            else:
+                raise Exception("Circuit breaker is OPEN")
+        
+        try:
+            result = await func(*args, **kwargs)
+            
+            if self.state == CircuitState.HALF_OPEN:
+                self.state = CircuitState.CLOSED
+                self.failure_count = 0
+            
+            return result
+            
+        except Exception as e:
+            self.failure_count += 1
+            self.last_failure = datetime.now()
+            
+            if self.failure_count >= self.failure_threshold:
+                self.state = CircuitState.OPEN
+                logger.warning(f"Circuit breaker opened after {self.failure_count} failures")
+            
+            raise e
+
+circuit_breaker = CircuitBreaker()
+
+@websocket.on_market_data
+async def protected_handler(data):
+    async def process():
+        # Your processing logic
+        await risky_operation(data)
+    
+    try:
+        await circuit_breaker.call(process)
+    except Exception as e:
+        logger.error(f"Processing failed: {e}")
+```
+
+## Production Deployment
+
+### Docker Configuration
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD python -c "import sys; from app import check_health; sys.exit(0 if check_health() else 1)"
+
+CMD ["python", "-m", "app.websocket_streamer"]
+```
+
+### Kubernetes Deployment
+
+```yaml
+# k8s-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neural-websocket
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: neural-websocket
+  template:
+    metadata:
+      labels:
+        app: neural-websocket
+    spec:
+      containers:
+      - name: websocket
+        image: neural-sdk:latest
+        env:
+        - name: KALSHI_API_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: kalshi-secret
+              key: api-key-id
+        - name: KALSHI_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kalshi-secret
+              key: api-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "from app import check_health; exit(0 if check_health() else 1)"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+```
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Use AsyncIO efficiently">
+    ```python
+    # Process multiple markets concurrently
+    async def process_market(data):
+        # Heavy processing
+        await asyncio.sleep(0.1)
+    
+    @websocket.on_market_data
+    async def concurrent_handler(data):
+        # Don't await - let it run in background
+        asyncio.create_task(process_market(data))
+    ```
+  </Accordion>
+  
+  <Accordion title="Implement message deduplication">
+    ```python
+    from collections import deque
+    
+    seen_messages = deque(maxlen=1000)
+    
+    @websocket.on_market_data
+    async def dedupe_handler(data):
+        msg_id = f"{data.ticker}:{data.timestamp}"
+        
+        if msg_id not in seen_messages:
+            seen_messages.append(msg_id)
+            await process_unique_message(data)
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor memory usage">
+    ```python
+    import psutil
+    import gc
+    
+    async def monitor_memory():
+        while True:
+            await asyncio.sleep(60)
+            
+            process = psutil.Process()
+            mem_mb = process.memory_info().rss / 1024 / 1024
+            
+            if mem_mb > 500:  # 500MB threshold
+                logger.warning(f"High memory usage: {mem_mb:.1f}MB")
+                gc.collect()
+    
+    asyncio.create_task(monitor_memory())
+    ```
+  </Accordion>
+</AccordionGroup>

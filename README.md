@@ -1,145 +1,289 @@
-# Flexible Sports WebSocket Client
+# 🧠 Neural SDK
 
-A clean, user-driven approach to streaming sports market data from Kalshi using the existing Neural SDK infrastructure.
+> **Open-source Python SDK for algorithmic prediction market trading**  
+> Build sophisticated trading strategies with **real-time WebSocket streaming** and comprehensive backtesting
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/neural-sdk.svg)](https://badge.fury.io/py/neural-sdk)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/neural/neural-sdk/releases)
 
-This implementation leverages the existing SDK market discovery functions to create a flexible WebSocket client that:
+## 🔥 What's New in v1.1.0
 
-1. **Discovers markets by sport** using existing SDK functions
-2. **Lets users select specific markets** (no hardcoded filtering)
-3. **Streams only user-selected markets** with real-time updates
+**Real-time WebSocket Streaming is here!** Connect directly to Kalshi's WebSocket API for instant market data updates.
 
-## Key Components
-
-### 1. Market Discovery (`sports_market_browser.py`)
-- Uses existing `KalshiMarketDiscovery.discover_sport_markets()`
-- Extended sports config with Pro Football, College Football, Basketball, etc.
-- Interactive browsing and search functionality
-
-### 2. Flexible WebSocket Client (`flexible_sports_websocket.py`)
-- Clean WebSocket streaming with user-selected markets
-- No hardcoded team/game filtering logic
-- Real-time market data and trade updates
-- Session summaries and statistics
-
-### 3. Auto-Select Demo (`auto_select_demo.py`)
-- Demonstrates programmatic market selection
-- Examples: Chiefs vs Chargers, Game markets only, Search-based selection
-
-## Quick Start
-
-### Browse Available Markets
-```bash
-# Interactive browser for all sports
-python sports_market_browser.py
-
-# Quick discovery for specific sport
-python sports_market_browser.py nfl
-python sports_market_browser.py college_football
-```
-
-### Stream Selected Markets
-```bash
-# Interactive market selection and streaming
-python flexible_sports_websocket.py
-
-# Quick mode for specific sport
-python flexible_sports_websocket.py nfl
-```
-
-### Run Demos
-```bash
-# All demos
-python auto_select_demo.py
-
-# Specific demo (Chiefs vs Chargers)
-python auto_select_demo.py 1
-```
-
-## Supported Sports
-
-| Sport | Display Name | Status | Markets Found |
-|-------|--------------|--------|---------------|
-| NFL | Pro Football | 🟢 Active | 62 markets |
-| COLLEGE_FOOTBALL | College Football | 🟢 Active | TBD |
-| NBA | Pro Basketball (M) | 🟢 Active | 74 series |
-| WNBA | Pro Basketball (W) | 🟢 Active | TBD |
-| CFP | College Football Playoff | 🔴 Off-season | 0 markets |
-
-## Example Usage
-
-### 1. Chiefs vs Chargers Auto-Selection
 ```python
-from neural_sdk.data_pipeline.sports_config import Sport
-from flexible_sports_websocket import FlexibleSportsWebSocket
+from neural_sdk import NeuralSDK
 
-client = FlexibleSportsWebSocket()
-await client.initialize()
+sdk = NeuralSDK.from_env()
 
-# Discover NFL markets
-markets = await client.browser.discover_markets_by_sport(Sport.NFL)
+# NEW: Real-time WebSocket streaming
+websocket = sdk.create_websocket()
 
-# Auto-select Chiefs/Chargers markets
-chiefs_chargers = [m['ticker'] for m in markets 
-                   if any(team in m['ticker'] for team in ['KC', 'LAC'])]
+@websocket.on_market_data
+async def handle_live_data(data):
+    print(f"🔴 LIVE: {data.ticker} = ${data.yes_price}")
 
-# Stream selected markets
-client.selected_markets = chiefs_chargers
-await client.stream_selected_markets(duration_seconds=60)
+await websocket.connect()
+await websocket.subscribe_markets(['KXNFLGAME*'])  # All NFL games
 ```
 
-### 2. Interactive Market Selection
+**🏈 NFL Market Streaming**: Specialized support for NFL prediction markets with automatic game detection.
+
+## 🚀 Quick Start
+
+### Installation
+
+#### For Team Members (Private Access)
+```bash
+# Install latest Neural SDK v1.1.0 with WebSocket streaming
+pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+
+# Or with uv (recommended - faster)
+uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+
+# For development
+git clone https://github.com/IntelIP/Neural-Trading-Platform.git
+cd Neural-Trading-Platform
+pip install -e .
+```
+
+#### Authentication Setup
+```bash
+# One-time setup for team members
+git config --global credential.helper store
+
+# Or use SSH (more secure)
+ssh-keygen -t ed25519 -C "your-email@company.com"
+# Add public key to GitHub account
+```
+
+### Basic Usage
+
 ```python
-client = FlexibleSportsWebSocket()
-await client.initialize()
+from neural_sdk import NeuralSDK
 
-# Interactive discovery and selection
-selected_tickers = await client.discover_and_select_markets(Sport.NFL)
+# Initialize SDK
+sdk = NeuralSDK.from_env()
 
-# Stream user selections
-await client.stream_selected_markets()
+# Create a simple strategy
+@sdk.strategy
+async def momentum_strategy(market_data):
+    for symbol, price in market_data.prices.items():
+        if 'NFL' in symbol and price < 0.3:
+            return sdk.create_signal('BUY', symbol, size=100)
+
+# Start trading
+await sdk.start_trading()
 ```
 
-## Architecture Benefits
+### Backtesting
 
-### ✅ What We Fixed:
-- **Removed hardcoded filtering** - no more client-side team name matching
-- **Leveraged existing SDK functions** - uses `discover_sport_markets()` properly
-- **User-driven selection** - flexibility to choose any markets
-- **Efficient subscriptions** - only subscribe to selected markets
-- **Extensible sports config** - easy to add new sports
+```python
+from neural_sdk.backtesting import BacktestEngine, BacktestConfig
 
-### ✅ What We Improved:
-- **Market discovery** - found actual NFL game markets like `KXNFLGAME-25SEP05KCLAC-KC`
-- **Real-time streaming** - live trades and market data
-- **Clean separation** - discovery vs streaming vs selection
-- **Interactive tools** - browse, search, and select markets
-- **Programmatic options** - auto-select via code logic
+# Configure backtest
+config = BacktestConfig(
+    start_date="2024-01-01",
+    end_date="2024-12-31", 
+    initial_capital=10000
+)
 
-## Live Demo Results
+# Run backtest
+engine = BacktestEngine(config)
+engine.add_strategy(my_strategy)
+engine.load_data("csv", path="historical_data.csv")
 
-The Chiefs vs Chargers demo successfully:
-- 🔍 Discovered 62 NFL markets
-- 🎯 Auto-selected 6 Chiefs/Chargers markets including `KXNFLGAME-25SEP05KCLAC-KC`
-- 📡 Streamed live market data for 30 seconds
-- 💰 Captured 17 real trades including large trades (566 contracts)
+results = engine.run()
+print(f"Total Return: {results.total_return:.2f}%")
+print(f"Sharpe Ratio: {results.metrics['sharpe_ratio']:.3f}")
+```
 
-## Files
+## 🏗️ Architecture
 
-| File | Purpose |
-|------|---------|
-| `sports_market_browser.py` | Interactive market discovery and browsing |
-| `flexible_sports_websocket.py` | Clean WebSocket client with user selection |
-| `auto_select_demo.py` | Demonstration of programmatic market selection |
-| `test_market_discovery.py` | Testing existing SDK discovery functions |
-| `neural_sdk/data_pipeline/sports_config.py` | Extended sports configuration |
+```mermaid
+graph LR
+    A[Data Sources] --> B[SDK Adapters]
+    B --> C[Strategy Engine]
+    C --> D[Kalshi API]
+    
+    A1[Weather API] --> B
+    A2[Reddit Sentiment] --> B
+    A3[Sports APIs] --> B
+    
+    E[Backtesting Engine] --> F[Performance Analytics]
+```
 
-## Legacy Files (Reference)
+## 📊 Features
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `chiefs_vs_chargers_websocket.py` | Original hardcoded approach | ⚠️ Deprecated |
-| `launch_chiefs_chargers.py` | Quick launcher for old approach | ⚠️ Deprecated |
+### Core Trading
+- **Real-time market data** streaming from multiple sources
+- **Strategy framework** with easy-to-use decorators
+- **Risk management** with position limits and stop-losses
+- **Order execution** with realistic slippage simulation
 
-The new flexible approach is cleaner, more maintainable, and gives users full control over what markets to stream.
+### Backtesting
+- **Event-driven engine** for accurate historical testing
+- **Multiple data sources**: CSV, Parquet, SQL, S3
+- **Performance metrics**: Sharpe ratio, drawdown, win rate
+- **Portfolio simulation** with realistic costs and slippage
+
+### Data Integration
+- **Plugin architecture** for custom data sources
+- **Built-in adapters** for weather, Reddit, sports APIs
+- **Data caching** for improved performance
+- **Format standardization** across all sources
+
+## 🛠️ Data Sources
+
+| Source | Status | Purpose | Setup |
+|--------|--------|---------|-------|
+| **Weather API** | ✅ Ready | Weather impacts on sports | Free API key |
+| **Reddit** | ✅ Ready | Sentiment analysis | Free API credentials |
+| **Custom CSV** | ✅ Ready | Historical data | Local files |
+| **Parquet** | ✅ Ready | High-performance data | S3 or local |
+| **PostgreSQL** | ⚙️ Optional | Large datasets | Database connection |
+
+## 📈 Strategy Examples
+
+### Momentum Strategy
+```python
+def momentum_strategy(market_data):
+    \"\"\"Buy markets trending upward below 60 cents\"\"\"
+    for symbol, price in market_data.prices.items():
+        if price < 0.6 and market_data.is_trending_up(symbol):
+            return {'action': 'BUY', 'symbol': symbol, 'size': 50}
+```
+
+### Mean Reversion
+```python  
+def mean_reversion_strategy(market_data):
+    \"\"\"Buy undervalued markets, sell overvalued\"\"\"
+    for symbol, price in market_data.prices.items():
+        if price < 0.3:  # Undervalued
+            return {'action': 'BUY', 'symbol': symbol, 'size': 100}
+        elif price > 0.7:  # Overvalued  
+            return {'action': 'SELL', 'symbol': symbol, 'size': 100}
+```
+
+## 🔧 Configuration
+
+### Environment Setup
+```bash
+# Create .env file
+NEURAL_API_KEY_ID=your_neural_api_key
+NEURAL_PRIVATE_KEY_FILE=./keys/neural_private.key
+
+# Optional: Data source APIs
+OPENWEATHER_API_KEY=your_weather_key
+REDDIT_CLIENT_ID=your_reddit_id
+REDDIT_CLIENT_SECRET=your_reddit_secret
+```
+
+### SDK Configuration
+```python
+from neural_sdk import SDKConfig
+
+config = SDKConfig(
+    max_position_size=0.05,  # Max 5% per position
+    daily_loss_limit=0.20,   # Stop at 20% daily loss
+    commission=0.02,         # Kalshi's 2% fee
+    slippage=0.01           # 1% estimated slippage
+)
+
+sdk = KalshiSDK(config)
+```
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [**Getting Started**](docs/getting_started.md) | Installation and first strategy |
+| [**API Reference**](docs/api_reference.md) | Complete SDK documentation |
+| [**Backtesting Guide**](docs/backtesting.md) | Historical testing framework |
+| [**Data Sources**](docs/data_sources.md) | Setting up data feeds |
+| [**Strategy Development**](docs/strategies.md) | Building trading algorithms |
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run specific test suite  
+pytest tests/unit/test_backtesting.py
+
+# Run with coverage
+pytest --cov=kalshi_trading_sdk tests/
+```
+
+## 📊 Performance Metrics
+
+The SDK calculates comprehensive metrics for strategy evaluation:
+
+- **Return Metrics**: Total return, CAGR, Sharpe ratio
+- **Risk Metrics**: Max drawdown, volatility, VaR
+- **Trade Analysis**: Win rate, average win/loss, profit factor
+- **Time Analysis**: Best/worst days, consecutive wins/losses
+
+## 🌟 Example Results
+
+```
+BACKTEST RESULTS
+================
+Period: 2024-01-01 to 2024-12-31
+Initial Capital: $10,000.00
+Final Value: $12,750.00
+
+Total Return: +27.5%
+Sharpe Ratio: 1.85
+Max Drawdown: -8.2%
+Win Rate: 68.5%
+Total Trades: 156
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+```bash
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
+
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run pre-commit hooks
+pre-commit install
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ⚠️ Disclaimer
+
+**Important**: This software is for educational and research purposes. Trading involves substantial risk of loss. 
+
+- Always start with paper trading
+- Never risk more than you can afford to lose  
+- Past performance doesn't guarantee future results
+- The SDK is not financial advice
+
+## 🔗 Links
+
+- **Documentation**: [https://kalshi-trading-sdk.readthedocs.io/](https://kalshi-trading-sdk.readthedocs.io/)
+- **PyPI Package**: [https://pypi.org/project/kalshi-trading-sdk/](https://pypi.org/project/kalshi-trading-sdk/)
+- **Issues**: [https://github.com/kalshi/kalshi-trading-sdk/issues](https://github.com/kalshi/kalshi-trading-sdk/issues)
+- **Discussions**: [https://github.com/kalshi/kalshi-trading-sdk/discussions](https://github.com/kalshi/kalshi-trading-sdk/discussions)
+
+## 🏆 Acknowledgments
+
+- Kalshi for providing the trading platform
+- Contributors and beta testers
+- Open source community for excellent libraries
+
+---
+
+**Built for algorithmic trading • Trade responsibly • Performance matters**
