@@ -40,8 +40,15 @@ class KalshiClient:
             from ...config.settings import KalshiConfig
             
             environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
-            api_base_url = "https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
-            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
+            # FORCE PRODUCTION ENDPOINTS - NO DEMO ALLOWED
+            api_base_url = "https://api.elections.kalshi.com/trade-api/v2"
+            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2"
+            
+            # Log which endpoint we're using  
+            print(f"🏭 Kalshi Client: Forcing production endpoints")
+            print(f"🔗 API: {api_base_url}")
+            print(f"🔌 WebSocket: {ws_url}")
+            print(f"🌍 Environment variable: {environment}")
             
             config = KalshiConfig(
                 api_key_id=os.getenv("KALSHI_API_KEY_ID"),
@@ -212,7 +219,7 @@ class KalshiClient:
         Returns:
             Market data
         """
-        return self.get(f'/trade-api/v2/markets/{ticker}')
+        return self.get(f'/markets/{ticker}')
     
     def get_events(
         self,
@@ -237,7 +244,7 @@ class KalshiClient:
         if status:
             params['status'] = status
         
-        return self.get('/trade-api/v2/events', params=params)
+        return self.get('/events', params=params)
     
     def close(self) -> None:
         """Close the HTTP session"""

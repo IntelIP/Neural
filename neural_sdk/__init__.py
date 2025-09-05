@@ -36,11 +36,11 @@ Example:
     ```
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __author__ = "Neural SDK Team"
 __email__ = "sdk@neural.dev"
 
-from .core.client import MarketData, NeuralSDK, TradeResult, TradingSignal
+from .core.client import MarketData, NeuralSDK, TradeResult, TradingSignal, Position, Order, Portfolio
 from .core.config import SDKConfig
 from .core.exceptions import (
     ConfigurationError,
@@ -64,13 +64,20 @@ __all__ = [
     "TradingSignal",
     "MarketData",
     "TradeResult",
+    # Portfolio management
+    "Position",
+    "Order", 
+    "Portfolio",
+    # Exceptions
     "SDKError",
     "ConfigurationError",
     "ConnectionError",
     "TradingError",
     "ValidationError",
+    # Strategies
     "BaseStrategy",
     "StrategySignal",
+    # Utils
     "setup_logging",
     # Streaming functionality
     "NeuralWebSocket",

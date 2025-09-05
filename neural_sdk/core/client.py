@@ -98,6 +98,123 @@ class TradeResult:
         return cost
 
 
+@dataclass
+class Position:
+    """Represents a market position in the portfolio."""
+
+    ticker: str
+    position: int  # Number of shares
+    market_exposure: float  # Total exposure in dollars
+    total_traded: float  # Total amount traded
+    realized_pnl: float  # Realized P&L
+    fees_paid: float  # Total fees paid
+    resting_orders_count: int = 0  # Active orders for this market
+    last_updated: Optional[datetime] = None
+
+    @property
+    def avg_price(self) -> float:
+        """Calculate average price per share."""
+        if self.position > 0:
+            return self.market_exposure / self.position
+        return 0.0
+
+    @property
+    def market_name(self) -> str:
+        """Get human-readable market name from ticker."""
+        # Parse common ticker patterns
+        if 'PHIABROWN11' in self.ticker:
+            return "A.J. Brown First TD (PHI)"
+        elif 'DALCLAMB88' in self.ticker:
+            return "CeeDee Lamb First TD (DAL)" 
+        elif 'PHIJHURTS1' in self.ticker:
+            return "Jalen Hurts First TD (PHI)"
+        elif 'PHISBARKLEY26' in self.ticker:
+            return "Saquon Barkley First TD (PHI)"
+        elif 'KXNFLGAME' in self.ticker and 'PHI' in self.ticker:
+            return "Eagles Win Game"
+        elif 'KXNFLGAME' in self.ticker and 'DAL' in self.ticker:
+            return "Cowboys Win Game"
+        elif 'KXNFL' in self.ticker:
+            return "NFL Market"
+        return self.ticker
+
+
+@dataclass
+class Order:
+    """Represents a trading order."""
+
+    order_id: str
+    market_ticker: str
+    side: str  # "YES" or "NO"
+    action: str  # "BUY" or "SELL"
+    quantity: int
+    price: float
+    status: str  # "FILLED", "PARTIAL", "PENDING", "CANCELLED", "REJECTED"
+    created_time: datetime
+    filled_quantity: int = 0
+    remaining_quantity: Optional[int] = None
+    fees: Optional[float] = None
+    error_message: Optional[str] = None
+
+    @property
+    def is_active(self) -> bool:
+        """Check if order is still active."""
+        return self.status in ["PENDING", "PARTIAL"]
+
+    @property
+    def total_cost(self) -> float:
+        """Calculate total cost of the order."""
+        cost = self.filled_quantity * self.price
+        if self.fees:
+            cost += self.fees
+        return cost
+
+    @property
+    def fill_percentage(self) -> float:
+        """Calculate fill percentage."""
+        if self.quantity > 0:
+            return (self.filled_quantity / self.quantity) * 100
+        return 0.0
+
+
+@dataclass
+class Portfolio:
+    """Represents overall portfolio summary."""
+
+    balance: float  # Available cash balance
+    total_value: float  # Total portfolio value
+    positions: List[Position]
+    daily_pnl: float = 0.0
+    total_pnl: float = 0.0
+    total_fees_paid: float = 0.0
+    active_orders: int = 0
+    last_updated: Optional[datetime] = None
+
+    @property
+    def total_exposure(self) -> float:
+        """Calculate total market exposure across all positions."""
+        return sum(pos.market_exposure for pos in self.positions)
+
+    @property
+    def position_count(self) -> int:
+        """Get number of active positions."""
+        return len([pos for pos in self.positions if pos.position > 0])
+
+    @property
+    def largest_position(self) -> Optional[Position]:
+        """Get the largest position by exposure."""
+        if not self.positions:
+            return None
+        return max(self.positions, key=lambda p: p.market_exposure)
+
+    def get_position_by_ticker(self, ticker: str) -> Optional[Position]:
+        """Get position for a specific ticker."""
+        for position in self.positions:
+            if position.ticker == ticker:
+                return position
+        return None
+
+
 class NeuralSDK:
     """
     Main Neural SDK client.
@@ -549,21 +666,385 @@ class NeuralSDK:
         
         raise NotImplementedError("Trade execution not yet implemented - override in your implementation")
 
+    async def get_balance(self) -> float:
+        """
+        Get current account balance.
+
+        Returns:
+            Available cash balance in dollars
+
+        Raises:
+            SDKError: If balance retrieval fails
+
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            balance = await sdk.get_balance()
+            print(f"Available balance: ${balance:.2f}")
+            ```
+        """
+        try:
+            from ..data_pipeline.data_sources.kalshi.client import KalshiClient
+            client = KalshiClient()
+            
+            try:
+                balance_response = client.get('/balance')
+                balance = balance_response.get('balance', 0) / 100  # Convert cents to dollars
+                return balance
+            finally:
+                client.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to get balance: {e}")
+            raise SDKError(f"Balance retrieval failed: {e}") from e
+
+    async def get_positions(self) -> List[Position]:
+        """
+        Get current portfolio positions.
+
+        Returns:
+            List of Position objects representing current holdings
+
+        Raises:
+            SDKError: If position retrieval fails
+
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            positions = await sdk.get_positions()
+            
+            for position in positions:
+                print(f"{position.market_name}: {position.position} shares")
+            ```
+        """
+        try:
+            from ..data_pipeline.data_sources.kalshi.client import KalshiClient
+            from dateutil.parser import parse as parse_datetime
+            
+            client = KalshiClient()
+            
+            try:
+                positions_response = client.get('/portfolio/positions')
+                market_positions = positions_response.get('market_positions', [])
+                
+                positions = []
+                for pos_data in market_positions:
+                    # Parse last updated timestamp
+                    last_updated = None
+                    if pos_data.get('last_updated_ts'):
+                        try:
+                            last_updated = parse_datetime(pos_data['last_updated_ts'])
+                        except:
+                            pass
+                    
+                    position = Position(
+                        ticker=pos_data.get('ticker', ''),
+                        position=pos_data.get('position', 0),
+                        market_exposure=pos_data.get('market_exposure', 0) / 100,  # Convert cents to dollars
+                        total_traded=pos_data.get('total_traded', 0) / 100,
+                        realized_pnl=pos_data.get('realized_pnl', 0) / 100,
+                        fees_paid=pos_data.get('fees_paid', 0) / 100,
+                        resting_orders_count=pos_data.get('resting_orders_count', 0),
+                        last_updated=last_updated
+                    )
+                    positions.append(position)
+                
+                return positions
+                
+            finally:
+                client.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to get positions: {e}")
+            raise SDKError(f"Position retrieval failed: {e}") from e
+
+    async def get_orders(self, limit: int = 50, status: str = 'all') -> List[Order]:
+        """
+        Get recent orders.
+
+        Args:
+            limit: Maximum number of orders to return
+            status: Filter by order status ('all', 'pending', 'filled', 'cancelled')
+
+        Returns:
+            List of Order objects
+
+        Raises:
+            SDKError: If order retrieval fails
+
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            
+            # Get all recent orders
+            orders = await sdk.get_orders(limit=10)
+            
+            # Get only pending orders
+            pending = await sdk.get_orders(status='pending')
+            ```
+        """
+        try:
+            from ..data_pipeline.data_sources.kalshi.client import KalshiClient
+            from dateutil.parser import parse as parse_datetime
+            
+            client = KalshiClient()
+            
+            try:
+                params = {'limit': limit}
+                if status != 'all':
+                    params['status'] = status
+                    
+                # Try different order endpoints
+                orders_response = None
+                for endpoint in ['/orders', '/portfolio/orders']:
+                    try:
+                        orders_response = client.get(endpoint, params=params)
+                        break
+                    except:
+                        continue
+                
+                if not orders_response:
+                    return []
+                
+                order_data_list = orders_response.get('orders', [])
+                orders = []
+                
+                for order_data in order_data_list:
+                    # Parse created time
+                    created_time = datetime.utcnow()
+                    if order_data.get('created_time'):
+                        try:
+                            created_time = parse_datetime(order_data['created_time'])
+                        except:
+                            pass
+                    
+                    order = Order(
+                        order_id=order_data.get('order_id', ''),
+                        market_ticker=order_data.get('market_ticker', ''),
+                        side=order_data.get('side', 'YES'),
+                        action=order_data.get('action', 'BUY'),
+                        quantity=order_data.get('count', order_data.get('quantity', 0)),
+                        price=order_data.get('price', 0) / 100,  # Convert cents to dollars
+                        status=order_data.get('status', 'UNKNOWN').upper(),
+                        created_time=created_time,
+                        filled_quantity=order_data.get('filled_count', order_data.get('filled_quantity', 0)),
+                        remaining_quantity=order_data.get('remaining_count'),
+                        fees=order_data.get('fees', 0) / 100 if order_data.get('fees') else None,
+                    )
+                    orders.append(order)
+                
+                return orders
+                
+            finally:
+                client.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to get orders: {e}")
+            raise SDKError(f"Order retrieval failed: {e}") from e
+
+    async def place_order(
+        self,
+        ticker: str,
+        side: str,
+        quantity: int,
+        price: float,
+        action: str = "BUY",
+        order_type: str = "limit"
+    ) -> Order:
+        """
+        Place a new order.
+
+        Args:
+            ticker: Market ticker symbol
+            side: Market side ("YES" or "NO")
+            quantity: Number of shares to trade
+            price: Price per share in dollars
+            action: Trade action ("BUY" or "SELL")
+            order_type: Order type ("limit" or "market")
+
+        Returns:
+            Order object representing the placed order
+
+        Raises:
+            SDKError: If order placement fails
+            ValidationError: If order parameters are invalid
+
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            
+            # Buy 10 YES shares at $0.65
+            order = await sdk.place_order(
+                ticker="KXNFLGAME-25SEP04DALPHI-PHI",
+                side="YES",
+                quantity=10,
+                price=0.65
+            )
+            
+            print(f"Order placed: {order.order_id}")
+            ```
+        """
+        # Validate parameters
+        if side not in ["YES", "NO"]:
+            raise ValidationError(f"Invalid side: {side}. Must be YES or NO")
+        if action not in ["BUY", "SELL"]:
+            raise ValidationError(f"Invalid action: {action}. Must be BUY or SELL")
+        if quantity <= 0:
+            raise ValidationError(f"Invalid quantity: {quantity}. Must be positive")
+        if price <= 0 or price >= 1:
+            raise ValidationError(f"Invalid price: {price}. Must be between 0 and 1")
+
+        try:
+            from ..data_pipeline.data_sources.kalshi.client import KalshiClient
+            from dateutil.parser import parse as parse_datetime
+            
+            client = KalshiClient()
+            
+            try:
+                # Prepare order data
+                order_data = {
+                    "ticker": ticker,
+                    "client_order_id": f"neural_sdk_{int(datetime.utcnow().timestamp())}",
+                    "side": side,
+                    "action": action.lower(),
+                    "count": quantity,
+                    "type": order_type,
+                }
+                
+                # Add price for limit orders
+                if order_type == "limit":
+                    order_data["yes_price"] = int(price * 100)  # Convert to cents
+                
+                # Place order via API
+                response = client.post('/orders', json_data=order_data)
+                
+                # Parse response into Order object
+                order = Order(
+                    order_id=response.get('order_id', ''),
+                    market_ticker=ticker,
+                    side=side,
+                    action=action,
+                    quantity=quantity,
+                    price=price,
+                    status=response.get('status', 'PENDING').upper(),
+                    created_time=datetime.utcnow(),
+                    filled_quantity=response.get('filled_count', 0),
+                    remaining_quantity=response.get('remaining_count', quantity)
+                )
+                
+                logger.info(f"✅ Order placed: {order.order_id} - {action} {quantity} {side} {ticker} @ ${price:.2f}")
+                return order
+                
+            finally:
+                client.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to place order: {e}")
+            raise SDKError(f"Order placement failed: {e}") from e
+
+    async def get_portfolio_summary(self) -> Portfolio:
+        """
+        Get comprehensive portfolio summary.
+
+        Returns:
+            Portfolio object with complete portfolio information
+
+        Raises:
+            SDKError: If portfolio data retrieval fails
+
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            portfolio = await sdk.get_portfolio_summary()
+            
+            print(f"Balance: ${portfolio.balance:.2f}")
+            print(f"Total Exposure: ${portfolio.total_exposure:.2f}")
+            print(f"Positions: {portfolio.position_count}")
+            ```
+        """
+        try:
+            # Get all portfolio data concurrently
+            balance_task = self.get_balance()
+            positions_task = self.get_positions()
+            orders_task = self.get_orders(status='pending')
+            
+            balance, positions, active_orders = await asyncio.gather(
+                balance_task, positions_task, orders_task, return_exceptions=True
+            )
+            
+            # Handle any exceptions
+            if isinstance(balance, Exception):
+                balance = 0.0
+            if isinstance(positions, Exception):
+                positions = []
+            if isinstance(active_orders, Exception):
+                active_orders = []
+            
+            # Calculate totals
+            total_exposure = sum(pos.market_exposure for pos in positions)
+            total_fees = sum(pos.fees_paid for pos in positions)
+            total_pnl = sum(pos.realized_pnl for pos in positions)
+            
+            portfolio = Portfolio(
+                balance=balance,
+                total_value=balance + total_exposure,  # Simplified calculation
+                positions=positions,
+                daily_pnl=0.0,  # Would need historical data to calculate
+                total_pnl=total_pnl,
+                total_fees_paid=total_fees,
+                active_orders=len(active_orders),
+                last_updated=datetime.utcnow()
+            )
+            
+            return portfolio
+            
+        except Exception as e:
+            logger.error(f"Failed to get portfolio summary: {e}")
+            raise SDKError(f"Portfolio summary retrieval failed: {e}") from e
+
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """
-        Get current portfolio status and metrics.
+        Get current portfolio status and metrics (legacy method).
 
         Returns:
             Dictionary with portfolio information
+
+        Note:
+            This method is deprecated. Use get_portfolio_summary() instead.
         """
-        return {
-            "total_value": 0.0,
-            "cash_balance": 0.0,
-            "positions": [],
-            "daily_pnl": 0.0,
-            "total_pnl": 0.0,
-            "risk_metrics": {},
-        }
+        try:
+            portfolio = await self.get_portfolio_summary()
+            return {
+                "total_value": portfolio.total_value,
+                "cash_balance": portfolio.balance,
+                "positions": [
+                    {
+                        "ticker": pos.ticker,
+                        "market_name": pos.market_name,
+                        "position": pos.position,
+                        "exposure": pos.market_exposure,
+                        "pnl": pos.realized_pnl
+                    }
+                    for pos in portfolio.positions
+                ],
+                "daily_pnl": portfolio.daily_pnl,
+                "total_pnl": portfolio.total_pnl,
+                "risk_metrics": {
+                    "total_exposure": portfolio.total_exposure,
+                    "position_count": portfolio.position_count,
+                    "largest_position_exposure": portfolio.largest_position.market_exposure if portfolio.largest_position else 0,
+                    "total_fees_paid": portfolio.total_fees_paid
+                },
+            }
+        except Exception:
+            return {
+                "total_value": 0.0,
+                "cash_balance": 0.0,
+                "positions": [],
+                "daily_pnl": 0.0,
+                "total_pnl": 0.0,
+                "risk_metrics": {},
+            }
 
     def get_system_status(self) -> Dict[str, Any]:
         """
