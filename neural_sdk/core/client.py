@@ -637,6 +637,134 @@ class NeuralSDK:
         #     return await self.stream_manager.get_market_context(ticker)
         # return None
         return None  # Placeholder - implement in your integration
+    
+    async def discover_sports_markets(self) -> Dict[str, Any]:
+        """
+        Discover sports markets using Kalshi's recommended series-first approach.
+        
+        Returns:
+            Dict with discovered sports series and markets
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            sports_data = await sdk.discover_sports_markets()
+            
+            nfl_markets = sports_data.get('nfl_markets', {})
+            if nfl_markets:
+                print(f"Found NFL markets in {len(nfl_markets)} series")
+            ```
+        """
+        try:
+            # Import here to avoid circular imports
+            import sys
+            from pathlib import Path
+            
+            # Add project root to path for sports discovery import
+            project_root = Path(__file__).parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            from sports_market_discovery import SportsMarketDiscovery
+            
+            discovery = SportsMarketDiscovery()
+            
+            try:
+                # Discover using CORRECTED Kalshi approach (Football tag, not NFL)
+                sports_series = discovery.discover_sports_series()
+                nfl_series = discovery.discover_nfl_series() 
+                nfl_markets = discovery.find_nfl_markets()
+                
+                return {
+                    'sports_series': sports_series,
+                    'nfl_series': nfl_series,
+                    'nfl_markets': nfl_markets,
+                    'total_sports_series': len(sports_series),
+                    'total_nfl_series': len(nfl_series),
+                    'total_nfl_markets': sum(len(markets) for markets in nfl_markets.values())
+                }
+            finally:
+                discovery.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to discover sports markets: {e}")
+            raise SDKError(f"Sports market discovery failed: {e}") from e
+    
+    async def find_nfl_markets(self, status: str = 'open') -> List[Dict[str, Any]]:
+        """
+        Find NFL markets using proper series discovery.
+        
+        Args:
+            status: Market status filter ('open', 'active', 'closed')
+            
+        Returns:
+            List of NFL markets with metadata
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            nfl_markets = await sdk.find_nfl_markets()
+            
+            for market in nfl_markets:
+                print(f"NFL Market: {market['ticker']} - {market['title']}")
+            ```
+        """
+        try:
+            sports_data = await self.discover_sports_markets()
+            nfl_markets_by_series = sports_data.get('nfl_markets', {})
+            
+            # Flatten markets with series info
+            all_nfl_markets = []
+            for series_ticker, markets in nfl_markets_by_series.items():
+                for market in markets:
+                    market_with_series = market.copy()
+                    market_with_series['series_ticker'] = series_ticker
+                    all_nfl_markets.append(market_with_series)
+            
+            return all_nfl_markets
+            
+        except Exception as e:
+            logger.error(f"Failed to find NFL markets: {e}")
+            raise SDKError(f"NFL market search failed: {e}") from e
+    
+    async def get_working_market_ticker(self) -> Optional[str]:
+        """
+        Get a working market ticker for testing purposes.
+        
+        Returns:
+            A valid market ticker or None if no markets available
+            
+        Example:
+            ```python
+            sdk = NeuralSDK.from_env()
+            ticker = await sdk.get_working_market_ticker()
+            
+            if ticker:
+                print(f"Testing with ticker: {ticker}")
+                # Use ticker for testing your trading logic
+            ```
+        """
+        try:
+            # Import here to avoid circular imports
+            import sys
+            from pathlib import Path
+            
+            project_root = Path(__file__).parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            from sports_market_discovery import SportsMarketDiscovery
+            
+            discovery = SportsMarketDiscovery()
+            
+            try:
+                return discovery.get_working_example_ticker()
+            finally:
+                discovery.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to get working ticker: {e}")
+            return None
 
     async def execute_signal(self, signal: TradingSignal) -> TradeResult:
         """

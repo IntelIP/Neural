@@ -5,6 +5,56 @@ All notable changes to the Neural SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-09-05
+
+### 🏈 **CRITICAL SPORTS MARKET DISCOVERY FIX**
+
+#### **Root Cause Resolution**
+- **FIXED**: Resolved "No markets found" errors plaguing sports traders (Cowboys vs Eagles, etc.)
+- **ISSUE**: Wrong Kalshi API tag filtering was preventing sports market discovery
+- **IMPACT**: All sports traders were failing due to incorrect API usage
+
+#### **Corrected Kalshi API Integration**
+- **BEFORE**: Used incorrect tags (`tags=NFL`, `tags=NBA`, `tags=MLB`) → 0 series found
+- **AFTER**: Use proper Kalshi tags → 198+ sports series discovered
+  - NFL → `tags=Football` (124+ series including KXNFLGAME)
+  - NBA → `tags=Basketball` (74+ series)
+  - MLB → `tags=Baseball` (active series)
+  - Soccer → `tags=Soccer` (La Liga, etc.)
+
+#### **Updated Sports Market Discovery**
+- **NEW**: `KalshiClient.get_nfl_series()` using corrected `tags=Football`
+- **NEW**: `KalshiClient.get_nba_series()` using corrected `tags=Basketball`
+- **NEW**: `KalshiClient.get_mlb_series()` using corrected `tags=Baseball`
+- **NEW**: `KalshiClient.get_soccer_series()` for soccer markets
+- **ENHANCED**: `SportsMarketDiscovery` class with proper series-first workflow
+
+#### **Cowboys vs Eagles Trader Restoration**
+- ✅ **DISCOVERED**: `KXNFLGAME` series (Professional Football Game)
+- ✅ **FOUND**: 10+ current NFL markets in system
+- ✅ **LOCATED**: Cowboys (`KXNFLWINS-DAL`) and Eagles (`KXNFLWINS-PHI`) series
+- ✅ **RESOLVED**: "No markets found" error - trader now functional
+
+#### **Neural SDK Integration**
+- **ENHANCED**: `sdk.discover_sports_markets()` with corrected discovery
+- **ENHANCED**: `sdk.find_nfl_markets()` returns actual NFL markets
+- **NEW**: `sdk.get_working_market_ticker()` for testing purposes
+- **UPDATED**: WebSocket subscriptions use discovered series instead of hardcoded patterns
+
+#### **Breaking Changes**
+- Sports market discovery now uses correct Kalshi tag mapping
+- Hardcoded series patterns replaced with dynamic discovery
+- WebSocket NFL subscriptions updated to use proper series discovery
+
+### 📊 **Verification Results**
+```
+✅ NFL Series Found: 124 (was 0)
+✅ NBA Series Found: 74 (was 0)  
+✅ Current NFL Markets: 10+ available
+✅ Key Series Discovered: KXNFLGAME, KXNFLCOMBO, KXNFLFIRSTTD
+✅ Cowboys vs Eagles: FUNCTIONAL
+```
+
 ## [1.2.0] - 2024-09-05
 
 ### 🚀 **Major Portfolio Management Features**

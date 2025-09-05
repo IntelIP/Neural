@@ -155,7 +155,7 @@ class NeuralWebSocket:
     
     async def subscribe_nfl_game(self, game_id: str) -> None:
         """
-        Subscribe to all markets for a specific NFL game.
+        Subscribe to all markets for a specific NFL game using proper series discovery.
         
         Args:
             game_id: Game identifier (e.g., "25SEP04DALPHI")
@@ -163,30 +163,47 @@ class NeuralWebSocket:
         Raises:
             SDKError: If game markets not found or subscription fails
         """
-        if not self._market_discovery:
-            raise SDKError("Market discovery not initialized. Call connect() first.")
-        
         try:
-            # Find all markets for this game
-            nfl_markets = await self._market_discovery.discover_nfl_markets()
-            game_markets = [
-                market.ticker for market in nfl_markets 
-                if game_id.upper() in market.ticker.upper()
-            ]
+            # Import here to avoid circular imports
+            import sys
+            from pathlib import Path
             
-            if not game_markets:
-                raise SDKError(f"No markets found for game: {game_id}")
+            project_root = Path(__file__).parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
             
-            await self.subscribe_markets(game_markets)
-            logger.info(f"✅ Subscribed to {len(game_markets)} markets for game {game_id}")
+            from sports_market_discovery import SportsMarketDiscovery
             
+            discovery = SportsMarketDiscovery()
+            
+            try:
+                # Get all NFL markets using proper series discovery
+                nfl_markets = discovery.find_nfl_markets(status='open')
+                
+                # Filter for specific game
+                game_tickers = []
+                for series_ticker, markets in nfl_markets.items():
+                    for market in markets:
+                        ticker = market.get('ticker', '')
+                        if game_id.upper() in ticker.upper():
+                            game_tickers.append(ticker)
+                
+                if not game_tickers:
+                    raise SDKError(f"No markets found for game: {game_id}")
+                
+                await self.subscribe_markets(game_tickers)
+                logger.info(f"🏈 Subscribed to {len(game_tickers)} markets for NFL game: {game_id}")
+                    
+            finally:
+                discovery.close()
+                
         except Exception as e:
-            logger.error(f"Failed to subscribe to game {game_id}: {e}")
-            raise SDKError(f"Game subscription failed: {e}") from e
+            logger.error(f"Failed to subscribe to NFL game {game_id}: {e}")
+            raise SDKError(f"NFL game subscription failed: {e}") from e
     
     async def subscribe_nfl_team(self, team_code: str) -> None:
         """
-        Subscribe to all markets for a specific NFL team.
+        Subscribe to all markets for a specific NFL team using proper series discovery.
         
         Args:
             team_code: Team code (e.g., "PHI", "KC", "SF")
@@ -194,23 +211,40 @@ class NeuralWebSocket:
         Raises:
             SDKError: If team markets not found or subscription fails
         """
-        if not self._market_discovery:
-            raise SDKError("Market discovery not initialized. Call connect() first.")
-        
         try:
-            team_markets = await self._market_discovery.find_team_markets(Sport.NFL, team_code)
+            # Import here to avoid circular imports
+            import sys
+            from pathlib import Path
             
-            if not team_markets:
-                raise SDKError(f"No markets found for team: {team_code}")
+            project_root = Path(__file__).parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
             
-            market_tickers = [market.ticker for market in team_markets]
-            await self.subscribe_markets(market_tickers)
+            from sports_market_discovery import SportsMarketDiscovery
             
-            logger.info(f"✅ Subscribed to {len(market_tickers)} markets for team {team_code}")
+            discovery = SportsMarketDiscovery()
             
+            try:
+                team_markets = discovery.find_team_markets(team_code)
+                
+                if not team_markets:
+                    raise SDKError(f"No markets found for team: {team_code}")
+                
+                # Extract tickers from market data
+                market_tickers = [market.get('ticker') for market in team_markets if market.get('ticker')]
+                
+                if not market_tickers:
+                    raise SDKError(f"No valid tickers found for team: {team_code}")
+                
+                await self.subscribe_markets(market_tickers)
+                logger.info(f"🏈 Subscribed to {len(market_tickers)} markets for NFL team: {team_code}")
+                    
+            finally:
+                discovery.close()
+                
         except Exception as e:
-            logger.error(f"Failed to subscribe to team {team_code}: {e}")
-            raise SDKError(f"Team subscription failed: {e}") from e
+            logger.error(f"Failed to subscribe to NFL team {team_code}: {e}")
+            raise SDKError(f"NFL team subscription failed: {e}") from e
     
     def on_market_data(self, func: Callable) -> Callable:
         """
