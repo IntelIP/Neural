@@ -2,19 +2,32 @@
 # Configure your data sources here
 
 sources:
-  # DraftKings Sportsbook Odds
-  - name: draftkings
+  # The Odds API - Comprehensive Sports Betting Odds
+  - name: odds_api
     enabled: true
-    class: DraftKingsAdapter
-    module: sdk.adapters.draftkings
+    class: OddsAPIAdapter
+    module: neural_sdk.data_sources.odds.rest_adapter
     priority: 1  # Higher priority = processed first
     config:
+      api_key: ${ODDS_API_KEY}
       sports:
-        - NFL
-        - NBA
-        - MLB
-      poll_interval: 5  # seconds
-      min_odds_change: 0.03  # 3% minimum change to trigger event
+        - americanfootball_nfl
+        - basketball_nba
+        - baseball_mlb
+        - americanfootball_ncaaf
+      regions: us
+      markets: 
+        - h2h
+        - spreads
+        - totals
+      bookmakers:
+        - draftkings
+        - fanduel
+        - betmgm
+        - caesars
+      odds_format: american
+      cache_ttl: 300  # 5 minutes to preserve API quota
+      update_interval: 60  # 1 minute minimum between updates
   
   # Reddit Game Threads
   - name: reddit
@@ -41,7 +54,7 @@ sources:
   - name: espn
     enabled: true  # No API key needed - completely free!
     class: ESPNAdapter
-    module: sdk.adapters.espn
+    module: neural_sdk.sdk.adapters.espn
     priority: 1  # High priority for real-time game events
     config:
       sports:
