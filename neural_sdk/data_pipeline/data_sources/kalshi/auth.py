@@ -37,7 +37,6 @@ class KalshiAuth:
             
             environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
             api_base_url = "https://api.elections.kalshi.com/trade-api/v2" if environment == "prod" else "https://demo-api.kalshi.co/trade-api/v2"
-            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2" if environment == "prod" else "wss://demo-api.kalshi.co/trade-api/ws/v2"
             
             # Load private key from file  
             private_key_file = os.getenv("KALSHI_PRIVATE_KEY_FILE", "./keys/kalshi_prod_private.key")
@@ -55,8 +54,7 @@ class KalshiAuth:
                 api_key_id=os.getenv("KALSHI_API_KEY_ID"),
                 private_key=private_key,
                 environment=environment,
-                api_base_url=api_base_url,
-                ws_url=ws_url
+                api_base_url=api_base_url
             )
         
         self.config = config
@@ -142,8 +140,8 @@ class KalshiAuth:
         Returns:
             Dictionary of WebSocket authentication headers
         """
-        # WebSocket connections use GET method
-        return self.get_auth_headers('GET', '/trade-api/ws/v2')
+        # WebSocket connections use GET method with root path
+        return self.get_auth_headers('GET', '/')
     
     def validate_timestamp(self, timestamp: str, max_age_seconds: int = 30) -> bool:
         """

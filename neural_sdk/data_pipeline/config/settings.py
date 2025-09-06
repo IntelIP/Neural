@@ -1,5 +1,5 @@
 """
-Kalshi WebSocket Infrastructure - Configuration Settings
+Kalshi API Configuration Settings
 """
 
 import os
@@ -21,7 +21,7 @@ for env_file in env_files:
 
 @dataclass
 class KalshiConfig:
-    """Configuration for Kalshi WebSocket infrastructure"""
+    """Configuration for Kalshi API"""
     
     # API Credentials
     api_key_id: str
@@ -32,14 +32,12 @@ class KalshiConfig:
     
     # API URLs
     api_base_url: str
-    ws_url: str
     
     # Connection Settings
-    heartbeat_interval: int = 30  # seconds
     reconnect_attempts: int = 5
     reconnect_delay: int = 5  # seconds
     
-    # Subscription Settings
+    # Request Settings
     max_subscriptions: int = 100
     batch_size: int = 10  # for batch operations
     
@@ -70,14 +68,11 @@ def get_config() -> KalshiConfig:
     # Set URLs based on environment
     if environment == 'prod':
         api_base_url = 'https://api.elections.kalshi.com/trade-api/v2/'
-        ws_url = 'wss://api.elections.kalshi.com/trade-api/ws/v2'
     else:  # demo
         api_base_url = 'https://demo-api.kalshi.co/trade-api/v2/'
-        ws_url = 'wss://demo-api.kalshi.co/trade-api/ws/v2'
     
     # Override with explicit URL if provided
     api_base_url = os.getenv('KALSHI_API_BASE', api_base_url)
-    ws_url = os.getenv('KALSHI_WS_URL', ws_url)
     
     # Get credentials
     api_key_id = os.getenv('KALSHI_API_KEY_ID')
@@ -128,8 +123,6 @@ def get_config() -> KalshiConfig:
         private_key=private_key,
         environment=environment,
         api_base_url=api_base_url,
-        ws_url=ws_url,
-        heartbeat_interval=int(os.getenv('KALSHI_HEARTBEAT_INTERVAL', '30')),
         reconnect_attempts=int(os.getenv('KALSHI_RECONNECT_ATTEMPTS', '5')),
         reconnect_delay=int(os.getenv('KALSHI_RECONNECT_DELAY', '5')),
         max_subscriptions=int(os.getenv('KALSHI_MAX_SUBSCRIPTIONS', '100')),

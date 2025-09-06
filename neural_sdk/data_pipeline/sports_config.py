@@ -4,13 +4,14 @@ Define sports and their Kalshi series tickers for standardized market discovery
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 from enum import Enum
 
 
 class Sport(Enum):
     """Supported sports"""
     NFL = "nfl"
+    NCAAF = "ncaaf"
     CFP = "cfp"
 
 
@@ -22,6 +23,7 @@ class SportConfig:
     series_ticker: str
     season_active: bool = True
     market_types: List[str] = None
+    championship_ticker: Optional[str] = None
 
     def __post_init__(self):
         if self.market_types is None:
@@ -35,7 +37,17 @@ SPORT_CONFIGS: Dict[Sport, SportConfig] = {
         display_name="NFL",
         series_ticker="KXNFLGAME",
         season_active=True,
-        market_types=["game_winner", "spread", "total", "player_props"]
+        market_types=["game_winner", "spread", "total", "player_props"],
+        championship_ticker="KXSB"  # Super Bowl
+    ),
+    
+    Sport.NCAAF: SportConfig(
+        name="ncaaf",
+        display_name="NCAA Football",
+        series_ticker="KXNCAAFGAME",  # Individual games
+        season_active=True,
+        market_types=["game_winner", "spread", "total"],
+        championship_ticker="KXNCAAF"  # Championship winner
     ),
     
     Sport.CFP: SportConfig(
