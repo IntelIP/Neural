@@ -54,9 +54,6 @@ from .core.exceptions import (
 from .strategies import BaseStrategy, StrategySignal
 from .utils import setup_logging
 
-# Import streaming functionality
-from .streaming import NeuralWebSocket, NFLMarketStream, MarketStream
-
 # Convenience imports for common use cases
 __all__ = [
     "NeuralSDK",
@@ -79,8 +76,4 @@ __all__ = [
     "StrategySignal",
     # Utils
     "setup_logging",
-    # Streaming functionality
-    "NeuralWebSocket",
-    "NFLMarketStream", 
-    "MarketStream",
 ]

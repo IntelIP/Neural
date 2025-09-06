@@ -42,20 +42,25 @@ class KalshiClient:
             environment = os.getenv("KALSHI_ENVIRONMENT", "prod")
             # FORCE PRODUCTION ENDPOINTS - NO DEMO ALLOWED
             api_base_url = "https://api.elections.kalshi.com/trade-api/v2"
-            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2"
             
             # Log which endpoint we're using  
             print(f"🏭 Kalshi Client: Forcing production endpoints")
             print(f"🔗 API: {api_base_url}")
-            print(f"🔌 WebSocket: {ws_url}")
             print(f"🌍 Environment variable: {environment}")
+            
+            # Load private key from file if not in environment
+            private_key = os.getenv("KALSHI_PRIVATE_KEY")
+            if not private_key:
+                private_key_file = os.getenv("KALSHI_PRIVATE_KEY_FILE")
+                if private_key_file:
+                    with open(private_key_file, 'r') as f:
+                        private_key = f.read()
             
             config = KalshiConfig(
                 api_key_id=os.getenv("KALSHI_API_KEY_ID"),
-                private_key=os.getenv("KALSHI_PRIVATE_KEY"),
+                private_key=private_key,
                 environment=environment,
-                api_base_url=api_base_url,
-                ws_url=ws_url
+                api_base_url=api_base_url
             )
         
         self.config = config
@@ -225,7 +230,9 @@ class KalshiClient:
         self,
         limit: int = 100,
         cursor: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        series_ticker: Optional[str] = None,
+        with_nested_markets: bool = False
     ) -> Dict[str, Any]:
         """
         Get events from the API
@@ -234,6 +241,8 @@ class KalshiClient:
             limit: Number of events to retrieve
             cursor: Pagination cursor
             status: Filter by event status
+            series_ticker: Filter by series ticker
+            with_nested_markets: Include nested market data in response
         
         Returns:
             Events response
@@ -243,8 +252,35 @@ class KalshiClient:
             params['cursor'] = cursor
         if status:
             params['status'] = status
+        if series_ticker:
+            params['series_ticker'] = series_ticker
+        if with_nested_markets:
+            params['with_nested_markets'] = True
         
         return self.get('/events', params=params)
+    
+    def get_events_with_markets(
+        self,
+        series_ticker: Optional[str] = None,
+        status: str = 'open'
+    ) -> List[Dict[str, Any]]:
+        """
+        Get events with their nested markets
+        
+        Args:
+            series_ticker: Filter by series ticker (e.g., 'KXNFLGAME')
+            status: Event status filter
+        
+        Returns:
+            List of events with nested markets
+        """
+        response = self.get_events(
+            limit=200,
+            status=status,
+            series_ticker=series_ticker,
+            with_nested_markets=True
+        )
+        return response.get('events', [])
     
     def get_series(
         self,

@@ -1221,52 +1221,30 @@ class NeuralSDK:
 
         return health
 
-    # WebSocket Methods
+    # Streaming Methods
     
-    def create_websocket(self):
+    def create_rest_stream(self, poll_interval: float = 2.0):
         """
-        Create a WebSocket client for real-time market data streaming.
+        Create a REST API market streamer for real-time data.
+        
+        Args:
+            poll_interval: Seconds between polls (default 2.0)
         
         Returns:
-            NeuralWebSocket: WebSocket client instance
+            RESTMarketStream: REST-based market streaming client
             
         Example:
             ```python
             sdk = NeuralSDK.from_env()
-            websocket = sdk.create_websocket()
+            streamer = sdk.create_rest_stream(poll_interval=1.5)
             
-            @websocket.on_market_data
-            async def handle_price_update(market_data):
-                print(f"Price: {market_data['yes_price']}")
-            
-            await websocket.connect()
-            await websocket.subscribe_markets(['NFL-*'])
+            # Stream markets
+            markets = ['KXNFLGAME-25SEP05KCLAC-KC']
+            await streamer.stream_markets(markets, duration=300)
             ```
         """
-        from ..streaming.websocket import NeuralWebSocket
-        return NeuralWebSocket(self.config)
-    
-    def create_nfl_stream(self):
-        """
-        Create an NFL-specific market stream.
-        
-        Returns:
-            NFLMarketStream: NFL market streaming client
-            
-        Example:
-            ```python
-            sdk = NeuralSDK.from_env()
-            nfl_stream = sdk.create_nfl_stream()
-            
-            await nfl_stream.connect()
-            await nfl_stream.subscribe_to_game("25SEP04DALPHI")
-            
-            game_summary = nfl_stream.get_game_summary("25SEP04DALPHI")
-            print(f"Win probability: {game_summary['win_probability']}")
-            ```
-        """
-        from ..streaming.market_stream import NFLMarketStream
-        return NFLMarketStream(self.config)
+        from ..streaming.rest_stream import RESTMarketStream
+        return RESTMarketStream(poll_interval=poll_interval)
     
     async def start_streaming(self, markets: List[str] = None):
         """
