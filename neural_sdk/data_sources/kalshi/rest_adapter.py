@@ -216,18 +216,25 @@ class KalshiRESTAdapter(RESTDataSource):
         **kwargs
     ) -> Dict:
         """
-        Get events.
-        
+        Get events from Kalshi.
+
         Args:
-            limit: Maximum number of events
-            status: Event status filter
-            series_ticker: Series ticker filter
-            with_nested_markets: Include market details
-            cursor: Pagination cursor
-            **kwargs: Additional filters
-            
+            limit: Maximum number of events to return (default: 100)
+            status: Filter events by status (e.g., 'open', 'closed')
+            series_ticker: Filter by series ticker
+            with_nested_markets: Include nested market details in response (default: False)
+            cursor: Pagination cursor for fetching next page
+            **kwargs: Additional query parameters
+
         Returns:
-            Events data
+            Dict containing events data with standardized format
+
+        Examples:
+            # Get first 50 open events
+            events = await adapter.get_events(limit=50, status='open')
+
+            # Get events with nested markets for pagination
+            events = await adapter.get_events(with_nested_markets=True, cursor='abc123')
         """
         params = {
             "limit": limit,
@@ -316,13 +323,23 @@ class KalshiRESTAdapter(RESTDataSource):
     
     async def get_game_markets(self, sport: Optional[str] = None) -> Dict:
         """
-        Get game/sports betting markets.
-        
+        Get game/sports betting markets from Kalshi.
+
+        Uses events with nested markets for accurate discovery, with fallback to markets endpoint.
+
         Args:
-            sport: Optional sport filter ("soccer", "nfl", "bundesliga", "epl")
-            
+            sport: Optional sport filter for categorization
+                  ("soccer", "nfl", "bundesliga", "epl", "cfb")
+
         Returns:
-            Game markets
+            Dict with standardized response containing markets array
+
+        Examples:
+            # Get all game markets
+            markets = await adapter.get_game_markets()
+
+            # Get only NFL markets
+            nfl_markets = await adapter.get_game_markets(sport='nfl')
         """
         # Prefer events with nested markets and paginate
         events = await self._paginate_events(
@@ -405,14 +422,22 @@ class KalshiRESTAdapter(RESTDataSource):
     
     async def get_nfl_markets(self, week: Optional[int] = None) -> Dict:
         """
-        Get NFL-related markets.
-        Uses events with nested markets when available.
-        
+        Get NFL-related markets with optional week filtering.
+
+        Uses events with nested markets for comprehensive discovery.
+
         Args:
-            week: NFL week number (for filtering)
-            
+            week: Optional NFL week number to filter markets (e.g., 1, 2)
+
         Returns:
-            NFL-related markets
+            Dict with NFL markets, tagged with sport='NFL' and league='National Football League'
+
+        Examples:
+            # Get all NFL markets
+            nfl_markets = await adapter.get_nfl_markets()
+
+            # Get NFL markets for week 1
+            week1_markets = await adapter.get_nfl_markets(week=1)
         """
         # Fetch events first, with nested markets
         events = await self._paginate_events(
@@ -456,14 +481,22 @@ class KalshiRESTAdapter(RESTDataSource):
     
     async def get_cfb_markets(self, week: Optional[int] = None) -> Dict:
         """
-        Get college football markets.
-        Uses events with nested markets when available.
-        
+        Get college football markets with optional week filtering.
+
+        Uses events with nested markets for comprehensive discovery.
+
         Args:
-            week: College football week number
-            
+            week: Optional college football week number to filter markets
+
         Returns:
-            CFB markets
+            Dict with CFB markets, tagged with sport='CFB' and league='College Football'
+
+        Examples:
+            # Get all CFB markets
+            cfb_markets = await adapter.get_cfb_markets()
+
+            # Get CFB markets for week 1
+            week1_markets = await adapter.get_cfb_markets(week=1)
         """
         # Fetch events first, with nested markets
         events = await self._paginate_events(
