@@ -6,29 +6,34 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/neural-sdk.svg)](https://badge.fury.io/py/neural-sdk)
-[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/neural/neural-sdk/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://github.com/neural/neural-sdk/releases)
 
-## 🔥 What's New in v1.1.0
+## 🔥 What's New in v1.4.0
 
-**Real-time WebSocket Streaming is here!** Connect directly to Kalshi's WebSocket API for instant market data updates.
+**Complete WebSocket Infrastructure Rewrite!** Production-grade real-time trading with arbitrage detection, risk management, and multi-source data correlation.
 
 ```python
-from neural_sdk import NeuralSDK
+from neural_sdk.trading.real_time_engine import RealTimeTradingEngine
+from neural_sdk.data_sources.unified.stream_manager import UnifiedStreamManager
 
-sdk = NeuralSDK.from_env()
+# NEW: Production-grade trading engine with risk management
+stream_manager = UnifiedStreamManager()
+engine = RealTimeTradingEngine(stream_manager)
 
-# NEW: Real-time WebSocket streaming
-websocket = sdk.create_websocket()
+# Real-time arbitrage detection
+@engine.on_arbitrage
+async def handle_arbitrage(opportunity):
+    print(f"💰 ARBITRAGE: {opportunity.divergence:.1%} profit potential")
 
-@websocket.on_market_data
-async def handle_live_data(data):
-    print(f"🔴 LIVE: {data.ticker} = ${data.yes_price}")
-
-await websocket.connect()
-await websocket.subscribe_markets(['KXNFLGAME*'])  # All NFL games
+await engine.start()
 ```
 
-**🏈 NFL Market Streaming**: Specialized support for NFL prediction markets with automatic game detection.
+**Key Features:**
+- 🚀 **Real-Time Trading Engine** with multi-strategy support
+- 💰 **Arbitrage Detection** between Kalshi and 70+ sportsbooks
+- 🛡️ **Risk Management** with circuit breakers and position limits
+- 📊 **Unified Data Streams** correlating multiple sources
+- 🏈 **The Odds API** integration for comprehensive sports data
 
 ## 🚀 Quick Start
 
@@ -36,11 +41,11 @@ await websocket.subscribe_markets(['KXNFLGAME*'])  # All NFL games
 
 #### For Team Members (Private Access)
 ```bash
-# Install latest Neural SDK v1.1.0 with WebSocket streaming
-pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+# Install latest Neural SDK v1.4.0 with complete WebSocket infrastructure
+pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.4.0
 
 # Or with uv (recommended - faster)
-uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.4.0
 
 # For development
 git clone https://github.com/IntelIP/Neural-Trading-Platform.git

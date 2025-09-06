@@ -5,6 +5,160 @@ All notable changes to the Neural SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-09-06
+
+### 🚀 **Complete WebSocket Infrastructure & Real-Time Trading Engine**
+
+#### **Revolutionary WebSocket Architecture**
+- **NEW**: Production-grade WebSocket base framework with automatic reconnection
+- **NEW**: Full Kalshi WebSocket adapter supporting all channels
+- **NEW**: Unified stream manager correlating multiple data sources
+- **NEW**: Real-time trading engine with signal generation
+- **ENHANCED**: Event-driven architecture for sub-second response times
+
+#### **Real-Time Trading Capabilities**
+- **NEW**: `RealTimeTradingEngine` with multi-strategy support
+- **NEW**: Automatic signal generation from market events
+- **NEW**: Order management system with fill tracking
+- **NEW**: Position tracking with real-time P&L calculation
+- **NEW**: Risk management with circuit breakers and daily limits
+
+#### **Arbitrage & Market Analysis**
+- **NEW**: Real-time arbitrage detection between Kalshi and sportsbooks
+- **NEW**: Divergence monitoring with configurable thresholds
+- **NEW**: Market correlation analysis across data sources
+- **NEW**: Volatility calculation with rolling windows
+- **NEW**: Line movement detection for sports betting
+
+#### **The Odds API Integration**
+- **NEW**: Complete integration with The Odds API
+- **REPLACED**: DraftKings scraper with reliable API solution
+- **NEW**: Support for 70+ sportsbooks worldwide
+- **NEW**: Historical odds data access
+- **NEW**: Live scores and game results
+
+#### **WebSocket Channels Supported**
+```python
+# All Kalshi channels now supported
+KalshiChannel.TICKER           # Price updates
+KalshiChannel.ORDERBOOK_DELTA  # Order book changes
+KalshiChannel.TRADE            # Executed trades
+KalshiChannel.FILL             # Order fills
+KalshiChannel.MARKET_POSITIONS # Position updates
+KalshiChannel.MARKET_LIFECYCLE # Market status changes
+```
+
+#### **Risk Management Features**
+- **NEW**: `RiskLimits` configuration with comprehensive controls
+- **NEW**: Stop-loss and take-profit mechanisms
+- **NEW**: Maximum position size limits
+- **NEW**: Daily loss limits with automatic trading halt
+- **NEW**: Maximum daily trades restriction
+- **NEW**: Position concentration limits
+
+#### **Demo Applications**
+- **NEW**: `websocket_trading_demo.py` - Complete trading simulation
+- **NEW**: `websocket_monitor.py` - Connection health monitoring
+- **NEW**: `arbitrage_scanner.py` - Real-time arbitrage detection
+
+### ✨ **Usage Examples**
+
+#### **Real-Time Trading Engine**
+```python
+from neural_sdk.trading.real_time_engine import (
+    RealTimeTradingEngine, RiskLimits
+)
+from neural_sdk.data_sources.unified.stream_manager import (
+    UnifiedStreamManager, StreamConfig
+)
+
+# Configure stream manager
+config = StreamConfig(
+    enable_kalshi=True,
+    enable_odds_polling=True,
+    divergence_threshold=0.05
+)
+
+stream_manager = UnifiedStreamManager(config)
+
+# Set risk limits
+risk_limits = RiskLimits(
+    max_position_size=1000,
+    max_daily_loss=500,
+    stop_loss_percentage=0.10
+)
+
+# Create trading engine
+engine = RealTimeTradingEngine(stream_manager, risk_limits)
+
+# Add strategy
+async def momentum_strategy(market_data, engine):
+    if market_data.kalshi_yes_price < 0.30:
+        return TradingSignal(
+            signal_type=SignalType.BUY,
+            market_ticker=market_data.ticker,
+            confidence=0.8,
+            size=100
+        )
+
+engine.add_strategy(momentum_strategy)
+await engine.start()
+```
+
+#### **Arbitrage Detection**
+```python
+# Unified stream manager automatically detects arbitrage
+stream_manager.on(EventType.ARBITRAGE_OPPORTUNITY, handle_arbitrage)
+
+async def handle_arbitrage(event):
+    ticker = event["ticker"]
+    kalshi_price = event["data"].kalshi_yes_price
+    odds_price = event["data"].odds_implied_prob_home
+    divergence = abs(kalshi_price - odds_price)
+    
+    if divergence > 0.08:  # 8% arbitrage opportunity
+        print(f"💰 ARBITRAGE: {ticker} - {divergence:.1%} profit potential")
+```
+
+### 🛠️ **Technical Improvements**
+
+#### **Architecture Enhancements**
+- **NEW**: Clean separation between WebSocket and REST infrastructures
+- **NEW**: Abstract base classes for extensibility
+- **NEW**: Comprehensive error handling with retry logic
+- **NEW**: Message queuing during disconnections
+- **NEW**: Heartbeat/keepalive mechanisms
+
+#### **Performance Optimizations**
+- **IMPROVED**: Sub-second latency for market data updates
+- **ENHANCED**: Concurrent processing with asyncio
+- **OPTIMIZED**: Memory-efficient data structures
+- **ADDED**: Connection pooling for REST calls
+- **IMPROVED**: Event dispatch performance
+
+### 📊 **Testing & Quality**
+- **NEW**: Comprehensive test suite with 14+ test cases
+- **ADDED**: WebSocket connection mocking
+- **ENHANCED**: API compatibility testing
+- **IMPROVED**: Test coverage for real-time components
+
+### 🐛 **Bug Fixes**
+- **FIXED**: WebSocket reconnection edge cases
+- **RESOLVED**: Data synchronization issues
+- **FIXED**: Memory leaks in long-running connections
+- **IMPROVED**: Error message clarity
+
+### 🔧 **Breaking Changes**
+- **NONE**: Full backward compatibility maintained
+- **Note**: New WebSocket infrastructure supersedes v1.1.0 implementation
+
+### 📦 **Dependencies**
+- **ADDED**: `aiohttp` for WebSocket connections
+- **MAINTAINED**: All existing dependencies unchanged
+- **ENHANCED**: Better integration between components
+
+---
+
 ## [1.3.0] - 2025-09-05
 
 ### 🏈 **CRITICAL SPORTS MARKET DISCOVERY FIX**
