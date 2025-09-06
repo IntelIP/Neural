@@ -40,10 +40,9 @@ class TestDataModels:
         """Test UnifiedMarketData creation and methods."""
         data = UnifiedMarketData(
             ticker="TEST-MARKET",
-            game_id="game_001",
             kalshi_yes_price=0.65,
             kalshi_volume=1000,
-            odds_implied_prob_home=0.70,
+            odds_consensus_home=0.70,
             timestamp=datetime.utcnow()
         )
         
@@ -53,7 +52,7 @@ class TestDataModels:
         # Test compute_metrics
         data.compute_metrics()
         assert data.divergence_score > 0
-        assert data.arbitrage_exists == True  # Due to divergence
+        assert data.arbitrage_exists is True  # Due to divergence
     
     def test_trading_signal(self):
         """Test TradingSignal creation."""
@@ -91,9 +90,9 @@ class TestDataModels:
         """Test Position creation and P&L calculation."""
         position = Position(
             market_ticker="TEST-MARKET",
+            side="yes",
             size=100,
-            average_price=0.50,
-            timestamp=datetime.utcnow()
+            average_price=0.50
         )
         
         assert position.market_ticker == "TEST-MARKET"
@@ -102,17 +101,18 @@ class TestDataModels:
         assert position.unrealized_pnl == 0.0
         
         # Update price and calculate P&L
-        position.current_price = 0.55
-        position.update_pnl()
+        position.update_pnl(0.55)
         
-        assert position.unrealized_pnl == 5.0  # 100 * (0.55 - 0.50)
+        assert position.current_price == 0.55
+        assert abs(position.unrealized_pnl - 5.0) < 0.01  # 100 * (0.55 - 0.50)
     
     def test_order(self):
         """Test Order creation and status updates."""
         order = Order(
             order_id="order_001",
+            signal_id="signal_001",
             market_ticker="TEST-MARKET",
-            side="buy",
+            side="yes",
             size=100,
             price=0.50,
             order_type="limit",
@@ -122,7 +122,7 @@ class TestDataModels:
         
         assert order.order_id == "order_001"
         assert order.status == OrderStatus.PENDING
-        assert order.side == "buy"
+        assert order.side == "yes"
         assert order.size == 100
         
         # Update status
@@ -144,7 +144,7 @@ class TestKalshiChannels:
         assert KalshiChannel.TRADE.value == "trade"
         assert KalshiChannel.FILL.value == "fill"
         assert KalshiChannel.MARKET_POSITIONS.value == "market_positions"
-        assert KalshiChannel.MARKET_LIFECYCLE_V2.value == "market_lifecycle_v2"
+        assert KalshiChannel.MARKET_LIFECYCLE.value == "market_lifecycle_v2"
 
 
 class TestStreamConfig:
@@ -154,9 +154,9 @@ class TestStreamConfig:
         """Test default StreamConfig values."""
         config = StreamConfig()
         
-        assert config.enable_kalshi == True
-        assert config.enable_odds_polling == False
-        assert config.odds_poll_interval == 60
+        assert config.enable_kalshi is True
+        assert config.enable_odds_polling is True  # Default is True
+        assert config.odds_poll_interval == 30  # Default is 30
         assert config.correlation_window == 5
         assert config.divergence_threshold == 0.05
     
@@ -184,12 +184,12 @@ class TestEventTypes:
         """Test EventType enum values."""
         assert EventType.PRICE_UPDATE.value == "price_update"
         assert EventType.ORDERBOOK_UPDATE.value == "orderbook_update"
-        assert EventType.TRADE.value == "trade"
-        assert EventType.FILL.value == "fill"
+        assert EventType.TRADE_EXECUTED.value == "trade_executed"
+        assert EventType.ODDS_UPDATE.value == "odds_update"
+        assert EventType.LINE_MOVEMENT.value == "line_movement"
         assert EventType.ARBITRAGE_OPPORTUNITY.value == "arbitrage_opportunity"
         assert EventType.DIVERGENCE_DETECTED.value == "divergence_detected"
-        assert EventType.CONNECTION_ERROR.value == "connection_error"
-        assert EventType.RECONNECTED.value == "reconnected"
+        assert EventType.SIGNAL_GENERATED.value == "signal_generated"
 
 
 class TestTradingStats:
@@ -205,7 +205,7 @@ class TestTradingStats:
         assert stats.total_pnl == 0.0
         assert stats.daily_pnl == 0.0
         assert stats.win_rate is None
-        assert stats.total_signals == 0
+        assert stats.max_drawdown == 0.0
     
     def test_stats_calculation(self):
         """Test stats calculations."""
@@ -246,6 +246,7 @@ class TestSignalTypes:
         assert SignalType.BUY.value == "buy"
         assert SignalType.SELL.value == "sell"
         assert SignalType.HOLD.value == "hold"
+        assert SignalType.CLOSE.value == "close"
 
 
 if __name__ == "__main__":
