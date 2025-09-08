@@ -43,8 +43,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_sdk_to_websocket_integration(self, mock_config):
         """Test integration from SDK to WebSocket."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery') as MockDiscovery:
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery') as MockDiscovery:
             
             # Set up mocks
             mock_ws_client = AsyncMock()
@@ -78,8 +78,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_sdk_streaming_integration(self, mock_config):
         """Test SDK integrated streaming functionality."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery'):
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery'):
             
             mock_ws_client = AsyncMock()
             MockKalshiWS.return_value = mock_ws_client
@@ -123,8 +123,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_nfl_stream_integration(self, mock_config):
         """Test NFL stream integration."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery') as MockDiscovery:
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery') as MockDiscovery:
             
             # Set up mocks
             mock_ws_client = AsyncMock()
@@ -183,8 +183,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_event_handler_integration(self, mock_config):
         """Test event handler integration across components."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery'):
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery'):
             
             mock_ws_client = AsyncMock()
             MockKalshiWS.return_value = mock_ws_client
@@ -231,7 +231,7 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_error_handling_integration(self, mock_config):
         """Test error handling across integration points."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS:
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS:
             
             # Test connection failure
             mock_ws_client = AsyncMock()
@@ -252,8 +252,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_configuration_integration(self, mock_config):
         """Test configuration integration across components."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery'):
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery'):
             
             MockKalshiWS.return_value = AsyncMock()
             
@@ -271,8 +271,8 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_operations(self, mock_config):
         """Test concurrent WebSocket operations."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery'):
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery'):
             
             mock_ws_client = AsyncMock()
             MockKalshiWS.return_value = mock_ws_client
@@ -325,8 +325,8 @@ class TestEndToEndIntegration:
     @pytest.mark.asyncio
     async def test_complete_nfl_streaming_workflow(self, mock_config):
         """Test complete NFL streaming workflow from SDK to data processing."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery') as MockDiscovery:
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery') as MockDiscovery:
             
             # Set up comprehensive mocks
             mock_ws_client = AsyncMock()
@@ -415,8 +415,8 @@ class TestEndToEndIntegration:
     @pytest.mark.asyncio
     async def test_multi_component_integration(self, mock_config):
         """Test integration across multiple SDK components."""
-        with patch('neural_sdk.streaming.websocket.KalshiWebSocket') as MockKalshiWS, \
-             patch('neural_sdk.streaming.websocket.KalshiMarketDiscovery'):
+        with patch('neural_sdk.data_sources.kalshi.websocket_adapter.KalshiWebSocketAdapter') as MockKalshiWS, \
+             patch('neural_sdk.data_pipeline.data_sources.kalshi.market_discovery.KalshiMarketDiscovery'):
             
             MockKalshiWS.return_value = AsyncMock()
             

@@ -6,9 +6,20 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/neural-sdk.svg)](https://badge.fury.io/py/neural-sdk)
-[![Version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://github.com/neural/neural-sdk/releases)
+[![Version](https://img.shields.io/badge/version-1.4.1-green.svg)](https://github.com/neural/neural-sdk/releases)
 
-## 🔥 What's New in v1.4.0
+## 🔥 What's New in v1.4.1
+
+**Bug Fixes & Streaming Module Improvements!** Complete streaming module structure with unified WebSocket interface and enhanced test coverage.
+
+### v1.4.1 Highlights:
+- ✅ Fixed test suite import errors for streaming modules
+- 📦 Complete `neural_sdk.streaming` module structure
+- 🔌 `NeuralWebSocket` class for unified interface
+- 📊 Market stream handlers (Orderbook, Ticker, Trade)
+- 🏈 `NFLMarketStream` for specialized game tracking
+
+## 📚 What's New in v1.4.0
 
 **Complete WebSocket Infrastructure Rewrite!** Production-grade real-time trading with arbitrage detection, risk management, and multi-source data correlation.
 
@@ -39,28 +50,23 @@ await engine.start()
 
 ### Installation
 
-#### For Team Members (Private Access)
 ```bash
-# Install latest Neural SDK v1.4.0 with complete WebSocket infrastructure
-pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.4.0
+# Install from PyPI
+pip install neural-sdk
 
-# Or with uv (recommended - faster)
-uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.4.0
-
-# For development
-git clone https://github.com/IntelIP/Neural-Trading-Platform.git
-cd Neural-Trading-Platform
+# Or install from source
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
 pip install -e .
 ```
 
-#### Authentication Setup
+#### Configuration
 ```bash
-# One-time setup for team members
-git config --global credential.helper store
+# Copy the example configuration
+cp .env.example .env
 
-# Or use SSH (more secure)
-ssh-keygen -t ed25519 -C "your-email@company.com"
-# Add public key to GitHub account
+# Edit .env with your API credentials
+# Get Kalshi API keys from: https://trading.kalshi.com/settings/api-keys
 ```
 
 ### Basic Usage

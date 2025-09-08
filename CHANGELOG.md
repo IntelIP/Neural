@@ -5,6 +5,22 @@ All notable changes to the Neural SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-09-07
+
+### 🐛 Bug Fixes & Improvements
+- **FIXED**: Test suite import errors for streaming modules
+- **ADDED**: Complete streaming module structure (`neural_sdk.streaming`)
+- **ADDED**: `NeuralWebSocket` class for unified WebSocket interface
+- **ADDED**: Market stream handlers (OrderbookHandler, TickerHandler, TradeHandler)
+- **ADDED**: `NFLMarketStream` for specialized NFL game tracking
+- **IMPROVED**: Test coverage for WebSocket functionality
+- **FIXED**: Module imports and exports in main SDK package
+
+### 📚 Documentation
+- **UPDATED**: API documentation for new streaming components
+- **ADDED**: Examples for WebSocket usage patterns
+- **IMPROVED**: Integration test documentation
+
 ## [1.4.0] - 2025-09-06
 
 ### 🚀 **Complete WebSocket Infrastructure & Real-Time Trading Engine**

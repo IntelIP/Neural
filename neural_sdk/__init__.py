@@ -36,8 +36,8 @@ Example:
     ```
 """
 
-__version__ = "1.4.0"
-__author__ = "Neural SDK Team"
+__version__ = "1.4.1"
+__author__ = "Neural Team ~ Subsidiary of IntelIP"
 __email__ = "sdk@neural.dev"
 
 from .core.client import MarketData, NeuralSDK, TradeResult, TradingSignal, Position, Order, Portfolio
@@ -54,9 +54,13 @@ from .core.exceptions import (
 from .strategies import BaseStrategy, StrategySignal
 from .utils import setup_logging
 
+# Import streaming components
+from .streaming.websocket import NeuralWebSocket
+
 # Convenience imports for common use cases
 __all__ = [
     "NeuralSDK",
+    "NeuralWebSocket",
     "SDKConfig",
     "TradingSignal",
     "MarketData",
