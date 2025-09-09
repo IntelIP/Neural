@@ -5,7 +5,8 @@ description = "Neural - Open-source SDK for algorithmic prediction market tradin
 authors = [
     {name = "Neural Team ~ Subsidiary of IntelIP", email = "sdk@neural.dev"}
 ]
-license = {text = "MIT"}
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10, <3.13"
 keywords = ["trading", "neural", "prediction-markets", "algorithmic", "sdk", "backtesting", "ai"]
 classifiers = [
