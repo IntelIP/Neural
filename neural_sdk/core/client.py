@@ -1029,22 +1029,18 @@ class NeuralSDK:
             client = KalshiClient()
             
             try:
-                # Prepare order data
+                # Prepare order data (minimal fields matching Kalshi examples)
                 order_data = {
                     "ticker": ticker,
-                    "client_order_id": f"neural_sdk_{int(datetime.utcnow().timestamp())}",
-                    "side": side,
-                    "action": action.lower(),
+                    "side": side.lower(),
                     "count": quantity,
                     "type": order_type,
                 }
-                
-                # Add price for limit orders
+                # Add price for limit orders (cents)
                 if order_type == "limit":
-                    order_data["yes_price"] = int(price * 100)  # Convert to cents
-                
-                # Place order via API
-                response = client.post('/orders', json_data=order_data)
+                    order_data["price"] = int(price * 100)
+                # Use portfolio orders endpoint
+                response = client.post('/portfolio/orders', json_data=order_data)
                 
                 # Parse response into Order object
                 order = Order(

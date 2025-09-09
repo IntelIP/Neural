@@ -57,25 +57,19 @@ def discover_cfb_game_series():
     return None, []
 
 
-def get_todays_games(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Filter events for games happening today"""
-    today = datetime.now().date()
-    tomorrow = today + timedelta(days=1)
-    
-    todays_games = []
+def get_all_open_cfb_games(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Get all open CFB events, including live/in-progress, no date filter"""
+    open_games = []
     
     for event in events:
-        # Check expected expiration time or close time
-        exp_time_str = event.get('expected_expiration_time') or event.get('close_time')
-        if exp_time_str:
-            try:
-                exp_time = datetime.fromisoformat(exp_time_str.replace('Z', '+00:00'))
-                if today <= exp_time.date() <= tomorrow:
-                    todays_games.append(event)
-            except:
-                pass
+        # Check if it's a CFB event and open
+        title = event.get('title', '').lower()
+        status = event.get('status')
+        if 'college football' in title or 'ncaa' in title or 'cfb' in title:
+            if status == 'open':  # Tradable/live markets
+                open_games.append(event)
     
-    return todays_games
+    return open_games
 
 
 def display_game_markets(event: Dict[str, Any]):

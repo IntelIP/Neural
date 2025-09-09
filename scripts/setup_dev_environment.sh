@@ -1,6 +1,6 @@
 #!/bin/bash
 # Neural SDK Development Environment Setup
-# Version: 1.1.0
+# Version: 1.4.0
 
 echo "🏗️  Setting up Neural SDK development environment..."
 echo ""
@@ -21,12 +21,12 @@ echo "📦 Installing development tools..."
 pip install build twine pytest black isort mypy uv ruff
 
 # Clone repository for development
-if [ ! -d "Neural-Trading-Platform" ]; then
+if [ ! -d "neural-sdk" ]; then
     echo "📥 Cloning Neural SDK repository..."
-    git clone https://github.com/IntelIP/Neural-Trading-Platform.git
+    git clone https://github.com/neural/neural-sdk.git
 fi
 
-cd Neural-Trading-Platform
+cd neural-sdk
 
 # Install in development mode
 echo "🔧 Installing Neural SDK in development mode..."

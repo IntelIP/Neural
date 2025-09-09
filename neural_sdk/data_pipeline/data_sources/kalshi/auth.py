@@ -113,18 +113,24 @@ class KalshiAuth:
         
         return base64.b64encode(signature).decode('utf-8')
     
-    def get_auth_headers(self, method: str, path: str) -> Dict[str, str]:
+    def get_auth_headers(self, method: str, path: str, use_ms: Optional[bool] = None) -> Dict[str, str]:
         """
         Get authentication headers for a request
         
         Args:
             method: HTTP method
             path: API path
+            use_ms: If True, use millisecond epoch timestamps (REST). If False,
+                    use seconds (WebSocket). If None, auto-detect: seconds for
+                    paths containing '/ws', milliseconds otherwise.
         
         Returns:
             Dictionary of authentication headers
         """
-        timestamp = str(int(time.time()))
+        if use_ms is None:
+            use_ms = ('/ws' not in path)
+        ts_val = int(time.time() * 1000) if use_ms else int(time.time())
+        timestamp = str(ts_val)
         signature = self.sign_request(method, path, timestamp)
         
         return {
@@ -141,7 +147,7 @@ class KalshiAuth:
             Dictionary of WebSocket authentication headers
         """
         # WebSocket connections use GET method with root path
-        return self.get_auth_headers('GET', '/')
+        return self.get_auth_headers('GET', '/', use_ms=False)
     
     def validate_timestamp(self, timestamp: str, max_age_seconds: int = 30) -> bool:
         """

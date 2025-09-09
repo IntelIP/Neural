@@ -1,51 +1,620 @@
-# API Reference
+# 📚 Neural SDK API Reference
 
-Complete API documentation for the Neural SDK.
+> **Complete API documentation for Neural SDK v1.4.0**
 
-## Core Classes
+## Table of Contents
 
-### NeuralSDK
-Main SDK class for trading operations.
-
-### BacktestEngine  
-Event-driven backtesting engine.
-
-### BacktestConfig
-Configuration for backtesting parameters.
-
-## Data Providers
-
-### DataProvider (Base)
-Abstract base class for data providers.
-
-### CSVProvider
-Load data from CSV files.
-
-### ParquetProvider  
-Load data from Parquet files with PyArrow support.
-
-### S3Provider (Optional)
-Load data from Amazon S3 buckets.
-
-### DatabaseProvider (Optional)
-Load data from SQL databases.
-
-## Portfolio Management
-
-### Portfolio
-Portfolio simulation with realistic costs.
-
-### Position
-Individual market position tracking.
-
-### Trade
-Trade execution record.
-
-## Performance Analytics
-
-### PerformanceMetrics
-Comprehensive trading performance metrics.
+1. [Core SDK](#core-sdk)
+2. [WebSocket Infrastructure](#websocket-infrastructure)
+3. [Trading Engine](#trading-engine)
+4. [Data Sources](#data-sources)
+5. [Backtesting](#backtesting)
+6. [Risk Management](#risk-management)
+7. [Utilities](#utilities)
 
 ---
 
-*Full API documentation will be available at [neural-sdk.readthedocs.io](https://neural-sdk.readthedocs.io/)*
+## Core SDK
+
+### `NeuralSDK`
+
+Main SDK client for trading operations.
+
+```python
+from neural_sdk import NeuralSDK
+
+sdk = NeuralSDK.from_env()
+```
+
+#### Methods
+
+##### `from_env(prefix: str = "NEURAL_") -> NeuralSDK`
+Create SDK instance from environment variables.
+
+##### `create_signal(action, market_ticker, **kwargs) -> TradingSignal`
+Create a trading signal.
+
+**Parameters:**
+- `action` (str): "BUY", "SELL", or "HOLD"
+- `market_ticker` (str): Market identifier
+- `side` (str): "YES" or "NO" (default: "YES")
+- `confidence` (float): Signal confidence 0.0-1.0
+- `quantity` (int): Order quantity
+- `price_limit` (float): Price limit for order
+
+##### `@strategy` decorator
+Register a trading strategy.
+
+```python
+@sdk.strategy
+async def my_strategy(market_data):
+    if market_data.yes_price < 0.30:
+        return sdk.create_signal("BUY", market_data.ticker)
+```
+
+##### `start_trading() -> None`
+Start the trading system with all registered strategies.
+
+---
+
+## WebSocket Infrastructure
+
+### `WebSocketDataSource`
+
+Base class for WebSocket connections with automatic reconnection.
+
+```python
+from neural_sdk.data_sources.base.websocket_source import WebSocketDataSource
+
+class MyWebSocket(WebSocketDataSource):
+    async def on_message(self, message):
+        # Handle incoming messages
+        pass
+```
+
+#### Configuration
+
+```python
+from neural_sdk.data_sources.base.websocket_source import ConnectionConfig
+
+config = ConnectionConfig(
+    url="wss://api.example.com/ws",
+    api_key="your_api_key",
+    heartbeat_interval=30,
+    reconnect_interval=5,
+    max_reconnect_attempts=10
+)
+```
+
+### `KalshiWebSocketAdapter`
+
+Kalshi-specific WebSocket implementation.
+
+```python
+from neural_sdk.data_sources.kalshi.websocket_adapter import (
+    KalshiWebSocketAdapter, 
+    KalshiChannel
+)
+
+ws = KalshiWebSocketAdapter(api_key="your_key")
+await ws.connect()
+
+# Subscribe to channels
+channels = [
+    KalshiChannel.TICKER,
+    KalshiChannel.ORDERBOOK_DELTA,
+    KalshiChannel.TRADE
+]
+await ws.subscribe_market("KXMLBGAME-25SEP06WSHCHC-WSH", channels)
+```
+
+#### Available Channels
+
+- `TICKER` - Real-time price updates
+- `ORDERBOOK_DELTA` - Order book changes
+- `TRADE` - Executed trades
+- `FILL` - Your order fills
+- `MARKET_POSITIONS` - Your position updates
+- `MARKET_LIFECYCLE` - Market status changes
+
+### `UnifiedStreamManager`
+
+Coordinates multiple data sources in real-time.
+
+```python
+from neural_sdk.data_sources.unified.stream_manager import (
+    UnifiedStreamManager,
+    StreamConfig,
+    EventType
+)
+
+config = StreamConfig(
+    enable_kalshi=True,
+    enable_odds_polling=True,
+    odds_poll_interval=30,
+    correlation_window=5,
+    divergence_threshold=0.05
+)
+
+manager = UnifiedStreamManager(config)
+
+# Register event handlers
+@manager.on(EventType.ARBITRAGE_OPPORTUNITY)
+async def handle_arbitrage(event):
+    print(f"Arbitrage: {event['data'].divergence_score:.1%}")
+
+await manager.start()
+```
+
+#### Event Types
+
+- `PRICE_UPDATE` - Market price changes
+- `ARBITRAGE_OPPORTUNITY` - Arbitrage detected
+- `DIVERGENCE_DETECTED` - Price divergence found
+- `VOLATILITY_SPIKE` - Unusual volatility
+- `CONNECTION_STATE` - Connection status changes
+
+---
+
+## Trading Engine
+
+### `RealTimeTradingEngine`
+
+Production-grade trading engine with risk management.
+
+```python
+from neural_sdk.trading.real_time_engine import (
+    RealTimeTradingEngine,
+    RiskLimits,
+    TradingSignal,
+    SignalType
+)
+
+risk_limits = RiskLimits(
+    max_position_size=1000,
+    max_order_size=100,
+    max_daily_loss=500.0,
+    max_daily_trades=50,
+    max_open_positions=10,
+    stop_loss_percentage=0.10,
+    take_profit_percentage=0.20
+)
+
+engine = RealTimeTradingEngine(stream_manager, risk_limits)
+```
+
+#### Adding Strategies
+
+```python
+async def momentum_strategy(market_data, engine):
+    history = engine.stream_manager.get_market_history(market_data.ticker)
+    if len(history) >= 5:
+        prices = [h.kalshi_yes_price for h in history[-5:]]
+        if prices[-1] > prices[0] * 1.02:  # 2% increase
+            return TradingSignal(
+                signal_type=SignalType.BUY,
+                market_ticker=market_data.ticker,
+                confidence=0.7,
+                size=50
+            )
+    return None
+
+engine.add_strategy(momentum_strategy)
+```
+
+### `TradingSignal`
+
+Signal generated by strategies.
+
+```python
+@dataclass
+class TradingSignal:
+    signal_id: str              # Unique signal ID
+    timestamp: datetime         # Signal generation time
+    market_ticker: str          # Market to trade
+    signal_type: SignalType     # BUY/SELL/HOLD/CLOSE
+    confidence: float           # Signal confidence (0-1)
+    size: Optional[int]         # Position size
+    reason: Optional[str]       # Signal reason
+    metadata: Optional[Dict]    # Additional data
+```
+
+### `RiskLimits`
+
+Risk management configuration.
+
+```python
+@dataclass
+class RiskLimits:
+    max_position_size: int = 1000      # Max shares per position
+    max_order_size: int = 100          # Max shares per order
+    max_daily_loss: float = 1000.0     # Daily loss limit
+    max_daily_trades: int = 100        # Max trades per day
+    max_open_positions: int = 10       # Max concurrent positions
+    stop_loss_percentage: float = 0.10 # Stop-loss threshold
+    take_profit_percentage: float = 0.20 # Take-profit threshold
+```
+
+---
+
+## Data Sources
+
+### `KalshiRESTAdapter`
+
+REST API adapter for Kalshi.
+
+```python
+from neural_sdk.data_sources.kalshi.rest_adapter import KalshiRESTAdapter
+
+kalshi = KalshiRESTAdapter()
+
+# Get markets
+markets = await kalshi.get_markets(
+    limit=100,
+    status="open",
+    series_ticker="NFL"
+)
+
+# Get single market
+market = await kalshi.get_market("KXMLBGAME-25SEP06WSHCHC-WSH")
+
+# Get orderbook
+orderbook = await kalshi.get_market_orderbook("KXMLBGAME-25SEP06WSHCHC-WSH")
+```
+
+### `OddsAPIAdapter`
+
+Integration with The Odds API for sportsbook data.
+
+```python
+from neural_sdk.data_sources.odds.rest_adapter import OddsAPIAdapter
+
+odds_api = OddsAPIAdapter(api_key="your_key")
+
+# Get NFL odds
+nfl_odds = await odds_api.get_nfl_odds()
+
+# Get odds for specific sport
+odds = await odds_api.get_odds("americanfootball_nfl")
+
+# Get historical odds
+historical = await odds_api.get_historical_odds(
+    sport="americanfootball_nfl",
+    date="2024-09-01"
+)
+```
+
+### `ESPNAdapter`
+
+ESPN data integration for play-by-play and statistics.
+
+```python
+from neural_sdk.data_sources.espn import ESPNAdapter
+
+espn = ESPNAdapter()
+
+# Get play-by-play data
+plays = await espn.get_play_by_play(game_id="401547503")
+
+# Get team statistics
+stats = await espn.get_team_stats(team_id="PHI")
+```
+
+---
+
+## Backtesting
+
+### `BacktestEngine`
+
+Historical strategy testing framework.
+
+```python
+from neural_sdk.backtesting import BacktestEngine, BacktestConfig
+
+config = BacktestConfig(
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    initial_capital=10000,
+    commission=0.02,
+    slippage=0.01
+)
+
+engine = BacktestEngine(config)
+engine.add_strategy(my_strategy)
+engine.load_data("csv", path="data.csv")
+
+results = engine.run()
+```
+
+### `BacktestResults`
+
+Results from backtesting.
+
+```python
+@dataclass
+class BacktestResults:
+    total_return: float          # Total return percentage
+    sharpe_ratio: float          # Risk-adjusted return
+    max_drawdown: float          # Maximum drawdown
+    win_rate: float              # Percentage of winning trades
+    total_trades: int            # Number of trades
+    profit_factor: float         # Gross profit / gross loss
+    daily_returns: pd.Series    # Daily return series
+    equity_curve: pd.Series     # Portfolio value over time
+```
+
+### Performance Metrics
+
+```python
+metrics = results.calculate_metrics()
+
+# Available metrics
+metrics['sharpe_ratio']     # Risk-adjusted returns
+metrics['sortino_ratio']    # Downside risk-adjusted returns
+metrics['calmar_ratio']     # Return / max drawdown
+metrics['max_drawdown']     # Maximum peak-to-trough loss
+metrics['var_95']           # Value at Risk (95% confidence)
+metrics['cvar_95']          # Conditional VaR
+```
+
+---
+
+## Risk Management
+
+### `Portfolio`
+
+Portfolio management and tracking.
+
+```python
+from neural_sdk.core.client import Portfolio
+
+portfolio = Portfolio(initial_capital=10000)
+
+# Add position
+portfolio.add_position(
+    ticker="KXMLBGAME-25SEP06WSHCHC-WSH",
+    position=100,
+    average_price=0.55
+)
+
+# Get metrics
+print(f"Total value: ${portfolio.total_value}")
+print(f"P&L: ${portfolio.total_pnl}")
+print(f"Active positions: {portfolio.active_positions}")
+```
+
+### `Position`
+
+Individual position tracking.
+
+```python
+@dataclass
+class Position:
+    ticker: str                  # Market ticker
+    position: int                # Number of shares
+    average_price: float         # Average entry price
+    current_price: float         # Current market price
+    unrealized_pnl: float       # Unrealized profit/loss
+    realized_pnl: float         # Realized profit/loss
+    market_exposure: float      # Dollar exposure
+```
+
+### `Order`
+
+Order representation.
+
+```python
+@dataclass
+class Order:
+    order_id: str               # Unique order ID
+    market_ticker: str          # Market to trade
+    side: str                   # BUY or SELL
+    size: int                   # Order size
+    order_type: str             # MARKET or LIMIT
+    limit_price: Optional[float] # Limit price if applicable
+    status: OrderStatus         # Order status
+    created_at: datetime        # Order creation time
+    filled_at: Optional[datetime] # Fill time
+    average_fill_price: Optional[float] # Fill price
+```
+
+---
+
+## Utilities
+
+### `setup_logging()`
+
+Configure logging for the SDK.
+
+```python
+from neural_sdk.utils import setup_logging
+
+setup_logging(
+    level="INFO",
+    log_file="trading.log",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+```
+
+### `MarketData`
+
+Market data container.
+
+```python
+@dataclass
+class MarketData:
+    ticker: str
+    yes_price: float
+    no_price: float
+    yes_bid: Optional[float]
+    yes_ask: Optional[float]
+    no_bid: Optional[float]
+    no_ask: Optional[float]
+    volume: int
+    open_interest: int
+    last_update: Optional[datetime]
+    
+    @property
+    def spread(self) -> Optional[float]:
+        """Calculate bid-ask spread."""
+        if self.yes_ask and self.yes_bid:
+            return self.yes_ask - self.yes_bid
+        return None
+    
+    @property
+    def implied_probability(self) -> float:
+        """Calculate implied probability."""
+        return self.yes_price / (self.yes_price + self.no_price)
+```
+
+### `UnifiedMarketData`
+
+Unified data from multiple sources.
+
+```python
+@dataclass
+class UnifiedMarketData:
+    ticker: str
+    timestamp: datetime
+    
+    # Kalshi data
+    kalshi_yes_price: Optional[float]
+    kalshi_no_price: Optional[float]
+    kalshi_volume: Optional[float]
+    kalshi_open_interest: Optional[float]
+    
+    # Odds data
+    odds_consensus_home: Optional[float]
+    odds_consensus_away: Optional[float]
+    
+    # Computed metrics
+    arbitrage_exists: bool
+    divergence_score: Optional[float]
+    volatility: Optional[float]
+```
+
+---
+
+## Error Handling
+
+### Exception Classes
+
+```python
+from neural_sdk.core.exceptions import (
+    SDKError,              # Base exception class
+    ConfigurationError,    # Configuration issues
+    ConnectionError,       # Network/connection issues
+    TradingError,         # Trading-related errors
+    ValidationError       # Data validation errors
+)
+
+try:
+    await sdk.place_order(order)
+except TradingError as e:
+    logger.error(f"Trading error: {e}")
+except ConnectionError as e:
+    logger.error(f"Connection lost: {e}")
+```
+
+---
+
+## Configuration
+
+### `SDKConfig`
+
+Main SDK configuration.
+
+```python
+from neural_sdk.core.config import SDKConfig
+
+config = SDKConfig(
+    api_key_id="your_key_id",
+    private_key="your_private_key",
+    environment="prod",  # or "demo"
+    max_position_size=0.05,
+    daily_loss_limit=0.20,
+    commission=0.02,
+    slippage=0.01
+)
+
+sdk = NeuralSDK(config)
+```
+
+### Environment Variables
+
+```bash
+# Required
+NEURAL_API_KEY_ID=your_api_key_id
+NEURAL_PRIVATE_KEY=your_private_key
+
+# Optional
+NEURAL_ENVIRONMENT=prod
+NEURAL_MAX_POSITION_SIZE=0.05
+NEURAL_DAILY_LOSS_LIMIT=0.20
+NEURAL_COMMISSION=0.02
+NEURAL_SLIPPAGE=0.01
+
+# Data sources
+OPENWEATHER_API_KEY=your_weather_key
+ODDS_API_KEY=your_odds_key
+```
+
+---
+
+## Examples
+
+### Complete Trading System
+
+```python
+import asyncio
+from neural_sdk import NeuralSDK
+from neural_sdk.trading.real_time_engine import RealTimeTradingEngine, RiskLimits
+from neural_sdk.data_sources.unified.stream_manager import UnifiedStreamManager
+
+async def main():
+    # Initialize components
+    sdk = NeuralSDK.from_env()
+    stream_manager = UnifiedStreamManager()
+    
+    # Configure risk management
+    risk_limits = RiskLimits(
+        max_position_size=1000,
+        max_daily_loss=500
+    )
+    
+    # Create trading engine
+    engine = RealTimeTradingEngine(stream_manager, risk_limits)
+    
+    # Add strategy
+    @engine.strategy
+    async def my_strategy(data):
+        if data.kalshi_yes_price < 0.30:
+            return engine.create_signal("BUY", data.ticker)
+    
+    # Start trading
+    await engine.start()
+    
+    # Subscribe to markets
+    await stream_manager.track_market("KXMLBGAME-25SEP06WSHCHC-WSH")
+    
+    # Run for 1 hour
+    await asyncio.sleep(3600)
+    
+    # Shutdown
+    await engine.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+## Support
+
+- **GitHub Issues**: [Report bugs](https://github.com/neural/neural-sdk/issues)
+- **Documentation**: [Full docs](https://neural-sdk.readthedocs.io)
+- **Discord**: [Community chat](https://discord.gg/neural-sdk)
+
+---
+
+*Last updated: September 2025 | Version: 1.4.0*

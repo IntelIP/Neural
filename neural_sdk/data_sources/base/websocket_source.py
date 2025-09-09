@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 from dataclasses import dataclass, field
+from typing import Dict, Optional
 import aiohttp
 from collections import deque
 
@@ -40,6 +41,8 @@ class ConnectionConfig:
     connection_timeout: int = 30  # seconds
     message_queue_size: int = 10000
     max_subscriptions: int = 100
+    # Optional headers to include when establishing the WS connection
+    headers: Optional[Dict[str, str]] = None
 
 
 @dataclass
@@ -191,7 +194,7 @@ class WebSocketDataSource(ABC):
             timeout = aiohttp.ClientTimeout(total=self.config.connection_timeout)
             
             # Add authentication headers if needed
-            headers = {}
+            headers = dict(self.config.headers or {})
             if self.config.api_key:
                 headers["Authorization"] = f"Bearer {self.config.api_key}"
             

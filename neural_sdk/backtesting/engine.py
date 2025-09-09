@@ -264,10 +264,10 @@ class BacktestEngine:
 
         # Filter by date range
         self.data["timestamp"] = pd.to_datetime(self.data["timestamp"])
-        mask = (self.data["timestamp"] >= self.config.start_date) & (
-            self.data["timestamp"] <= self.config.end_date
+        mask = (self.data["timestamp"] >= pd.to_datetime(self.config.start_date)) & (
+            self.data["timestamp"] <= pd.to_datetime(self.config.end_date)
         )
-        self.data = self.data[mask].sort_values("timestamp")
+        self.data = self.data[mask].sort_values("timestamp").reset_index(drop=True)
 
         logger.info(f"Loaded {len(self.data)} data points from {source}")
         return self.data
@@ -404,7 +404,6 @@ class BacktestEngine:
                 quantity=size,
                 price=execution_price,
                 commission=commission,
-                value=trade_value,
             )
             self.trades.append(trade)
 

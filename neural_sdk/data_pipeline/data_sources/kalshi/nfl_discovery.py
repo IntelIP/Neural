@@ -24,6 +24,10 @@ class NFLMarketDiscovery:
         """
         self.client = client or KalshiClient()
         self.nfl_series_ticker = "KXNFLGAME"
+        self.team_codes = {
+            'ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','HOU','IND','JAX','LAC','LAR',
+            'MIA','MIN','NYG','NYJ','PHI','PIT','SEA','SF','TEN','WAS','WSH','KC','GB','TB','NE','NO','LV'
+        }
         
     def get_all_nfl_events(self, status: str = "open") -> List[Dict[str, Any]]:
         """
@@ -169,6 +173,79 @@ class NFLMarketDiscovery:
         
         logger.info(f"Found {len(unique_tickers)} unique markets for team {team_code}")
         return unique_tickers
+
+    # New: end-to-end discovery for "today's" NFL winner markets
+    def get_today_winner_markets(self, include_preopen: bool = True) -> List[str]:
+        """
+        Discover today's NFL Game Winner markets.
+
+        Uses events with nested markets for series KXNFLGAME, matches current date
+        token (YYMMMDD) in event/market tickers, and returns winner tickers:
+        - Explicit WINNER contracts, or
+        - Team-side YES contracts where last segment equals one of the game teams
+        """
+        from datetime import datetime, timezone
+        month_map = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+        now = datetime.now(timezone.utc)
+        token = f"{now.year % 100:02d}{month_map[now.month-1]}{now.day:02d}"  # e.g., 25SEP07
+
+        tickers: List[str] = []
+        cursor = None
+        status = None if include_preopen else 'open'
+
+        while True:
+            params = {
+                'limit': 200,
+                'series_ticker': self.nfl_series_ticker,
+                'with_nested_markets': True
+            }
+            if status:
+                params['status'] = status
+            if cursor:
+                params['cursor'] = cursor
+            try:
+                resp = self.client.get('/events', params=params)
+            except Exception as e:
+                logger.error(f"Failed to get NFL events: {e}")
+                break
+
+            events = resp.get('events', [])
+            for ev in events:
+                ev_ticker = (ev.get('ticker') or ev.get('event_ticker') or '').upper()
+                if token not in ev_ticker:
+                    # fallback: check nested markets for date token
+                    nested = ev.get('markets', []) or []
+                    if not any(token in (m.get('ticker','').upper()) for m in nested):
+                        continue
+                # Collect winner markets from nested
+                for m in ev.get('markets', []) or []:
+                    t = (m.get('ticker') or '').upper()
+                    if not t.startswith('KXNFLGAME-'):
+                        continue
+                    if token not in t:
+                        continue
+                    if t.endswith('-SPREAD') or t.endswith('-TOTAL'):
+                        continue
+                    parts = t.split('-')
+                    if len(parts) < 3:
+                        continue
+                    game_slug = parts[1]
+                    last = parts[-1]
+                    if last == 'WINNER' or (last in self.team_codes and last in game_slug):
+                        tickers.append(t)
+            cursor = resp.get('cursor')
+            if not cursor:
+                break
+
+        # Deduplicate preserving order
+        seen = set()
+        out = []
+        for t in tickers:
+            if t not in seen:
+                seen.add(t)
+                out.append(t)
+        logger.info(f"Discovered {len(out)} NFL winner tickers for {token}")
+        return out
     
     def get_game_markets(self, home_team: str, away_team: str, status: str = "open") -> List[str]:
         """

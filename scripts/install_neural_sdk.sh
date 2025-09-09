@@ -1,21 +1,21 @@
 #!/bin/bash
-# Neural SDK Team Installation Script
-# Version: 1.1.0
+# Neural SDK Installation Script
+# Version: 1.4.0
 
-echo "🧠 Installing Neural SDK v1.1.0 with WebSocket Streaming..."
+echo "🧠 Installing Neural SDK v1.4.0..."
 echo ""
 
 # Check if uv is available (faster package manager)
 if command -v uv &> /dev/null; then
     echo "⚡ Using uv for fast installation..."
-    uv add git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+    uv add neural-sdk
 else
     echo "📦 Using pip for installation..."
-    pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+    pip install neural-sdk
 fi
 
 echo ""
-echo "✅ Neural SDK v1.1.0 installed successfully!"
+echo "✅ Neural SDK v1.4.0 installed successfully!"
 echo "🔥 WebSocket streaming ready to use!"
 echo ""
 

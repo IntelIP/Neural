@@ -3,7 +3,7 @@ name = "neural-sdk"
 version = "1.4.0"
 description = "Neural - Open-source SDK for algorithmic prediction market trading"
 authors = [
-    {name = "Neural SDK Team", email = "sdk@neural.dev"}
+    {name = "Neural Team ~ Subsidiary of IntelIP", email = "sdk@neural.dev"}
 ]
 license = {text = "MIT"}
 requires-python = ">=3.10, <3.13"

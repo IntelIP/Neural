@@ -110,7 +110,6 @@ class Portfolio:
         """Total market value of all positions."""
         return sum(pos.market_value for pos in self.positions.values())
 
-    @property
     def total_value(self, market_data: Optional[Dict[str, Any]] = None) -> float:
         """Total portfolio value (cash + positions)."""
         if market_data and "prices" in market_data:

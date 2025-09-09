@@ -1,20 +1,21 @@
-# 🚀 Neural SDK Team Installation Guide
+# 🚀 Neural SDK Installation Guide
 
-**Quick setup for team members to start using Neural SDK v1.1.0 WebSocket streaming**
+**Quick setup for using Neural SDK v1.4.0 with WebSocket streaming**
 
 ## 🎯 Quick Start (2 minutes)
 
-### Option 1: One-Command Install
+### Option 1: Install from PyPI
 ```bash
-# Download and run installation script
-curl -sSL https://raw.githubusercontent.com/IntelIP/Neural-Trading-Platform/main/scripts/install_neural_sdk.sh -o /tmp/install_neural.sh && \
-bash /tmp/install_neural.sh
+# Install latest Neural SDK
+pip install neural-sdk
 ```
 
-### Option 2: Manual Install
+### Option 2: Install from Source
 ```bash
-# Install Neural SDK v1.1.0 directly
-pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+# Clone and install
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
+pip install -e .
 
 # Verify installation
 python -c "from neural_sdk import NeuralSDK, __version__; print(f'✅ Neural SDK {__version__}')"
@@ -97,8 +98,8 @@ docker run -it \
 
 ```bash
 # For SDK development
-git clone https://github.com/IntelIP/Neural-Trading-Platform.git
-cd Neural-Trading-Platform
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
 pip install -e .
 
 # Run all tests
@@ -110,7 +111,7 @@ pytest tests/unit/test_websocket_simple.py -v
 ### Authentication Issues
 ```bash
 # Check GitHub access
-git ls-remote https://github.com/IntelIP/Neural-Trading-Platform.git
+git ls-remote https://github.com/neural/neural-sdk.git
 
 # Update credentials
 git config --global --unset credential.helper
@@ -121,7 +122,7 @@ git config --global credential.helper store
 ```bash
 # Reinstall with force
 pip uninstall neural-sdk -y
-pip install --force-reinstall git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+pip install --force-reinstall neural-sdk
 ```
 
 ### WebSocket Connection Issues
@@ -136,7 +137,7 @@ print('Environment:', os.getenv('KALSHI_ENVIRONMENT', 'development'))
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/IntelIP/Neural-Trading-Platform/issues)
+- **Issues**: [GitHub Issues](https://github.com/neural/neural-sdk/issues)
 - **Documentation**: [WebSocket Guide](WEBSOCKET_STREAMING_GUIDE.md)
 - **Examples**: [examples/](../examples/) directory
 

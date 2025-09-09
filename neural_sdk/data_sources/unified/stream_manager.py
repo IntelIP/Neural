@@ -353,7 +353,7 @@ class UnifiedStreamManager:
         
         # Fetch NFL odds (could be expanded to other sports)
         try:
-            odds_list = await self.odds_api.get_nfl_odds()
+            odds_list = await self.odds_api.get_ncaaf_odds()
             
             for game in odds_list:
                 game_id = game.id

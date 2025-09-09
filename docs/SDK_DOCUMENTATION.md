@@ -1,4 +1,4 @@
-# 📚 Neural Trading Platform SDK Documentation
+# 📚 Neural SDK Documentation
 
 ## Overview
 
@@ -24,12 +24,13 @@ The Neural Trading Platform SDK enables easy integration of custom data sources 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/IntelIP/Neural-Trading-Platform.git
-cd Neural-Trading-Platform
+# Install from PyPI
+pip install neural-sdk
 
-# Install dependencies
-pip install -r requirements.txt
+# Or clone the repository
+git clone https://github.com/neural/neural-sdk.git
+cd neural-sdk
+pip install -e .
 ```
 
 ### Basic Usage

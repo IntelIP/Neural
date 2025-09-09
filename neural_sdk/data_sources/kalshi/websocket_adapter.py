@@ -13,6 +13,7 @@ from enum import Enum
 
 from ..base.websocket_source import WebSocketDataSource, ConnectionConfig
 from neural_sdk.data_pipeline.data_sources.kalshi.client import KalshiClient
+from neural_sdk.data_pipeline.data_sources.kalshi.auth import KalshiAuth
 
 logger = logging.getLogger(__name__)
 
@@ -52,21 +53,27 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
         self.config_obj = self.kalshi_client.config
         
         # Determine WebSocket URL based on environment
-        if self.config_obj.environment == "production":
-            ws_url = "wss://api.elections.kalshi.com"
+        # Use Kalshi WS v2 path (per docs)
+        if str(self.config_obj.environment).lower().startswith("prod"):
+            ws_url = "wss://api.elections.kalshi.com/trade-api/ws/v2"
         else:
-            ws_url = "wss://demo-api.elections.kalshi.com"
+            ws_url = "wss://demo-api.kalshi.co/trade-api/ws/v2"
+
+        # Build Kalshi RSA-PSS auth headers for WS connect
+        auth = KalshiAuth(self.kalshi_client.config)
+        ws_headers = auth.get_auth_headers("GET", "/trade-api/ws/v2")
         
         # Create WebSocket config
         ws_config = ConnectionConfig(
             url=ws_url,
-            api_key=self.config_obj.api_key_id,
+            api_key=None,  # Use signed headers for Kalshi WS, not bearer
             heartbeat_interval=30,
             reconnect_interval=5,
             max_reconnect_attempts=10,
             connection_timeout=30,
             message_queue_size=10000,
-            max_subscriptions=100
+            max_subscriptions=100,
+            headers=ws_headers
         )
         
         super().__init__(ws_config, name="KalshiWebSocket")
@@ -205,13 +212,13 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
         # Create future for response
         future = asyncio.Future()
         self._pending_requests[self._message_id] = future
-        
+
         if await self.send(message):
             try:
                 # Wait for response with timeout
                 result = await asyncio.wait_for(future, timeout=5.0)
-                
-                if result.get("success"):
+                # Consider either explicit success flag or Kalshi 'subscribed' type an ack
+                if result.get("success") or result.get("type") in ("subscribed", "ack", "success"):
                     # Track subscription
                     if channel not in self._channel_subscriptions:
                         self._channel_subscriptions[channel] = set()
@@ -222,7 +229,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
                     return True
                 else:
                     logger.error(f"Subscription failed: {result.get('error')}")
-                    
+                
             except asyncio.TimeoutError:
                 logger.error(f"Subscription timeout for {channel}")
             finally:
@@ -312,7 +319,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
         Args:
             message: Parsed message data
         """
-        # Check if this is a response to a request
+        # Check if this is a response to a request (subscription ack)
         msg_id = message.get("id")
         if msg_id and msg_id in self._pending_requests:
             future = self._pending_requests.get(msg_id)
@@ -322,7 +329,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
         
         # Process data messages
         msg_type = message.get("type")
-        channel = message.get("channel")
+        channel = message.get("channel") or msg_type
         
         if not msg_type and not channel:
             # Could be subscription response
@@ -346,7 +353,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
     
     async def _process_ticker(self, message: Dict[str, Any]):
         """Process ticker update."""
-        data = message.get("data", {})
+        data = message.get("data") or message.get("msg") or {}
         market_ticker = data.get("market_ticker")
         
         ticker_data = {
@@ -368,7 +375,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
     
     async def _process_orderbook(self, message: Dict[str, Any]):
         """Process orderbook delta."""
-        data = message.get("data", {})
+        data = message.get("data") or message.get("msg") or {}
         market_ticker = data.get("market_ticker")
         
         orderbook_data = {
@@ -386,7 +393,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
     
     async def _process_trade(self, message: Dict[str, Any]):
         """Process executed trade."""
-        data = message.get("data", {})
+        data = message.get("data") or message.get("msg") or {}
         market_ticker = data.get("market_ticker")
         
         trade_data = {
@@ -404,7 +411,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
     
     async def _process_fill(self, message: Dict[str, Any]):
         """Process order fill."""
-        data = message.get("data", {})
+        data = message.get("data") or message.get("msg") or {}
         
         fill_data = {
             "type": "fill",
@@ -436,7 +443,7 @@ class KalshiWebSocketAdapter(WebSocketDataSource):
     
     async def _process_lifecycle(self, message: Dict[str, Any]):
         """Process market lifecycle event."""
-        data = message.get("data", {})
+        data = message.get("data") or message.get("msg") or {}
         market_ticker = data.get("market_ticker")
         
         lifecycle_data = {

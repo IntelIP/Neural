@@ -24,7 +24,7 @@ jobs:
     
     - name: Test Git Installation
       run: |
-        pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0
+        pip install neural-sdk
     
     - name: Verify Installation
       run: |

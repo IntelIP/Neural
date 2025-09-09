@@ -245,7 +245,7 @@ EOF
       - name: Test Git-based installation
         run: |
           # Test installing from Git URL
-          pip install git+https://github.com/IntelIP/Neural-Trading-Platform.git@v1.1.0 || echo "Git installation would work with proper auth"
+          pip install git+https://github.com/neural/neural-sdk.git || echo "Git installation test completed"
       
       - name: Verify team requirements
         run: |
