@@ -78,18 +78,21 @@ class ESPNClient:
         
         return data
     
-    async def get_scoreboard(self, sport: str = "nfl") -> Dict[str, Any]:
+    async def get_scoreboard(self, sport: str = "nfl", date: Optional[str] = None) -> Dict[str, Any]:
         """
-        Get current scoreboard for a sport
+        Get scoreboard for a sport, optionally for a specific date (YYYYMMDD)
         
         Args:
             sport: Sport identifier
+            date: Optional date string in YYYYMMDD format
             
         Returns:
             Scoreboard data with all current games
         """
         sport_path = self.SPORT_PATHS.get(sport, sport)
         url = f"{self.BASE_URL}/{sport_path}/scoreboard"
+        if date:
+            url += f"?dates={date}"
         return await self._make_request(url)
     
     async def get_game_summary(self, game_id: str, sport: str = "nfl") -> Dict[str, Any]:
