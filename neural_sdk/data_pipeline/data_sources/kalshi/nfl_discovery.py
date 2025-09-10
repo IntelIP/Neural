@@ -34,13 +34,13 @@ class NFLMarketDiscovery:
         Get all NFL events and their nested markets.
         
         Args:
-            status: Optional event/market status filter (open, closed, settled, active). If None, fetches all events.
+            status: Optional event/market status filter (open, closed, settled). If None, fetches all events.
             
         Returns:
             List of market dictionaries, each containing market details and parent event title.
         """
         try:
-            logger.info(f"Fetching NFL events with status: {status if status else 'any'}")
+            logger.info(f"Fetching NFL events with status: {status if status else 'any'} (valid: open, closed, settled)")
             
             all_markets_data = []
             cursor = None
