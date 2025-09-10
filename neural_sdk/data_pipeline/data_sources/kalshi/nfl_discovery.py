@@ -29,46 +29,71 @@ class NFLMarketDiscovery:
             'MIA','MIN','NYG','NYJ','PHI','PIT','SEA','SF','TEN','WAS','WSH','KC','GB','TB','NE','NO','LV'
         }
         
-    def get_all_nfl_events(self, status: str = "open") -> List[Dict[str, Any]]:
+    async def get_all_nfl_events(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Get all NFL events
+        Get all NFL events and their nested markets.
         
         Args:
-            status: Event status filter (open, closed, settled)
+            status: Optional event/market status filter (open, closed, settled, active). If None, fetches all events.
             
         Returns:
-            List of NFL events
+            List of market dictionaries, each containing market details and parent event title.
         """
         try:
-            logger.info(f"Fetching NFL events with status: {status}")
+            logger.info(f"Fetching NFL events with status: {status if status else 'any'}")
             
-            all_events = []
+            all_markets_data = []
             cursor = None
             
             while True:
                 params = {
                     'limit': 200,
-                    'status': status,
                     'series_ticker': self.nfl_series_ticker,
                     'with_nested_markets': True  # Include markets in response
                 }
+                if status:
+                    params['status'] = status
                 
                 if cursor:
                     params['cursor'] = cursor
                 
                 response = self.client.get('/events', params=params)
                 events = response.get('events', [])
-                all_events.extend(events)
+                
+                if not events:
+                    break
+
+                for event in events:
+                    event_title = event.get('title', 'N/A')
+                    event_ticker = event.get('event_ticker', 'N/A')
+                    event_status = event.get('status', 'N/A')
+
+                    for market in event.get('markets', []):
+                        market_data = {
+                            'event_title': event_title,
+                            'event_ticker': event_ticker,
+                            'event_status': event_status,
+                            'market_ticker': market.get('ticker'),
+                            'market_title': market.get('title'),
+                            'market_status': market.get('status'),
+                            'expected_expiration_time': market.get('expected_expiration_time'),
+                            'yes_bid': market.get('yes_bid'),
+                            'yes_ask': market.get('yes_ask'),
+                            'last_price': market.get('last_price'),
+                            'open_interest': market.get('open_interest'),
+                            'volume': market.get('volume'),
+                        }
+                        all_markets_data.append(market_data)
                 
                 cursor = response.get('cursor')
                 if not cursor:
                     break
             
-            logger.info(f"Found {len(all_events)} NFL events")
-            return all_events
+            logger.info(f"Found {len(all_markets_data)} NFL markets")
+            return all_markets_data
             
         except Exception as e:
-            logger.error(f"Failed to get NFL events: {e}")
+            logger.error(f"Failed to get NFL markets: {e}")
             return []
     
     def get_team_game_events(self, team_code: str, status: str = "open") -> List[Dict[str, Any]]:
