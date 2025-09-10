@@ -84,14 +84,19 @@ async def handle_incoming_tweet(tweet: Dict[str, Any]):
     print(f"Sentiment: {tweet.get('sentiment', {}).get('label')}")
     print(f"Score: {tweet.get('sentiment', {}).get('score')}")
 
+import os
+from dotenv import load_dotenv
+
+# ... (rest of imports)
+
 async def run_example():
-    # Replace with your actual twitterapi.io API key
-    # You would typically load this from an environment variable
-    twitter_api_key = "YOUR_TWITTERAPI_IO_KEY"
+    load_dotenv() # Load .env file
+    twitter_api_key = os.getenv("TWITTERAPI_IO_KEY")
     query = "#CFB OR #CollegeFootball"
 
-    if twitter_api_key == "YOUR_TWITTERAPI_IO_KEY":
-        print("Please replace 'YOUR_TWITTERAPI_IO_KEY' with your actual twitterapi.io API key in the script.")
+    if not twitter_api_key:
+        print("Error: TWITTERAPI_IO_KEY not found in .env file or environment variables.")
+        print("Please ensure your .env file is in the project root and contains TWITTERAPI_IO_KEY.")
         return
 
     adapter = TwitterWebSocketAdapter(
