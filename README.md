@@ -35,6 +35,42 @@ pip install -e .
 
 ## Quick Start
 
+### Sports Data (ESPN)
+
+```python
+from neural.sports import ESPNNFL, ESPNCFB
+
+# NFL Data
+nfl = ESPNNFL()
+scores = await nfl.get_scoreboard()
+roster = await nfl.get_team_roster("GB", include_stats=True)
+injuries = await nfl.get_injuries("GB")
+
+# College Football Data
+cfb = ESPNCFB()
+games = await cfb.get_scoreboard(dates="20250913")
+rankings = await cfb.get_rankings()
+```
+
+### Social Media Data (Twitter)
+
+```python
+from neural.social import TwitterClient
+
+# Auto-loads TWITTERAPI_IO_KEY from environment
+twitter = TwitterClient()
+
+# Search tweets
+tweets = await twitter.search_tweets("NFL playoffs", limit=20)
+
+# Get user timeline
+timeline = await twitter.get_user_tweets("ESPN", limit=50)
+
+# Monitor API costs
+costs = twitter.get_api_costs()
+print(f"Total cost: ${costs['total_cost']:.6f}")
+```
+
 ### WebSocket Data Source
 
 ```python
@@ -57,26 +93,6 @@ ws.register_callback("error", lambda err: print(f"Error: {err}"))
 
 # Connect and stream
 await ws.connect()
-```
-
-### REST API Data Source
-
-```python
-from neural.data_collection import RestDataSource, RestConfig
-
-# Configure REST client
-config = RestConfig(
-    base_url="https://api.example.com",
-    headers={"Authorization": "Bearer ${API_KEY}"},
-    rate_limit=100,  # requests per second
-    cache_ttl=60     # cache for 60 seconds
-)
-
-# Create client
-rest = RestDataSource(config)
-
-# Make requests
-data = await rest.get("/endpoint")
 ```
 
 ### Data Pipeline
@@ -240,6 +256,8 @@ Neural/
 - Configuration management
 - Data pipeline orchestration
 - Buffer management
+- ESPN Sports APIs (NFL, CFB, NBA)
+- Twitter API integration (twitterapi.io)
 - Comprehensive testing
 
 ### Phase 2: Analysis Infrastructure (In Progress)
