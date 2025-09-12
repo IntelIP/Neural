@@ -1,11 +1,25 @@
 # Neural SDK Requirements
-# Core dependencies for the Data Collection Infrastructure
+# Core dependencies for the Data Collection and Analysis Infrastructure
 
 # WebSocket and HTTP client
 aiohttp>=3.9.0
 
 # Configuration management
 pyyaml>=6.0
+
+# Data Analysis and Manipulation
+pandas>=2.0.0          # Data manipulation and analysis
+numpy>=1.24.0          # Numerical computing
+sqlalchemy>=2.0.0      # SQL toolkit and ORM
+python-dateutil>=2.8.0 # Date/time parsing
+
+# Visualization (for Phase 6)
+plotly>=5.0.0          # Interactive charts
+dash>=2.0.0            # Web dashboards
+dash-bootstrap-components>=1.0.0  # Dashboard UI components
+matplotlib>=3.5.0      # Static charts
+seaborn>=0.12.0        # Statistical visualizations
+reportlab>=4.0.0       # PDF report generation
 
 # Optional but recommended for development
 python-dotenv>=1.0.0  # For .env file support
