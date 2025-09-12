@@ -48,13 +48,12 @@ class ESPNConfig(RestConfig):
             self.name = f"espn_{self.sport}_{self.league}"
         
         if not self.base_url:
-            self.base_url = "https://site.api.espn.com/apis/site/v2/sports"
+            self.base_url = "https://site.api.espn.com/apis/site/v2/sports/"
         
         # Set conservative rate limit if not specified
-        if self.rate_limit is None:
-            self.rate_limit = 100  # 100 requests per minute
-        
-        super().__post_init__()
+        # Note: RestConfig uses rate_limit_requests (requests per second)
+        if not hasattr(self, 'rate_limit_requests') or self.rate_limit_requests == 10.0:
+            self.rate_limit_requests = 1.67  # ~100 requests per minute
 
 
 class ESPNDataNormalizer(TransformStage):
@@ -214,13 +213,13 @@ class ESPNClient(RestDataSource):
             config: ESPN-specific configuration
         """
         if config is None:
-            config = ESPNConfig()
+            config = ESPNConfig(name="espn_client")
         
         super().__init__(config)
         self.config: ESPNConfig = config
         
-        # Build base path for this sport/league
-        self._base_path = f"/{self.config.sport}/{self.config.league}"
+        # Build base path for this sport/league (no leading slash since base_url has trailing slash)
+        self._base_path = f"{self.config.sport}/{self.config.league}"
         
         logger.info(
             f"Initialized ESPN client for {self.config.sport}/{self.config.league}"

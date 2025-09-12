@@ -525,8 +525,13 @@ class RestDataSource(BaseDataSource):
         Raises:
             Various exceptions based on response status
         """
+        # Auto-connect if not connected (for stateless APIs)
         if not self.session:
-            raise ConnectionError("Not connected to REST API")
+            logger.debug(f"{self.config.name}: Auto-connecting for stateless API")
+            await self.connect()
+        
+        # Extract framework-specific parameters that shouldn't go to aiohttp
+        cache_ttl = kwargs.pop('cache_ttl', self.config.cache_ttl if self.config.cache_enabled else None)
         
         # Build full URL
         url = endpoint if endpoint.startswith("http") else urljoin(self.config.base_url, endpoint)
