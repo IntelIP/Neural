@@ -131,17 +131,14 @@ class KellySizer(BaseSizer):
         if edge < self.edge_threshold:
             warnings.append(f"Low edge ({edge:.3f}) for Kelly sizing")
         
+        # Calculate odds first (needed for rationale)
+        if signal.signal_type.value in ['BUY_YES', 'buy_yes']:
+            odds = (1 - market_price) / market_price if market_price > 0 else 1.0
+        else:  # BUY_NO
+            odds = market_price / (1 - market_price) if market_price < 1 else 1.0
+
         # Calculate Kelly fraction
         if edge > 0 and market_price > 0:
-            # For Kalshi binary contracts: Kelly = edge / odds
-            # Odds for YES: (1 - market_price) / market_price
-            # Odds for NO: market_price / (1 - market_price)
-            
-            if signal.signal_type.value in ['BUY_YES', 'buy_yes']:
-                odds = (1 - market_price) / market_price if market_price > 0 else 1.0
-            else:  # BUY_NO
-                odds = market_price / (1 - market_price) if market_price < 1 else 1.0
-            
             kelly_fraction = edge / odds if odds > 0 else 0.0
             
             # Apply confidence adjustment
@@ -515,18 +512,20 @@ class PositionSizer:
         current_capital: float
     ) -> PositionSizeResult:
         """Emergency fallback sizing when all methods fail."""
-        emergency_size = min(50.0, current_capital * 0.01)  # 1% or $50, whichever is smaller
+        emergency_size = min(50.0, current_capital * 0.01) if current_capital > 0 else 10.0
         market_price = getattr(signal, 'market_price', 0.5)
         
         fee_estimate = calculate_kalshi_fee(market_price, 1)
         cost_per_contract = market_price + fee_estimate
         contracts = int(emergency_size / cost_per_contract) if cost_per_contract > 0 else 0
         
+        risk_percentage = emergency_size / current_capital if current_capital > 0 else 0.0
+        
         return PositionSizeResult(
             method=PositionSizingMethod.FIXED_PERCENTAGE,
             recommended_size=contracts * cost_per_contract,
             recommended_contracts=contracts,
-            risk_percentage=emergency_size / current_capital,
+            risk_percentage=risk_percentage,
             rationale="Emergency fallback: very conservative 1% allocation",
             confidence=0.1,
             warnings=["Using emergency fallback sizing"],
