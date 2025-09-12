@@ -22,6 +22,7 @@ __author__ = "Neural SDK Team"
 # Core module imports - only import what exists
 from neural.data_collection import (
     WebSocketDataSource,
+    RestDataSource,
     ConfigManager,
     BaseDataSource,
     ConnectionState
@@ -29,6 +30,7 @@ from neural.data_collection import (
 
 __all__ = [
     "WebSocketDataSource",
+    "RestDataSource",
     "BaseDataSource",
     "ConnectionState",
     "ConfigManager",
