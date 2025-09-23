@@ -1,0 +1,122 @@
+# CFB Sentiment Trading Strategy Configuration
+
+# Strategy Parameters
+strategy:
+  name: "CFB_Sentiment_Trading"
+  type: "sentiment_based"
+  
+  # Sentiment Analysis Settings
+  sentiment:
+    threshold: 0.6          # Minimum sentiment score to trade (0-1)
+    min_tweet_volume: 100   # Minimum tweets required for signal
+    lookback_hours: 2       # Hours of Twitter data to analyze
+    momentum_window: 30     # Minutes for momentum calculation
+    
+  # Trading Parameters
+  trading:
+    min_edge: 0.05          # Minimum edge required (5%)
+    max_position_pct: 0.10  # Max position size (10% of capital)
+    use_kelly_sizing: true  # Use Kelly Criterion for sizing
+    kelly_fraction: 0.25    # Conservative Kelly (25% of full Kelly)
+    
+  # Risk Management
+  risk:
+    stop_loss_pct: 0.50     # Stop loss at 50% loss
+    take_profit_pct: 2.0    # Take profit at 200% gain
+    max_daily_trades: 10    # Maximum trades per day
+    max_concurrent: 5       # Max concurrent positions
+    
+# Data Sources
+data_sources:
+  espn:
+    enabled: true
+    sport: "college-football"
+    conferences:
+      - "SEC"
+      - "Big Ten"
+      - "ACC"
+      - "Big 12"
+      - "Pac-12"
+    
+  twitter:
+    enabled: true
+    api_key: "${TWITTER_API_KEY}"  # Set via environment variable
+    rate_limit: 100             # Requests per minute
+    cache_ttl: 300              # Cache for 5 minutes
+    
+  kalshi:
+    enabled: true
+    api_key: "${KALSHI_API_KEY}"   # Set via environment variable
+    sandbox: true                   # Use sandbox for testing
+    
+# Backtesting Configuration
+backtesting:
+  initial_capital: 1000
+  start_date: "2024-09-01"
+  end_date: "2024-12-31"
+  
+  # Commission & Slippage
+  commission:
+    type: "kalshi_standard"
+    rate: 0.07              # Kalshi fee formula
+    
+  slippage:
+    enabled: true
+    rate: 0.01              # 1% slippage
+    
+  # Data Settings
+  data:
+    frequency: "1H"         # Hourly data
+    warmup_periods: 24      # 24 hours warmup
+    
+# Visualization Settings
+visualization:
+  dashboard:
+    enabled: true
+    port: 8050
+    update_interval: 5      # Seconds
+    
+  charts:
+    - type: "performance"
+      title: "P&L Curve"
+    - type: "sentiment"
+      title: "Sentiment vs Price"
+    - type: "signals"
+      title: "Trading Signals"
+    - type: "metrics"
+      title: "Key Metrics"
+      
+  reports:
+    format: "html"          # html, pdf, or both
+    include_trades: true
+    include_charts: true
+    
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "logs/cfb_sentiment.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+# Alert Settings
+alerts:
+  enabled: false
+  channels:
+    - type: "email"
+      address: "trader@example.com"
+    - type: "webhook"
+      url: "https://hooks.slack.com/services/..."
+  
+  triggers:
+    - event: "large_position"
+      threshold: 0.15       # Alert if position > 15%
+    - event: "drawdown"
+      threshold: 0.10       # Alert if drawdown > 10%
+    - event: "win_streak"
+      threshold: 5          # Alert on 5+ wins in a row
+    
+# Performance Targets
+targets:
+  annual_return: 0.20       # 20% annual return
+  max_drawdown: 0.15        # 15% max drawdown
+  sharpe_ratio: 1.5         # Minimum Sharpe ratio
+  win_rate: 0.55            # 55% win rate

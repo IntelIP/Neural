@@ -1,28 +1,21 @@
 """
-Neural SDK Analysis Stack
+Neural SDK Analysis Infrastructure.
 
-A comprehensive framework for building, testing, and executing trading strategies
-with seamless integration to Kalshi markets and ESPN data.
+This module provides comprehensive analysis tools for Kalshi sports trading,
+including market data management, edge detection, probability calculations,
+and performance metrics.
 """
 
-from .strategies.base import Strategy, Signal, Position
-from .backtesting.engine import Backtester
-from .risk.position_sizing import (
-    kelly_criterion,
-    fixed_percentage,
-    edge_proportional
+from neural.analysis.base import (
+    BaseAnalyzer,
+    AnalysisConfig,
+    AnalysisResult
 )
-from .execution.order_manager import OrderManager
 
 __all__ = [
-    "Strategy",
-    "Signal",
-    "Position",
-    "Backtester",
-    "OrderManager",
-    "kelly_criterion",
-    "fixed_percentage",
-    "edge_proportional",
+    'BaseAnalyzer',
+    'AnalysisConfig', 
+    'AnalysisResult'
 ]
 
-__version__ = "1.0.0"
+__version__ = '0.1.0'
