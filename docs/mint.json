@@ -1,0 +1,95 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Neural SDK",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@neural-sdk.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "GitHub",
+    "url": "https://github.com/IntelIP/Neural"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Examples",
+      "url": "examples"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Getting Started",
+      "icon": "rocket",
+      "url": "data-collection/getting-started"
+    },
+    {
+      "name": "Sports Markets",
+      "icon": "football",
+      "url": "data-collection/sports-markets-guide"
+    },
+    {
+      "name": "Trading",
+      "icon": "chart-line",
+      "url": "trading/setup"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": [
+        "README",
+        "architecture/overview",
+        "architecture/stack-layers"
+      ]
+    },
+    {
+      "group": "Data Collection",
+      "pages": [
+        "data-collection/getting-started",
+        "data-collection/creating-sources",
+        "data-collection/sports-markets-guide",
+        "data-collection/ticker-patterns"
+      ]
+    },
+    {
+      "group": "Trading Infrastructure",
+      "pages": [
+        "trading/setup",
+        "trading/portfolio",
+        "trading/placing-orders",
+        "trading/risk-management"
+      ]
+    },
+    {
+      "group": "Working Examples",
+      "pages": [
+        "examples/nfl-bot",
+        "examples/live-monitoring",
+        "examples/common-mistakes"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/IntelIP/Neural",
+    "twitter": "https://twitter.com/neural_sdk"
+  }
+}
