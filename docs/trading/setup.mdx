@@ -1,433 +1,64 @@
 ---
-title: 'Trading Setup Guide'
-description: 'Configure authentication and start trading on Kalshi'
+title: Trading Setup
+description: Configure trading and place your first order
 ---
 
-# 💰 Trading Infrastructure Setup
+This guide shows how to configure credentials and use TradingClient to place an order.
 
-<Note>
-**Prerequisites:** You need a Kalshi account with API access enabled. This guide shows you EXACTLY how to set up authentication and start trading.
-</Note>
+## Install
 
-## 🔑 Authentication Setup
+Core:
 
-### Step 1: Get Your API Credentials
-
-<Steps>
-  <Step title="Log into Kalshi">
-    Go to [https://kalshi.com](https://kalshi.com) and sign in
-  </Step>
-  <Step title="Navigate to API Settings">
-    Click your profile → Settings → API Keys
-  </Step>
-  <Step title="Create New API Key">
-    - Click "Create New Key"
-    - Save the API Key ID (looks like: `AKI...`)
-    - Download the private key file (`.pem` file)
-  </Step>
-  <Step title="Store Credentials Safely">
-    **CRITICAL:** Never commit these to git!
-  </Step>
-</Steps>
-
-### Step 2: Set Up Your Environment
-
-<Tabs>
-  <Tab title="Method 1: .env File (Recommended)">
-    Create `.env` in your project root:
-
-    ```bash
-    # Kalshi API Credentials
-    KALSHI_API_KEY_ID=AKI_your_key_here
-    KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private.pem
-
-    # Optional: For testing
-    KALSHI_ENV=prod  # or 'demo' for paper trading
-    ```
-
-    Then create the secrets folder:
-    ```bash
-    mkdir -p secrets
-    cp ~/Downloads/kalshi_private.pem secrets/
-    chmod 600 secrets/kalshi_private.pem  # Restrict access
-    ```
-  </Tab>
-
-  <Tab title="Method 2: Environment Variables">
-    ```bash
-    export KALSHI_API_KEY_ID="AKI_your_key_here"
-    export KALSHI_PRIVATE_KEY_PATH="/path/to/kalshi_private.pem"
-    ```
-  </Tab>
-
-  <Tab title="Method 3: Direct in Code">
-    ```python
-    # ⚠️ Only for testing! Never commit this!
-    client = TradingClient(
-        api_key_id="AKI_your_key",
-        private_key_pem=open("secrets/kalshi_private.pem", "rb").read()
-    )
-    ```
-  </Tab>
-</Tabs>
-
-<Warning>
-**SECURITY CHECKLIST:**
-- ✅ Add `secrets/` to `.gitignore`
-- ✅ Add `.env` to `.gitignore`
-- ✅ Never log or print your private key
-- ✅ Use read-only permissions: `chmod 600 kalshi_private.pem`
-</Warning>
-
-### Step 3: Test Authentication
-
-```python
-from neural.trading import TradingClient
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-def test_auth():
-    """Test that authentication works"""
-    try:
-        client = TradingClient()
-
-        # Test 1: Check balance
-        balance = client.portfolio.get_balance()
-        print(f"✅ Authentication works!")
-        print(f"   Account balance: ${balance.get('balance', 0):.2f}")
-
-        # Test 2: Get positions
-        positions = client.portfolio.get_positions()
-        print(f"   Open positions: {len(positions.get('positions', []))}")
-
-        return True
-
-    except Exception as e:
-        print(f"❌ Authentication failed: {e}")
-        print("\nCheck:")
-        print("1. Is KALSHI_API_KEY_ID set? (not KALSHI_API_KEY)")
-        print("2. Is KALSHI_PRIVATE_KEY_PATH pointing to .pem file?")
-        print("3. Is the private key file readable?")
-        return False
-
-test_auth()
+```bash
+pip install neural-sdk
 ```
 
-**Expected Output:**
-```
-✅ Authentication works!
-   Account balance: $1000.00
-   Open positions: 3
+With trading extras:
+
+```bash
+pip install "neural-sdk[trading]"
+# Or:
+uv add "neural-sdk[trading]"
 ```
 
-## 🏗️ Trading Client Architecture
+## Credentials
 
-The `TradingClient` provides access to all Kalshi APIs:
+Create a .env and load it:
+
+```bash
+# secrets/.env
+KALSHI_API_KEY_ID=your_api_key_id
+KALSHI_PRIVATE_KEY_BASE64=base64_of_pem   # or
+KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private_key.pem
+KALSHI_API_BASE=https://api.elections.kalshi.com
+```
+
+```bash
+export $(grep -v '^#' secrets/.env | xargs)
+```
+
+## Place an Order
 
 ```python
 from neural.trading import TradingClient
 
+# Initialize using environment creds
 client = TradingClient()
 
-# Available APIs:
-client.portfolio   # Account balance, positions
-client.markets     # Market data, prices
-client.exchange    # Place orders, cancel orders
-client.events      # Event information
-client.series      # Series data
+# Place an order via the exchange proxy
+order = client.exchange.place_order(
+    ticker="EXAMPLE",  # replace with a valid ticker
+    side="yes",
+    count=100,
+    price=55
+)
 ```
 
-### Portfolio API
+## WebSocket and FIX (Optional)
 
-```python
-# Get account balance
-balance = client.portfolio.get_balance()
-print(f"Available: ${balance['balance']}")
-print(f"In orders: ${balance['payout_in_orders']}")
+For streaming and ultra-low latency:
 
-# Get all positions
-positions = client.portfolio.get_positions()
-for pos in positions['positions']:
-    print(f"{pos['ticker']}: {pos['quantity']} @ ${pos['average_price']}")
+- WebSocket client: `neural.trading.KalshiWebSocketClient`
+- FIX client: `neural.trading.KalshiFIXClient` and `FIXStreamingClient`
 
-# Get specific position
-position = client.portfolio.get_position(ticker="KXNFLGAME-25SEP22DETBAL-BAL")
-print(f"Position size: {position.get('quantity', 0)}")
-
-# Get order history
-orders = client.portfolio.get_orders(status="closed")
-for order in orders['orders']:
-    print(f"{order['ticker']}: {order['side']} {order['quantity']} @ ${order['price']}")
-```
-
-### Markets API
-
-```python
-# Get market details
-market = client.markets.get_market(ticker="KXNFLGAME-25SEP22DETBAL-BAL")
-print(f"Title: {market['title']}")
-print(f"Yes Ask: ${market['yes_ask']}")
-print(f"Volume: {market['volume']}")
-
-# Get orderbook
-orderbook = client.markets.get_orderbook(ticker="KXNFLGAME-25SEP22DETBAL-BAL")
-print(f"Best Yes: ${orderbook['yes'][0]['price']} x {orderbook['yes'][0]['quantity']}")
-print(f"Best No: ${orderbook['no'][0]['price']} x {orderbook['no'][0]['quantity']}")
-
-# Get market history (trades)
-trades = client.markets.get_trades(ticker="KXNFLGAME-25SEP22DETBAL-BAL")
-for trade in trades['trades'][:5]:
-    print(f"{trade['created_time']}: {trade['count']} @ ${trade['price']}")
-```
-
-## 📊 Complete Trading Examples
-
-### Example 1: Check Before Trading
-
-```python
-async def smart_trade(ticker: str, target_price: int):
-    """
-    Smart trading: Check market, balance, and position before trading
-    """
-    client = TradingClient()
-
-    # 1. Check market exists and is active
-    try:
-        market = client.markets.get_market(ticker=ticker)
-        if market['status'] != 'active':
-            print(f"❌ Market not active: {market['status']}")
-            return
-    except:
-        print(f"❌ Market not found: {ticker}")
-        return
-
-    # 2. Check account balance
-    balance = client.portfolio.get_balance()
-    available = balance['balance']
-    print(f"Available balance: ${available}")
-
-    if available < target_price * 10:  # Need funds for 10 contracts
-        print(f"❌ Insufficient funds")
-        return
-
-    # 3. Check existing position
-    try:
-        position = client.portfolio.get_position(ticker=ticker)
-        current_qty = position.get('quantity', 0)
-        print(f"Current position: {current_qty} contracts")
-    except:
-        current_qty = 0
-
-    # 4. Check current price
-    orderbook = client.markets.get_orderbook(ticker=ticker)
-    best_yes = orderbook['yes'][0]['price'] if orderbook['yes'] else 100
-    print(f"Best Yes offer: ${best_yes}")
-
-    # 5. Place order if price is good
-    if best_yes <= target_price:
-        order = client.exchange.create_order(
-            ticker=ticker,
-            side="yes",
-            type="limit",
-            limit_price=target_price,
-            quantity=10
-        )
-        print(f"✅ Order placed: {order['order_id']}")
-    else:
-        print(f"Price too high: ${best_yes} > ${target_price}")
-```
-
-### Example 2: Monitor and Trade Live Games
-
-```python
-import asyncio
-from neural.data_collection import get_game_markets
-from neural.trading import TradingClient
-
-async def monitor_and_trade():
-    """
-    Monitor live NFL game and trade when odds move
-    """
-    client = TradingClient()
-    event_ticker = "KXNFLGAME-25SEP22DETBAL"
-
-    last_prices = {}
-
-    while True:
-        # Get current markets
-        df = await get_game_markets(event_ticker)
-
-        for _, market in df.iterrows():
-            ticker = market['ticker']
-            yes_ask = market['yes_ask']
-
-            # Check for price movement
-            if ticker in last_prices:
-                old_price = last_prices[ticker]
-                change = yes_ask - old_price
-
-                if abs(change) >= 5:  # 5 cent move
-                    print(f"\n🚨 Price move on {ticker}:")
-                    print(f"   {old_price} → {yes_ask} ({change:+d}¢)")
-
-                    # Trade logic
-                    if change < -5 and yes_ask < 45:
-                        # Price dropped and under 45¢, buy
-                        print(f"   Buying at {yes_ask}...")
-                        order = client.exchange.create_order(
-                            ticker=ticker,
-                            side="yes",
-                            type="limit",
-                            limit_price=yes_ask + 1,
-                            quantity=10
-                        )
-                        print(f"   Order: {order['order_id']}")
-
-            last_prices[ticker] = yes_ask
-
-        # Wait 30 seconds
-        await asyncio.sleep(30)
-
-# Run for 10 minutes
-asyncio.run(asyncio.wait_for(monitor_and_trade(), timeout=600))
-```
-
-## ⚠️ Common Authentication Problems
-
-<AccordionGroup>
-  <Accordion title="🔴 ImportError: No module named 'kalshi_python'">
-    **Solution:** Install with trading extras:
-    ```bash
-    pip install "neural-sdk[trading]"
-    # or
-    pip install kalshi-python>=2.0
-    ```
-  </Accordion>
-
-  <Accordion title="🟡 Authentication failed: Invalid signature">
-    **Check these:**
-    1. Is your API key active on Kalshi?
-    2. Is the private key file the right one for this API key?
-    3. Are you using production vs demo environment correctly?
-    4. Is the .pem file corrupted? (Try re-downloading)
-  </Accordion>
-
-  <Accordion title="🟢 FileNotFoundError: kalshi_private.pem">
-    **Fix the path:**
-    ```python
-    import os
-    print(f"Looking for: {os.getenv('KALSHI_PRIVATE_KEY_PATH')}")
-    print(f"Current dir: {os.getcwd()}")
-
-    # Use absolute path:
-    KALSHI_PRIVATE_KEY_PATH=/Users/you/project/secrets/kalshi_private.pem
-    ```
-  </Accordion>
-
-  <Accordion title="⚫ Wrong environment variable names">
-    **CORRECT Names:**
-    - ✅ `KALSHI_API_KEY_ID` (not KALSHI_API_KEY)
-    - ✅ `KALSHI_PRIVATE_KEY_PATH` (not KALSHI_PRIVATE_KEY)
-
-    **Check what's set:**
-    ```python
-    import os
-    print(os.environ.get('KALSHI_API_KEY_ID', 'NOT SET'))
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## 🛡️ Security Best Practices
-
-<Cards>
-  <Card title="Never Commit Secrets">
-    ```bash
-    # .gitignore
-    .env
-    secrets/
-    *.pem
-    *_private*
-    ```
-  </Card>
-
-  <Card title="Use Environment Variables">
-    ```python
-    # Good
-    from os import getenv
-    api_key = getenv('KALSHI_API_KEY_ID')
-
-    # Bad
-    api_key = "AKI_abc123"  # Never!
-    ```
-  </Card>
-
-  <Card title="Rotate Keys Regularly">
-    - Create new API keys monthly
-    - Delete old keys after rotating
-    - Use different keys for dev/prod
-  </Card>
-
-  <Card title="Limit Key Permissions">
-    - Use read-only keys for monitoring
-    - Use trading keys only when needed
-    - Revoke unused keys immediately
-  </Card>
-</Cards>
-
-## ✅ Setup Verification Checklist
-
-Run this to verify everything works:
-
-```python
-from neural.trading import TradingClient
-from neural.data_collection import get_game_markets
-import asyncio
-import os
-
-async def verify_setup():
-    """Complete setup verification"""
-    print("🔍 Neural SDK Trading Setup Verification")
-    print("=" * 50)
-
-    # 1. Check environment
-    print("\n1. Environment Variables:")
-    api_key = os.getenv('KALSHI_API_KEY_ID')
-    key_path = os.getenv('KALSHI_PRIVATE_KEY_PATH')
-    print(f"   KALSHI_API_KEY_ID: {'✅ Set' if api_key else '❌ Missing'}")
-    print(f"   KALSHI_PRIVATE_KEY_PATH: {'✅ Set' if key_path else '❌ Missing'}")
-
-    if key_path:
-        print(f"   Key file exists: {'✅' if os.path.exists(key_path) else '❌'}")
-
-    # 2. Test authentication
-    print("\n2. Testing Authentication:")
-    try:
-        client = TradingClient()
-        balance = client.portfolio.get_balance()
-        print(f"   ✅ Connected! Balance: ${balance['balance']:.2f}")
-    except Exception as e:
-        print(f"   ❌ Failed: {e}")
-        return False
-
-    # 3. Test market data
-    print("\n3. Testing Market Data:")
-    try:
-        df = await get_game_markets("KXNFLGAME-25SEP25SEAARI")
-        print(f"   ✅ Found {len(df)} markets")
-    except Exception as e:
-        print(f"   ❌ Failed: {e}")
-
-    print("\n✅ Setup complete! You're ready to trade.")
-    return True
-
-asyncio.run(verify_setup())
-```
-
-<Note>
-**Next Steps:**
-- [Manage Your Portfolio](/trading/portfolio) - Check positions and P&L
-- [Place Orders](/trading/placing-orders) - Execute trades
-- [Build an NFL Bot](/examples/nfl-bot) - Complete trading bot example
-</Note>
+These require valid credentials and appropriate permissions. See the streaming docs for best practices.

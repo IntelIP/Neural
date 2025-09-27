@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Lint
+        run: |
+          ruff --version
+          ruff check .
+          black --check .
+
+      - name: Type check
+        run: |
+          mypy --version
+          mypy neural
+
+      - name: Run tests
+        env:
+          KALSHI_EMAIL: ${{ secrets.KALSHI_EMAIL || '' }}
+          KALSHI_PASSWORD: ${{ secrets.KALSHI_PASSWORD || '' }}
+          KALSHI_API_BASE: ${{ secrets.KALSHI_API_BASE || 'https://api.elections.kalshi.com' }}
+        run: |
+          pytest -q

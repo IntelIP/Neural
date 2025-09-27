@@ -14,6 +14,19 @@ import numpy as np
 from enum import Enum
 
 
+@dataclass
+class StrategyConfig:
+    """Configuration for strategy parameters"""
+    max_position_size: float = 0.1  # 10% of capital default
+    min_edge: float = 0.03  # 3% minimum edge
+    use_kelly: bool = False
+    kelly_fraction: float = 0.25
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
+    max_positions: int = 10
+    fee_rate: float = 0.0
+
+
 class SignalType(Enum):
     """Trading signal types"""
     BUY_YES = "buy_yes"
@@ -27,46 +40,37 @@ class SignalType(Enum):
 @dataclass
 class Signal:
     """Trading signal with metadata"""
-    type: SignalType
-    ticker: str
-    size: int
+    signal_type: SignalType  # Changed from 'type' for clarity
+    market_id: str  # Market identifier (ticker)
+    recommended_size: float  # Position size as a fraction
     confidence: float
-    entry_price: Optional[float] = None
-    target_price: Optional[float] = None
-    stop_loss: Optional[float] = None
+    edge: Optional[float] = None
+    expected_value: Optional[float] = None
+    max_contracts: Optional[int] = None
+    stop_loss_price: Optional[float] = None
+    take_profit_price: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
     timestamp: datetime = None
+
+    # Backward compatibility properties
+    @property
+    def type(self) -> SignalType:
+        return self.signal_type
+
+    @property
+    def ticker(self) -> str:
+        return self.market_id
+
+    @property
+    def size(self) -> float:
+        return self.recommended_size
 
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.now()
 
 
-@dataclass
-class Position:
-    """Represents a trading position"""
-    ticker: str
-    side: str  # "yes" or "no"
-    size: int
-    entry_price: float
-    current_price: float
-    entry_time: datetime
-    metadata: Optional[Dict[str, Any]] = None
-
-    @property
-    def pnl(self) -> float:
-        """Calculate current P&L"""
-        if self.side == "yes":
-            return (self.current_price - self.entry_price) * self.size
-        else:
-            return (self.entry_price - self.current_price) * self.size
-
-    @property
-    def pnl_percentage(self) -> float:
-        """Calculate P&L percentage"""
-        return (self.pnl / (self.entry_price * self.size)) * 100
-
-
+# Define Strategy class first (needed by BaseStrategy)
 class Strategy(ABC):
     """
     Base class for all trading strategies.
@@ -105,6 +109,7 @@ class Strategy(ABC):
         self.name = name or self.__class__.__name__
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
+        self.capital = initial_capital  # Alias for compatibility
         self.max_position_size = max_position_size
         self.min_edge = min_edge
         self.use_kelly = use_kelly
@@ -115,8 +120,8 @@ class Strategy(ABC):
         self.fee_rate = fee_rate
 
         # State tracking
-        self.positions: List[Position] = []
-        self.closed_positions: List[Position] = []
+        self.positions: List["Position"] = []
+        self.closed_positions: List["Position"] = []
         self.signals: List[Signal] = []
         self.trade_history: List[Dict[str, Any]] = []
 
@@ -222,7 +227,7 @@ class Strategy(ABC):
         # Kalshi fee formula: 0.07 × P × (1 - P) × contracts
         return 0.07 * price * (1 - price) * size
 
-    def should_close_position(self, position: Position) -> bool:
+    def should_close_position(self, position: "Position") -> bool:
         """
         Check if position should be closed based on stop loss or take profit.
 
@@ -288,9 +293,9 @@ class Strategy(ABC):
     ) -> Signal:
         """Generate BUY_YES signal"""
         return Signal(
-            type=SignalType.BUY_YES,
-            ticker=ticker,
-            size=size or 100,
+            signal_type=SignalType.BUY_YES,
+            market_id=ticker,
+            recommended_size=(size or 100) / 1000.0,  # Convert to fraction
             confidence=confidence,
             metadata=kwargs
         )
@@ -304,9 +309,9 @@ class Strategy(ABC):
     ) -> Signal:
         """Generate BUY_NO signal"""
         return Signal(
-            type=SignalType.BUY_NO,
-            ticker=ticker,
-            size=size or 100,
+            signal_type=SignalType.BUY_NO,
+            market_id=ticker,
+            recommended_size=(size or 100) / 1000.0,  # Convert to fraction
             confidence=confidence,
             metadata=kwargs
         )
@@ -314,18 +319,18 @@ class Strategy(ABC):
     def hold(self, ticker: str = "") -> Signal:
         """Generate HOLD signal"""
         return Signal(
-            type=SignalType.HOLD,
-            ticker=ticker,
-            size=0,
+            signal_type=SignalType.HOLD,
+            market_id=ticker,
+            recommended_size=0,
             confidence=0.0
         )
 
     def close(self, ticker: str, **kwargs) -> Signal:
         """Generate CLOSE signal"""
         return Signal(
-            type=SignalType.CLOSE,
-            ticker=ticker,
-            size=0,
+            signal_type=SignalType.CLOSE,
+            market_id=ticker,
+            recommended_size=0,
             confidence=1.0,
             metadata=kwargs
         )
@@ -404,3 +409,54 @@ class Strategy(ABC):
 
     def __str__(self) -> str:
         return f"{self.name} (Capital: ${self.current_capital:.2f}, Positions: {len(self.positions)})"
+
+
+@dataclass
+class Position:
+    """Represents a trading position"""
+    ticker: str
+    side: str  # "yes" or "no"
+    size: int
+    entry_price: float
+    current_price: float
+    entry_time: datetime
+    metadata: Optional[Dict[str, Any]] = None
+
+    @property
+    def pnl(self) -> float:
+        """Calculate current P&L"""
+        if self.side == "yes":
+            return (self.current_price - self.entry_price) * self.size
+        else:
+            return (self.entry_price - self.current_price) * self.size
+
+    @property
+    def pnl_percentage(self) -> float:
+        """Calculate P&L percentage"""
+        return (self.pnl / (self.entry_price * self.size)) * 100
+
+
+class BaseStrategy(Strategy):
+    """
+    Modern base class using StrategyConfig.
+    This is an alias/wrapper for compatibility.
+    """
+
+    def __init__(self, name: str = None, config: StrategyConfig = None):
+        """Initialize with StrategyConfig"""
+        if config is None:
+            config = StrategyConfig()
+
+        # Call the parent Strategy init with config values
+        super().__init__(
+            name=name,
+            max_position_size=config.max_position_size,
+            min_edge=config.min_edge,
+            use_kelly=config.use_kelly,
+            kelly_fraction=config.kelly_fraction,
+            stop_loss=config.stop_loss,
+            take_profit=config.take_profit,
+            max_positions=config.max_positions,
+            fee_rate=config.fee_rate
+        )
+        self.config = config

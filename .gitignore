@@ -1,8 +1,124 @@
-secrets/*.pem
-secrets/*.key
-secrets/*.txt
-*.env
+# Python
 __pycache__/
-.venv/
-.DS_Store
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
+# Virtual Environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmyp.json
+
+# Ruff
+.ruff_cache/
+
+# Environments
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets and Credentials (CRITICAL - NEVER COMMIT)
+secrets/
+*.pem
+*.key
+*_private_key.pem
+*api_key*.txt
+credentials.json
+*.credentials
+
+# Kalshi-specific
+kalshi_api_key_id.txt
+kalshi_private_key.pem
+
+# Data files
+*.csv
+*.json
+*.parquet
+*.h5
+*.hdf5
+data/
+output/
+results/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Project-specific
+historical_trades_output.csv
+*.bak
+*.swp
+*.swo
+
+# Distribution
+*.tar.gz
+*.whl
+
+# Documentation builds
+docs/_build/
+site/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

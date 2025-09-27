@@ -1,20 +1,107 @@
 [project]
-name = "neural"
+name = "neural-sdk"
 version = "0.1.0"
-description = "Neural OSS platform: unified auth and providers (Kalshi signer included)"
+description = "Professional-grade SDK for algorithmic trading on prediction markets"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{ name = "Neural Contributors" }]
-dependencies = [
-  "requests>=2.31.0",
-  "cryptography>=41.0.0",
-  "python-dotenv>=1.0.0",
-  "kalshi-python>=2.1.4",
-  "websocket-client>=1.7.0",
-  "simplefix>=1.0.17",
-  "pandas>=2.0.0",
+keywords = [
+    "kalshi",
+    "prediction-markets",
+    "trading",
+    "algorithmic-trading",
+    "sports-betting",
+    "event-contracts",
+    "prediction-api",
+    "market-data",
+    "quantitative-finance"
 ]
+authors = [
+    { name = "Hudson Aikins", email = "hudson@intelip.co" },
+    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+]
+maintainers = [
+    { name = "Advanced Intellectual Labs LLC", email = "hudson@intelip.co" },
+    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Pytest",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "requests>=2.31.0",
+    "cryptography>=41.0.0",
+    "python-dotenv>=1.0.0",
+    "kalshi-python>=2.1.4",
+    "websocket-client>=1.7.0",
+    "websockets>=11.0.0",
+    "simplefix>=1.0.17",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    # Sentiment Analysis Dependencies
+    "textblob>=0.17.1",
+    "vaderSentiment>=3.3.2",
+    "aiohttp>=3.8.0",
+    # Data Processing Dependencies
+    "plotly>=5.15.0",
+]
+
+[project.optional-dependencies]
+# Development extras
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.7.0",
+    "ruff>=0.0.282",
+    "mypy>=1.4.1",
+    "types-requests>=2.31.0",
+    "bump2version>=1.0.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+# Documentation extras
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.1.0",
+    "mkdocstrings[python]>=0.22.0",
+]
+# Optional trading extras to separate heavier deps
+trading = [
+    "kalshi-python>=2.1.4,<3",
+]
+# Sentiment analysis extras for social media and text analysis
+sentiment = [
+    "textblob>=0.17.1",
+    "vaderSentiment>=3.3.2",
+    "transformers>=4.21.0",  # Optional for advanced sentiment models
+    "torch>=1.12.0",  # For transformer models
+    "scikit-learn>=1.1.0",  # For ML-based sentiment analysis
+]
+
+[project.urls]
+Homepage = "https://github.com/IntelIP/Neural"
+Documentation = "https://neural-sdk.mintlify.app"
+Repository = "https://github.com/IntelIP/Neural"
+Issues = "https://github.com/IntelIP/Neural/issues"
+Changelog = "https://github.com/IntelIP/Neural/blob/main/CHANGELOG.md"
+
+[project.scripts]
+neural = "neural.cli:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -22,5 +109,60 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["neural*"]
-exclude = ["secrets*"]
+exclude = ["secrets*", "tests*", "examples*", "docs*"]
 
+[tool.setuptools.package-data]
+neural = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=neural",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long (handled by black)
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true

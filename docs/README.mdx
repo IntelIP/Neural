@@ -1,158 +1,35 @@
 ---
-title: 'Neural SDK Documentation'
+title: 'What is Neural'
 description: 'Your Complete Guide to Building Trading Systems with Real-Time Market Data'
 ---
 
-# 🚀 Welcome to Neural SDK
+## What is Neural?
+
+Neural is an algorithmic trading platform that allows users to build algorithms to trade sports contracts on the Kalshi platform.
+
+Making money in sports is incredibly difficult for several reasons:
+
+**Traditional Sportsbooks**: Even if you develop winning strategies, sportsbooks will ban you once you start winning consistently. This limits your ability to scale profitable strategies long-term.
+
+**Kalshi Platform Complexity**: While Kalshi offers a legitimate marketplace for sports event contracts without the risk of being banned, trading sustainably on the platform is challenging without systematic approaches. Manual trading leads to:
+- Emotional decision-making
+- Inconsistent position sizing
+- Missing profitable opportunities
+- Lack of proper backtesting
+
+**This is where Neural comes in.**
+
+Neural is an algorithmic trading platform which allows users to create, backtest, trade, and deploy strategies all in one stack. Instead of manual trading or getting banned from traditional sportsbooks, you can:
+
+- Develop systematic, data-driven strategies
+- Backtest your approaches on historical data
+- Execute trades programmatically with proper risk management
+- Scale your operations without platform restrictions
+
+## Getting Started
+
+If you're new to Neural, follow our quickstart to build your first algorithm, backtest it and begin trading on Kalshi.
 
 <Note>
-**READ THIS FIRST:** This documentation will teach you EXACTLY how to collect sports market data and execute trades. No guessing. No ambiguity. Just working code.
-</Note>
-
-## 📦 What Is Neural SDK?
-
-Think of Neural SDK as **three big LEGO boxes** that snap together:
-
-<CardGroup cols={3}>
-  <Card title="📊 Data Collection Stack" icon="database">
-    Pull market data from Kalshi, ESPN, and other sources
-  </Card>
-  <Card title="💰 Trading Infrastructure" icon="coins">
-    Check your portfolio, place orders, manage risk
-  </Card>
-  <Card title="🏈 Sports Markets Toolkit" icon="football">
-    Find NFL, NBA, and college games with correct tickers
-  </Card>
-</CardGroup>
-
-## ⚡ Quick Start (5 Minutes)
-
-### Step 1: Install Neural SDK
-
-```bash
-pip install neural-sdk
-```
-
-### Step 2: Set Up Your Credentials
-
-Create a `.env` file:
-
-```bash
-KALSHI_API_KEY_ID=your_key_here
-KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private.pem
-```
-
-<Warning>
-**COMMON MISTAKE #1:** Using `KALSHI_API_KEY` instead of `KALSHI_API_KEY_ID`
-The correct variable is `KALSHI_API_KEY_ID` (with _ID at the end)
-</Warning>
-
-### Step 3: Test It Works
-
-```python
-from neural.data_collection import get_game_markets
-import asyncio
-
-async def test():
-    # Get Thursday Night Football (Seahawks vs Cardinals)
-    df = await get_game_markets("KXNFLGAME-25SEP25SEAARI")
-    print(f"Found {len(df)} markets")
-    print(df[['ticker', 'title', 'yes_ask', 'no_ask']])
-
-asyncio.run(test())
-```
-
-**Expected Output:**
-```
-Found 2 markets
-ticker                          title                    yes_ask  no_ask
-KXNFLGAME-25SEP25SEAARI-SEA    Seattle at Arizona Winner?   50      51
-KXNFLGAME-25SEP25SEAARI-ARI    Seattle at Arizona Winner?   51      50
-```
-
-## 🎯 What You'll Learn
-
-### For Data Scientists
-- How to collect real-time sports market data
-- Transform API responses into clean DataFrames
-- Build custom data sources for any API
-
-### For Traders
-- Execute trades programmatically
-- Monitor portfolio and positions
-- Implement risk management strategies
-
-### For Developers
-- Understand the complete system architecture
-- Debug common API issues
-- Build production-ready trading bots
-
-## ⚠️ Critical Things to Know
-
-<AccordionGroup>
-  <Accordion title="🔴 Sports Tickers Are NOT What You Think">
-    **WRONG:** `series_ticker="NFL"` or `"Pro Football"`
-
-    **RIGHT:** `series_ticker="KXNFLGAME"`
-
-    The actual tickers are prefixed with KX:
-    - NFL → `KXNFLGAME`
-    - NBA → `KXNBA`
-    - College Football → `KXNCAAFGAME`
-  </Accordion>
-
-  <Accordion title="🟡 Status Filters Will Hide Markets">
-    **WRONG:** `status="open"` (hides most games)
-
-    **RIGHT:** `status=None` (shows all games)
-
-    Games can be "active", "closed", "finalized" - not just "open"
-  </Accordion>
-
-  <Accordion title="🟢 Event Tickers Follow a Pattern">
-    Pattern: `KXNFLGAME-[DATE][TEAM1][TEAM2]`
-
-    Example: `KXNFLGAME-25SEP22DETBAL`
-    - `KXNFLGAME` = NFL game prefix
-    - `25SEP22` = September 22, 2025
-    - `DET` = Detroit
-    - `BAL` = Baltimore
-  </Accordion>
-</AccordionGroup>
-
-## 📚 Documentation Structure
-
-<Steps>
-  <Step title="Architecture Overview">
-    Understand the three core stacks and how they connect
-  </Step>
-  <Step title="Data Collection Guide">
-    Learn to pull and stream market data
-  </Step>
-  <Step title="Sports Markets Guide">
-    Master the art of finding NFL, NBA, and college games
-  </Step>
-  <Step title="Trading Setup">
-    Configure authentication and start trading
-  </Step>
-  <Step title="Working Examples">
-    Copy complete, tested code for common use cases
-  </Step>
-</Steps>
-
-## 🆘 Getting Help
-
-<CardGroup cols={2}>
-  <Card title="Common Mistakes" icon="triangle-exclamation" href="/examples/common-mistakes">
-    Solutions to "No markets found" and other errors
-  </Card>
-  <Card title="GitHub Issues" icon="github" href="https://github.com/IntelIP/Neural/issues">
-    Report bugs or request features
-  </Card>
-</CardGroup>
-
----
-
-<Note>
-**Next Step:** Read the [Architecture Overview](/architecture/overview) to understand how everything fits together, or jump straight to [Sports Markets Guide](/data-collection/sports-markets-guide) if you want to start collecting NFL data immediately.
+A quick disclaimer, our software is still in beta testing so some features may not work as intended. Understand that there is a risk trading financial contracts as we assume no risk in loses from strategies. Trade at your own risk.
 </Note>

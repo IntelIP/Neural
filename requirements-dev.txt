@@ -1,0 +1,9 @@
+-e .[dev]
+build
+twine
+pytest
+pytest-cov
+pytest-asyncio
+black
+ruff
+mypy

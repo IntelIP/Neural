@@ -3,6 +3,7 @@ from .rest_api import RestApiSource
 from .websocket import WebSocketSource
 from .transformer import DataTransformer
 from .registry import DataSourceRegistry, registry, register_source
+from .kalshi_api_source import KalshiApiSource
 from .kalshi import (
     KalshiMarketsSource,
     get_sports_series,
@@ -21,6 +22,7 @@ __all__ = [
     "DataSourceRegistry",
     "registry",
     "register_source",
+    "KalshiApiSource",
     "KalshiMarketsSource",
     "get_sports_series",
     "get_markets_by_sport",

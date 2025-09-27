@@ -1,0 +1,103 @@
+---
+title: Getting Started
+description: Install, configure credentials, and run your first steps with Neural
+---
+
+This guide gets you from zero to running with Neural in minutes.
+
+## Install
+
+pip
+
+```bash
+pip install neural-sdk
+# With trading extras
+pip install "neural-sdk[trading]"
+```
+
+uv
+
+```bash
+uv add neural-sdk
+# With trading extras
+uv add "neural-sdk[trading]"
+```
+
+Dev (editable)
+
+```bash
+git clone https://github.com/IntelIP/Neural.git
+cd Neural
+pip install -e ".[dev]"
+# Or with uv
+uv sync --dev
+```
+
+## Credentials
+
+Create a local .env to use real credentials. Never commit this file.
+
+```bash
+# secrets/.env
+KALSHI_API_KEY_ID=your_api_key_id
+KALSHI_PRIVATE_KEY_BASE64=base64_of_pem   # or
+KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private_key.pem
+KALSHI_API_BASE=https://api.elections.kalshi.com
+# Optional login credentials (some tools use these)
+KALSHI_EMAIL=you@example.com
+KALSHI_PASSWORD=your-password
+```
+
+Load and verify:
+
+```bash
+export $(grep -v '^#' secrets/.env | xargs)
+python -c "import neural; print(neural.__version__)"
+```
+
+## Quickstart by Stack
+
+### Data Collection
+
+```python
+from neural.data_collection import KalshiApiSource, get_all_sports_markets
+
+source = KalshiApiSource()
+markets = get_all_sports_markets()
+print(f"Found {len(markets)} sports markets")
+```
+
+### Analysis
+
+```python
+from neural.analysis import Backtester
+# Example strategy depends on your usage; use your own strategy or the examples in repo
+
+strategy = ...  # Your Strategy subclass
+engine = Backtester(strategy, initial_capital=10_000)
+results = engine.run(historical_data)
+print(results.get("sharpe_ratio"))
+```
+
+### Trading
+
+```python
+from neural.trading import TradingClient
+
+client = TradingClient()  # reads creds from env/.env
+order = client.exchange.place_order(ticker="EXAMPLE", side="yes", count=100, price=55)
+print(f"Order ID: {order['order_id']}")
+```
+
+Note: Trading and some streaming examples require valid credentials. Without creds, related tests and examples skip gracefully.
+
+## Tests
+
+```bash
+# Unit tests always run
+pytest -q
+
+# With credentials loaded, more integration tests execute automatically
+export $(grep -v '^#' secrets/.env | xargs)
+pytest -q
+```

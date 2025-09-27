@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Neural SDK",
+  "name": "Neural",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
@@ -25,21 +25,11 @@
     "name": "GitHub",
     "url": "https://github.com/IntelIP/Neural"
   },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    },
-    {
-      "name": "Examples",
-      "url": "examples"
-    }
-  ],
   "anchors": [
     {
       "name": "Getting Started",
       "icon": "rocket",
-      "url": "data-collection/getting-started"
+      "url": "getting-started"
     },
     {
       "name": "Sports Markets",
@@ -56,16 +46,14 @@
     {
       "group": "Get Started",
       "pages": [
+        "getting-started",
         "README",
-        "architecture/overview",
-        "architecture/stack-layers"
+        "architecture/overview"
       ]
     },
     {
       "group": "Data Collection",
       "pages": [
-        "data-collection/getting-started",
-        "data-collection/creating-sources",
         "data-collection/sports-markets-guide",
         "data-collection/ticker-patterns"
       ]
@@ -73,17 +61,12 @@
     {
       "group": "Trading Infrastructure",
       "pages": [
-        "trading/setup",
-        "trading/portfolio",
-        "trading/placing-orders",
-        "trading/risk-management"
+        "trading/setup"
       ]
     },
     {
-      "group": "Working Examples",
+      "group": "Examples",
       "pages": [
-        "examples/nfl-bot",
-        "examples/live-monitoring",
         "examples/common-mistakes"
       ]
     }
