@@ -1,0 +1,71 @@
+---
+title: 'Kalshi Market Helpers'
+description: 'Query Kalshi sports markets and decode tickers for research workflows.'
+---
+
+The fastest way to explore sports markets is to start with the REST helper and then lean on the convenience coroutines in `neural.data_collection.kalshi` for sport-specific enrichment.
+
+## Grab a batch of markets
+
+```python
+import pandas as pd
+from neural.auth.http_client import KalshiHTTPClient
+
+client = KalshiHTTPClient()
+try:
+    payload = client.get(
+        "/markets",
+        params={"series_ticker": "KXNFLGAME", "status": "open", "limit": 200}
+    )
+finally:
+    client.close()
+
+markets = pd.DataFrame(payload.get("markets", []))
+print(markets[["ticker", "title", "yes_ask", "no_ask"]].head())
+```
+
+Everything that follows starts from this DataFrame—join in sentiment, export to CSV, or hand it to a strategy.
+
+## Sport-focused helpers
+
+The module `neural.data_collection.kalshi` includes a few async helpers that add parsed metadata:
+
+| Helper | What it returns |
+|--------|-----------------|
+| `get_nfl_games(...)` | NFL markets with `home_team`, `away_team`, and parsed `game_date`. |
+| `get_cfb_games(...)` | NCAA football markets with similar enrichments. |
+
+```python
+import asyncio
+from neural.data_collection.kalshi import get_nfl_games
+
+async def upcoming_games():
+    nfl = await get_nfl_games(limit=25)
+    print(nfl[["ticker", "away_team", "home_team", "game_date"]])
+
+asyncio.run(upcoming_games())
+```
+
+## Feed an aggregator
+
+Once you know the series or event ticker you care about, stream richer context with the multi-source aggregator:
+
+```python
+from neural.data_collection.aggregator import MultiSourceAggregator, SourceConfig
+
+aggregator = MultiSourceAggregator(
+    game_id="KXNFLGAME-25SEP25SEAARI",
+    teams=["Seattle Seahawks", "Arizona Cardinals"],
+    kalshi_config={"series_ticker": "KXNFLGAME-25SEP25SEAARI"},
+    twitter_config=SourceConfig(poll_interval=45.0),
+)
+```
+
+Subscribe handlers (`aggregator.data_handlers`) to capture combined market, sentiment, and play-by-play updates as they happen.
+
+## Summary checklist
+
+1. Use `KalshiHTTPClient` for quick ad-hoc pulls or scripts (`examples/build_first_bot.py` does exactly this).
+2. Reach for the sport helpers when you need pre-parsed teams and dates.
+3. Graduate to `MultiSourceAggregator` for synchronized market + context streams.
+4. Keep `data-collection/ticker-patterns` handy to decode any odd ticker you bump into.

@@ -1,0 +1,61 @@
+---
+title: 'Risk & Position Sizing'
+description: 'Use Kelly, fixed-percentage, and edge-proportional position sizing to control exposure.'
+---
+
+Position sizing determines how aggressively your strategy deploys capital. `neural.analysis.risk.position_sizing` provides reusable functions tuned for prediction markets.
+
+## Kelly Criterion
+
+```python
+from neural.analysis import kelly_criterion
+
+fraction = kelly_criterion(edge=0.05, odds=1.0, kelly_fraction=0.25, max_position=0.3)
+position_value = capital * fraction
+```
+
+- `edge` – your perceived probability edge (`true_prob - market_prob`).
+- `odds` – payout multiple (usually `1.0` for Kalshi YES/NO contracts).
+- `kelly_fraction` – safety multiplier to scale back from full Kelly.
+- `max_position` – cap fraction of capital at risk.
+
+## Fixed Percentage
+
+```python
+from neural.analysis import fixed_percentage
+
+contracts = fixed_percentage(
+    capital=10_000,
+    percentage=0.02,
+    min_contracts=10,
+    max_contracts=200,
+)
+```
+
+Consistently risks a configurable percent of capital, with minimum/maximum contract guards to maintain liquidity discipline.
+
+## Edge-Proportional Sizing
+
+```python
+from neural.analysis import edge_proportional
+
+contracts = edge_proportional(
+    edge=0.06,
+    capital=15_000,
+    base_percentage=0.01,
+    edge_multiplier=2.0,
+    min_edge=0.02,
+    max_percentage=0.1,
+)
+```
+
+Positions scale with the strength of the detected edge while enforcing both floor and ceiling limits.
+
+## Advanced Utilities
+
+The module also includes:
+
+- `martingale(capital, consecutive_losses, base_size=0.01, multiplier=2.0)` – doubles exposure after losses. *Use with extreme caution.*
+- `anti_martingale(capital, consecutive_wins, base_size=0.01, multiplier=1.5)` – increases exposure when winning streaks continue.
+
+Integrate these helpers into your strategy via `calculate_position_size` or call them directly when you want explicit control. They ensure sizing logic is auditable and consistent across backtests, paper trading, and live execution.

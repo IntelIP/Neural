@@ -1,0 +1,60 @@
+---
+title: 'Trading Quickstart'
+description: Configure trading and place your first order
+---
+
+## Purpose
+Bring up `TradingClient`, authenticate, and submit a live Kalshi order in minutes.
+
+## Prerequisites
+- `pip install "neural-sdk[trading]"` (or the equivalent `uv add` command)
+- Kalshi API key ID + RSA private key loaded into environment variables as shown below
+
+## Step 1 – Install dependencies
+
+```bash
+pip install neural-sdk
+pip install "neural-sdk[trading]"
+```
+
+## Step 2 – Load credentials
+
+```bash
+# secrets/.env
+KALSHI_API_KEY_ID=your_api_key_id
+KALSHI_PRIVATE_KEY_BASE64=base64_of_pem   # or
+KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private_key.pem
+KALSHI_ENV=prod
+```
+
+```bash
+export $(grep -v '^#' secrets/.env | xargs)
+```
+
+## Step 3 – Place an order
+
+```python
+from neural.trading import TradingClient
+
+client = TradingClient()  # reads env vars
+order = client.exchange.place_order(
+    ticker="EXAMPLE",  # replace with a real ticker
+    side="yes",
+    count=100,
+    price=55,
+)
+print(order)
+```
+
+Expect a JSON response containing the Kalshi order ID and status. If you receive a 401, re-check the credential file.
+
+## Optional – Streaming & FIX
+- Market data: `neural.trading.KalshiWebSocketClient`, `neural.trading.rest_streaming.RESTStreamingClient`
+- Low-latency execution: `neural.trading.KalshiFIXClient` + `FIXStreamingClient`
+
+Consult `trading/market-data` and `trading/fix` for setup details.
+
+## Next
+- Configure long-running execution: `trading/trading-client`
+- Simulate fills before going live: `trading/paper-trading`
+- Run the end-to-end workflow: `workflows/build-first-bot`

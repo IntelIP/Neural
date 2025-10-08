@@ -1,0 +1,135 @@
+---
+title: 'Core Data Sources'
+description: 'Use REST, WebSocket, and authenticated Kalshi sources to stream market data.'
+---
+
+This page dives into the concrete source implementations that ship with `neural.data_collection`.
+
+## REST Polling (`RestApiSource`)
+
+`RestApiSource` turns any HTTP endpoint into an async generator. It runs the blocking `requests` call inside a thread executor and yields JSON payloads on a configurable interval.
+
+```python
+from neural.data_collection import RestApiSource
+
+source = RestApiSource(
+    name="public_scores",
+    url="https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+    params={"limit": 20},
+    interval=60.0,
+)
+
+async def collect_scores():
+    async with source:
+        async for payload in source.collect():
+            print(payload["events"][0]["name"])
+```
+
+Features:
+
+- Retries transient errors up to three times with shorter wait on failures.
+- Thread pool keeps requests responsive without blocking the event loop.
+- `interval` controls cadence; useful for rate-limited public APIs.
+
+## Authenticated REST (`KalshiApiSource`)
+
+`KalshiApiSource` extends `RestApiSource` by signing every request using `KalshiSigner` from the auth package. The interface is otherwise identical.
+
+```python
+from neural.data_collection import KalshiApiSource
+
+markets = KalshiApiSource(
+    name="kalshi_markets",
+    url="https://api.elections.kalshi.com/trade-api/v2/markets",
+    params={"limit": 100},
+    interval=15.0,
+)
+```
+
+Internals:
+
+- Loads credentials via `get_api_key_id` / `get_private_key_material`.
+- Uses a single-thread executor to keep signing and HTTP inside a safe worker.
+- Applies retry/backoff logic and logs high-level errors while continuing the loop.
+
+## WebSocket Streaming (`WebSocketSource`)
+
+For push-based feeds, `WebSocketSource` wraps `websockets.connect` and normalizes inbound frames into dictionaries (falling back to raw text when JSON parsing fails).
+
+```python
+from neural.data_collection import WebSocketSource
+
+ws = WebSocketSource(
+    name="kalshi_ws",
+    uri="wss://kalshi.example/ws",
+    headers={"Authorization": "Bearer ..."},
+)
+
+async with ws:
+    async for message in ws.collect():
+        handle(message)
+```
+
+The source leaves subscription logic to the caller; emit messages to the websocket after `connect()` returns to subscribe or authenticate.
+
+## ESPN GameCast (`ESPNGameCastSource`)
+
+Located in `espn_enhanced.py`, this source enriches play-by-play data with derived fields such as `momentum_direction`, `momentum_score`, and a rolling `GameState`. It polls every five seconds by default and exposes helpers to fetch the latest summary or play-by-play payload.
+
+```python
+from neural.data_collection.espn_enhanced import create_gamecast_source
+
+source = create_gamecast_source(game_id="401547385")
+async with source:
+    async for update in source.collect():
+        for play in update["new_plays"]:
+            print(play.momentum_direction)
+```
+
+Key value-adds:
+
+- Enum-backed `PlayType` classification (touchdowns, turnovers, etc.).
+- Momentum scoring to quantify the impact of each play.
+- Rolling state (`GameState`) used by the sentiment analyzer to put plays in context.
+
+## Twitter Sentiment (`TwitterAPISource`)
+
+`TwitterAPISource` integrates with Twitter-API.io for simplified credentials. It exposes `search_tweets`, `get_game_tweets`, and a `collect` loop that yields normalized tweet structures enriched with engagement metrics.
+
+```python
+from neural.data_collection.twitter_source import TwitterAPISource, TwitterConfig
+
+source = TwitterAPISource(TwitterConfig(
+    api_key="...",
+    query='("Detroit Lions" OR "Detroit") lang:en -is:retweet',
+    poll_interval=45.0,
+))
+```
+
+It automatically expands author metadata, normalizes timestamps, and filters fields used by the sentiment stack.
+
+## Historical Data (`KalshiHistoricalDataSource`)
+
+While the aggregator targets live usage, `KalshiHistoricalDataSource` (in `kalshi_historical.py`) focuses on research/backtests. It wraps `KalshiHTTPClient` and exposes typed methods:
+
+- `collect_trades` – paginated `/markets/trades` endpoint.
+- `collect_market_candles` – candlesticks per market.
+- `collect_event_candles` – event-level aggregated bars.
+
+```python
+from neural.data_collection.kalshi_historical import (
+    KalshiHistoricalDataSource,
+    DataSourceConfig,
+)
+
+hist = KalshiHistoricalDataSource(DataSourceConfig(name="historical"))
+trades = await hist.collect_trades(
+    ticker="KXNFLGAME-25SEP22DETBAL-BAL",
+    start_ts=1694900000,
+    end_ts=1694986400,
+)
+```
+
+The method returns `pandas.DataFrame` objects sorted by timestamp with friendly column names, ready for the backtester.
+
+These building blocks cover polling, streaming, aggregation, and archival collection so you can plug the right data feed into any stage of the Neural stack.

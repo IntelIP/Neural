@@ -1,0 +1,50 @@
+---
+title: 'Order Management Bridge'
+description: 'Translate strategy signals into executable orders with risk checks and dry-run support.'
+---
+
+`neural.analysis.execution.order_manager.OrderManager` connects the analysis stack to either real or simulated trading clients. It consumes `Signal` objects and handles confirmation, slippage policies, and position bookkeeping.
+
+## Usage
+
+```python
+from neural.analysis.execution.order_manager import OrderManager
+from neural.analysis.strategies.mean_reversion import MeanReversionStrategy
+from neural.trading import TradingClient
+
+strategy = MeanReversionStrategy()
+client = TradingClient()
+manager = OrderManager(trading_client=client, max_slippage=0.02, require_confirmation=False)
+
+signal = strategy.buy_yes(
+    ticker="KXNFLGAME-25SEP25SEAARI-SEA",
+    size=25,
+    confidence=0.7,
+    entry_price=0.54,
+)
+
+await manager.execute_signal(signal)
+```
+
+## Key Features
+
+- **Risk Checks** – `_pass_risk_checks` validates slippage, exposure limits, and other configurable constraints before routing orders.
+- **Dry Run Mode** – set `dry_run=True` to simulate fills without touching the trading API; ideal for integration tests or paper bots.
+- **Manual Confirms** – `require_confirmation=True` forces asynchronous user confirmation (useful when supervising new strategies).
+- **Arbitrage Awareness** – signals with metadata like `{'also_buy': 'no'}` automatically trigger paired yes/no orders for arbitrage trades.
+- **Position Tracking** – maintains `active_positions`, `pending_orders`, and `order_history` for post-trade analysis.
+
+## Execution Flow
+
+1. **Validation** – skip `HOLD` signals, run risk checks.
+2. **Confirmation** – optionally prompt the operator.
+3. **Routing** – delegate to `_execute_buy_yes` / `_execute_sell_no`, which call `_place_order` under the hood.
+4. **Fill Handling** – update positions, compute P&L, append to history.
+
+Override `_place_order` if you need to adapt to a custom trading client interface; the rest of the manager’s workflow stays intact.
+
+## Async Friendly
+
+The manager is fully async. Use `asyncio.gather` or background tasks to execute multiple signals concurrently, especially when combining market-making and hedging strategies.
+
+By centralizing execution logic, OrderManager keeps strategies deterministic and makes the jump from research to production far less error-prone.

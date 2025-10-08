@@ -1,0 +1,92 @@
+---
+title: 'Data Collection Overview'
+description: 'Understand the Neural data ingestion stack and how sources plug into strategies.'
+---
+
+Neural’s data layer normalizes everything required to research and trade Kalshi sports markets. It combines pull-based REST sources, push-based WebSockets, and enrichment services (ESPN, Twitter) behind a shared abstraction so research code can swap feeds without rewrites.
+
+## Architecture
+
+```
+DataSource/registry → Transformers → Aggregator → Analysis/Trading
+```
+
+- **`DataSource`** – asynchronous base class that all feeders implement. Provides `connect`, `disconnect`, and `collect` coroutines so pipelines can use `async with` to manage resources.
+- **Transformers** – optional post-processing steps that flatten, normalize, or timestamp incoming payloads before they reach analysis code.
+- **Registry** – `DataSourceRegistry` maps source names to their implementation and transformer, enabling dependency injection and configuration-driven assembly.
+- **Aggregator** – orchestrates multiple sources (Twitter, ESPN, Kalshi) and emits unified `AggregatedData` objects enriched with live sentiment metrics.
+
+## Choosing a Source
+
+| Use Case | Recommended Source | Notes |
+|----------|--------------------|-------|
+| Simple polling of any REST endpoint | `RestApiSource` | Wraps `requests` inside an asyncio-friendly loop with configurable interval. |
+| Authenticated Kalshi REST responses | `KalshiApiSource` | Extends `RestApiSource` to sign each request with `KalshiSigner`. |
+| Streaming market ticks | `WebSocketSource` or `KalshiWebSocketClient` | Use `WebSocketSource` for generic JSON feeds; use the trading client wrapper for Kalshi-specific logic. |
+| ESPN live play-by-play | `ESPNGameCastSource` | Supplies structured `PlayData` with computed momentum scores. |
+| Twitter sentiment | `TwitterAPISource` | Polls Twitter-API.io with rate limit handling and normalization. |
+| Historical research | `KalshiHistoricalDataSource` | Surfaces `/markets/trades` and candlestick endpoints via an authenticated HTTP client. |
+
+## Working with the Registry
+
+```python
+from neural.data_collection import registry, DataTransformer
+from neural.data_collection.base import DataSource
+
+@registry.register_source(DataTransformer())
+class MyCustomSource(DataSource):
+    async def connect(self) -> None:
+        ...
+    async def disconnect(self) -> None:
+        ...
+    async def collect(self):
+        yield {"payload": 42}
+```
+
+Later, retrieve instances with `registry.get_source("MyCustomSource", **kwargs)` and integrate them into aggregators or bespoke services.
+
+## Async Usage Pattern
+
+Every source implements the async context manager protocol:
+
+```python
+from neural.data_collection import KalshiApiSource
+
+source = KalshiApiSource(
+    name="kalshi_markets",
+    url="https://api.elections.kalshi.com/trade-api/v2/markets",
+    params={"limit": 50},
+)
+
+async with source:
+    async for payload in source.collect():
+        process(payload)
+```
+
+This pattern guarantees proper cleanup, even when exceptions occur mid-stream.
+
+## Transformers in Practice
+
+`DataTransformer` supports composable functions that mutate raw payloads.
+
+```python
+from neural.data_collection import DataTransformer
+
+def add_market_timestamp(row):
+    row.setdefault("timestamp", row.get("open_time"))
+    return row
+
+transformer = DataTransformer([DataTransformer.flatten_keys, add_market_timestamp])
+normalized = transformer.transform(raw_market)
+```
+
+Leveraging transformers keeps downstream strategy code free from payload-shape conditionals.
+
+With these primitives you can assemble custom feeds, aggregate external analytics, or build reproducible historical datasets that feed back into the analysis stack.
+
+## Next
+
+- Review source implementations: `data-collection/sources`
+- Learn the sport-specific helpers: `data-collection/kalshi-toolbox`
+- Orchestrate multi-feed pipelines: `data-collection/aggregator`
+

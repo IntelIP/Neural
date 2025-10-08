@@ -1,0 +1,60 @@
+---
+title: 'Analysis Stack Overview'
+description: 'Purpose, entry points, and quick checks for Neural’s strategy layer.'
+---
+
+## Purpose
+Translate raw market data into executable decisions. The analysis stack manages strategies, backtests, risk, and order hand-off so you can concentrate on signal design.
+
+## When to use it
+- You have market data from `neural.data_collection` and need to generate trades.
+- You want to replay an idea on historical data before running it live.
+- You need reusable risk sizing, sentiment scoring, or an order bridge.
+
+## Key modules
+
+| Module | What it covers | Docs |
+|--------|----------------|------|
+| `neural.analysis.strategies` | Base class + prebuilt strategies (mean reversion, momentum, arbitrage, sentiment) | `analysis/strategy-foundations`, `analysis/strategy-library` |
+| `neural.analysis.backtesting` | Event-driven backtester with fee/slippage modelling and optional ESPN integration | `analysis/backtesting` |
+| `neural.analysis.risk.position_sizing` | Kelly, fixed-percentage, edge-proportional, martingale helpers | `analysis/risk-sizing` |
+| `neural.analysis.execution.order_manager` | Bridges strategy signals to trading clients (live or paper) | `analysis/order-management` |
+| `neural.analysis.sentiment` | Twitter/ESPN sentiment engines and trackers | `analysis/sentiment` |
+
+## Inputs
+- `pandas.DataFrame` market snapshots (YES/NO prices, volume, timestamps).
+- Optional context (ESPN play-by-play, sentiment metrics, sportsbook lines).
+- Strategy configuration parameters (edges, thresholds, stop losses, etc.).
+
+## Outputs
+- `Signal` and `Position` objects routed to paper or live execution.
+- `BacktestResult` summaries (total return, Sharpe, drawdown, trade logs).
+- Risk metrics (exposure, Kelly sizing, anti-/martingale adjustments).
+
+## Quick check (five lines)
+
+```python
+from neural.analysis.strategies.mean_reversion import MeanReversionStrategy
+from neural.analysis.backtesting.engine import Backtester
+
+strategy = MeanReversionStrategy(initial_capital=10_000)
+engine = Backtester(initial_capital=10_000)
+# Plug in your historical DataFrame: engine.backtest(strategy, start_date, end_date, markets)
+```
+
+If that snippet imports cleanly, your environment is set up and you can dive into the strategy docs linked above.
+
+## Connect it to the rest of the stack
+1. Collect live or historical data (`data-collection/overview`).
+2. Feed it into your strategy (`analysis/strategy-foundations`).
+3. Backtest and tweak risk settings (`analysis/backtesting`, `analysis/risk-sizing`).
+4. Send resulting signals to the appropriate execution surface (`trading/overview`).
+
+Keep this page handy as a hub—every other analysis doc branches from the modules listed here.
+
+## Next
+
+- Choose a base strategy: `analysis/strategy-foundations`
+- Explore prebuilt strategies: `analysis/strategy-library`
+- Run a historical replay: `analysis/backtesting`
+

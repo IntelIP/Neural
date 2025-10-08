@@ -1,0 +1,111 @@
+---
+title: 'Build Your First Bot'
+description: 'Run a full Neural workflow from market fetch to simulated execution in under 15 minutes.'
+---
+
+This walkthrough mirrors a realistic “hello world” for Neural. You will fetch live Kalshi markets, score them with a toy signal, route simulated orders through the paper trading stack, and learn where to plug in backtesting or live execution when you are ready.
+
+## Prerequisites
+
+- Python 3.10+
+- `pip install "neural-sdk[trading]"`
+- Kalshi API key + RSA private key (saved in `secrets/.env` exactly as described in `getting-started`)
+- `pandas` (already pulled in via the trading extra)
+
+## 1. Clone the repo (optional but convenient)
+
+```bash
+git clone https://github.com/IntelIP/Neural.git
+cd Neural
+```
+
+You can also install the package globally and drop the scripts wherever you prefer—the examples use repo-relative paths for clarity.
+
+## 2. Confirm credentials work
+
+```bash
+export $(grep -v '^#' secrets/.env | xargs)
+python examples/01_init_user.py
+```
+
+Expected: a JSON blob containing your Kalshi portfolio balance. A 401/403 error means the API key and private key do not match—fix this before moving on.
+
+## 3. Fetch live markets + simulate orders
+
+Run the bundled quickstart script end-to-end:
+
+```bash
+python examples/build_first_bot.py
+```
+
+Sample output:
+
+```
+📡 Fetching markets...
+              ticker                                              title  yes_ask  no_ask  volume
+0  KXNFLGAME-25SEP25SEAARI-SEA  Will the Seattle Seahawks win against ...       55      48   12345
+...
+
+🎯 Selecting candidates
+  - KXNFLGAME-25SEP25SEAARI-SEA | Will the Seattle Seahawks win ... | YES $0.55 | NO $0.48
+
+🧪 Simulating trades in paper account
+[FILLED] KXNFLGAME-25SEP25SEAARI-SEA — Will the Seattle Seahawks win ...
+    yes_ask=$0.55 | no_ask=$0.48 | volume=12,345
+    filled_price=$0.55
+
+Portfolio snapshot:
+  cash: 9862.50
+  total_value: 10000.00
+  open_positions: 1
+```
+
+What the script does:
+
+1. Uses `KalshiHTTPClient` to call `/trade-api/v2/markets` for the NFL series.
+2. Scores candidates by tightest YES/NO spread and highest volume (a toy signal you can swap out).
+3. Routes BUY orders into `PaperTradingClient` so you can inspect fills, P&L, and portfolio metrics without touching real capital.
+
+Open the file to modify parameters, change the signal logic, or flip the execution target once you are comfortable.
+
+## 4. Backtest the idea (optional)
+
+Use the historical helper to pull trades for any ticker your script surfaced:
+
+```bash
+python examples/test_historical_data.py
+```
+
+This creates `test_historical_trades.csv`. Load that file into a notebook or wire it straight into the `Backtester` (`analysis/backtesting`) to replay your rule on historical fills. Once you have a strategy object, swap it into the script and send its signals through `PaperTradingClient` or `OrderManager`.
+
+## 5. Add live context (optional)
+
+- **Sentiment / play-by-play:** configure `MultiSourceAggregator` (see `data-collection/aggregator`) to merge Twitter + ESPN feeds with the markets you are watching.
+- **Real-time quotes:** replace the REST fetch with `KalshiWebSocketClient` or `RESTStreamingClient` (see `trading/market-data`).
+- **Ultra-low latency execution:** swap `PaperTradingClient` for `TradingClient` or `KalshiFIXClient` once you have guardrails in place.
+
+## 6. Production checklist
+
+Before promoting the bot to live trading, walk through `workflows/promotion-checklist`:
+
+1. Sensitivity test position sizing with the risk helpers.
+2. Enable structured logging and alerting around fills / disconnections.
+3. Dry-run continuously with paper trading while comparing to historical backtests.
+
+## Where to go next
+
+| Goal | Documentation |
+|------|---------------|
+| Design richer data pipelines | `data-collection/overview`, `workflows/data-pipeline` |
+| Implement custom strategies | `analysis/strategy-foundations`, `analysis/strategy-library` |
+| Understand trading surfaces | `trading/overview`, `trading/trading-client`, `trading/fix` |
+| Parse sports tickers quickly | `data-collection/ticker-patterns` |
+
+Once this quickstart feels routine, refactor the script into modules, inject your strategy, and connect `PaperTradingClient` to your alerting/monitoring stack. You now have a skeleton you can iterate on without guesswork.
+
+## Next
+
+- Promote the workflow to production: `workflows/promotion-checklist`
+- Instrument data pipelines: `workflows/data-pipeline`
+- Iterate on strategy logic: `analysis/strategy-foundations`
+

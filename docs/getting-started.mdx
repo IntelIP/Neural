@@ -1,103 +1,151 @@
 ---
 title: Getting Started
-description: Install, configure credentials, and run your first steps with Neural
+description: Install, configure credentials, and ship your first Neural workflow
 ---
 
-This guide gets you from zero to running with Neural in minutes.
+Follow these steps in order. Every command has a matching verification check so you know the environment is ready before moving on.
 
-## Install
+## Prerequisites
 
-pip
+- Python 3.10 or newer
+- `pip` or `uv`
+- Kalshi API key ID and RSA private key (downloadable from the Kalshi console)
+
+## Step 1 – Install Neural
+
+Using `pip`:
 
 ```bash
 pip install neural-sdk
-# With trading extras
-pip install "neural-sdk[trading]"
+pip install "neural-sdk[trading]"       # adds kalshi-python + streaming extras
 ```
 
-uv
+Using `uv`:
 
 ```bash
 uv add neural-sdk
-# With trading extras
 uv add "neural-sdk[trading]"
 ```
 
-Dev (editable)
+**Verify:**
 
 ```bash
-git clone https://github.com/IntelIP/Neural.git
-cd Neural
-pip install -e ".[dev]"
-# Or with uv
-uv sync --dev
+python - <<'PY'
+import neural
+print("Neural version:", neural.__version__)
+PY
 ```
 
-## Credentials
+## Step 2 – Configure credentials
 
-Create a local .env to use real credentials. Never commit this file.
+1. Place your keys in `secrets/` (keep the directory out of version control):
+
+   ```bash
+   mkdir -p secrets
+   cat <<'ENV' > secrets/.env
+   KALSHI_API_KEY_ID=your_api_key_id
+   # choose exactly one of the following two lines
+   KALSHI_PRIVATE_KEY_BASE64=base64_encoded_private_key
+   # KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private_key.pem
+   KALSHI_ENV=prod
+   ENV
+   ```
+
+2. Load them into the shell whenever you start a session:
+
+   ```bash
+   export $(grep -v '^#' secrets/.env | xargs)
+   ```
+
+3. Sanity check that Neural can read them:
+
+   ```bash
+   python - <<'PY'
+from neural.auth.env import get_api_key_id
+print("API key detected:", get_api_key_id()[:6] + "…")
+PY
+   ```
+
+4. Call a real Kalshi endpoint:
+
+   ```bash
+   python examples/01_init_user.py
+   ```
+
+   You should see a JSON response containing your portfolio balance. Authentication errors mean the key ID / private key pair does not match.
+
+## Step 3 – Pull live market data
+
+Run this snippet to fetch a handful of open NFL markets. The helper returns a `pandas.DataFrame` we can inspect immediately.
 
 ```bash
-# secrets/.env
-KALSHI_API_KEY_ID=your_api_key_id
-KALSHI_PRIVATE_KEY_BASE64=base64_of_pem   # or
-KALSHI_PRIVATE_KEY_PATH=secrets/kalshi_private_key.pem
-KALSHI_API_BASE=https://api.elections.kalshi.com
-# Optional login credentials (some tools use these)
-KALSHI_EMAIL=you@example.com
-KALSHI_PASSWORD=your-password
+python - <<'PY'
+import pandas as pd
+from neural.auth.http_client import KalshiHTTPClient
+
+client = KalshiHTTPClient()
+try:
+    payload = client.get("/markets", params={"series_ticker": "KXNFLGAME", "status": "open", "limit": 5})
+finally:
+    client.close()
+
+df = pd.DataFrame(payload.get("markets", []))
+print(df[["ticker", "title", "yes_ask", "no_ask"]])
+PY
 ```
 
-Load and verify:
+Expected: a small table of tickers (e.g., `KXNFLGAME-…`) with YES/NO prices in cents. If the DataFrame is empty, Kalshi may not have active markets in that sport—switch `sports` or drop the filter to confirm connectivity.
+
+## Step 4 – Collect historical trades for backtesting
+
+Use the historical data source to pull recent trades and save them to CSV for analysis:
 
 ```bash
-export $(grep -v '^#' secrets/.env | xargs)
-python -c "import neural; print(neural.__version__)"
+python examples/test_historical_data.py
 ```
 
-## Quickstart by Stack
+Look for the `✅ SUCCESS` line and the generated `test_historical_trades.csv`. These trades feed directly into the backtester.
 
-### Data Collection
+## Step 5 – Dry-run a strategy
 
-```python
-from neural.data_collection import KalshiApiSource, get_all_sports_markets
-
-source = KalshiApiSource()
-markets = get_all_sports_markets()
-print(f"Found {len(markets)} sports markets")
-```
-
-### Analysis
-
-```python
-from neural.analysis import Backtester
-# Example strategy depends on your usage; use your own strategy or the examples in repo
-
-strategy = ...  # Your Strategy subclass
-engine = Backtester(strategy, initial_capital=10_000)
-results = engine.run(historical_data)
-print(results.get("sharpe_ratio"))
-```
-
-### Trading
-
-```python
-from neural.trading import TradingClient
-
-client = TradingClient()  # reads creds from env/.env
-order = client.exchange.place_order(ticker="EXAMPLE", side="yes", count=100, price=55)
-print(f"Order ID: {order['order_id']}")
-```
-
-Note: Trading and some streaming examples require valid credentials. Without creds, related tests and examples skip gracefully.
-
-## Tests
+The mean-reversion example wires data collection, strategy logic, and the order manager together. It runs in `dry_run` mode so no orders hit Kalshi.
 
 ```bash
-# Unit tests always run
+python examples/05_mean_reversion_strategy.py
+```
+
+You should see a per-game summary along with simulated signals and portfolio metrics. If no signals appear, markets might not meet the divergence threshold—adjust the parameters at the top of the script and rerun.
+
+## Step 6 – Run the end-to-end quickstart
+
+```bash
+python examples/build_first_bot.py
+```
+
+This script fetches live markets, applies a toy signal, and routes simulated orders through `PaperTradingClient`. Use it as a template before wiring in your own strategy.
+
+## Step 7 – Move into paper or live trading
+
+1. Swap `TradingClient` in for live trading (credentials required).
+2. Keep `PaperTradingClient` for rehearsals and backtesting comparisons.
+3. Use `OrderManager` to keep strategy logic independent from the execution target.
+
+## Step 8 – Run tests
+
+```bash
 pytest -q
-
-# With credentials loaded, more integration tests execute automatically
-export $(grep -v '^#' secrets/.env | xargs)
-pytest -q
 ```
+
+- Always run without credentials first; unit tests will pass.
+- Export your `.env` and rerun to trigger integration tests that hit Kalshi.
+- Investigate any failing integration tests before trading live.
+
+## Next steps
+
+- **Overview of the architecture:** `architecture/start-here`
+- **End-to-end quickstart:** `workflows/build-first-bot`
+- **Deep dive into data collection:** `data-collection/overview`
+- **Build your own strategy:** `analysis/strategy-foundations`
+- **Progression checklist:** `workflows/promotion-checklist`
+
+Come back to this guide whenever you need the essential commands to bootstrap a new machine.

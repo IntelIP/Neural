@@ -1,103 +1,61 @@
 ---
-title: 'Ticker Pattern Bible'
-description: 'The complete reference for understanding Kalshi ticker formats'
+title: 'Ticker Pattern Quick Tips'
+description: 'Practical shorthand for reading Kalshi sports tickers and avoiding common mistakes.'
 ---
 
-# 🔤 Kalshi Ticker Pattern Bible
+Kalshi sports tickers encode the sport, event date, teams, and outcome in a fixed pattern. This guide captures the shortcuts we use daily plus the edge cases that have tripped us up.
 
-<Warning>
-**THIS IS CRITICAL:** Kalshi tickers follow EXACT patterns. One wrong character = no data. This page shows you EXACTLY how they work.
-</Warning>
-
-## 🎯 The Universal Pattern
-
-Every Kalshi market ticker follows this structure:
+## Core Template
 
 ```
-[PREFIX]-[IDENTIFIER]-[OUTCOME]
+[PREFIX]-[EVENT]-[OUTCOME]
 ```
 
-For sports specifically:
+Sports events expand the middle segment:
 
 ```
-[SPORT_PREFIX]-[DATE][TEAMS]-[WINNER]
+[SPORT_PREFIX]-[YYMMMDD][AWAY][HOME]-[OUTCOME]
 ```
 
-## 🏈 NFL Game Patterns
+- `SPORT_PREFIX` distinguishes the series (`KXNFLGAME`, `KXNBA`, `KXNCAAFGAME`, …).
+- `YYMMMDD` uses a two-digit year and three-letter month (`25SEP22`).
+- Team codes concatenate without separators.
+- The trailing part is the outcome code you trade (`SEA`, `DET`, `YES`, etc.).
 
-### Full Breakdown
+## NFL (KXNFLGAME)
 
 ```
 KXNFLGAME-25SEP22DETBAL-BAL
-↑         ↑      ↑   ↑   ↑
-│         │      │   │   └── Outcome: Baltimore wins
-│         │      │   └────── Team 2: Baltimore (BAL)
-│         │      └────────── Team 1: Detroit (DET)
-│         └───────────────── Date: Sept 22, 2025
-└─────────────────────────── Sport: NFL Game
+↑          ↑       ↑   ↑
+│          │       │   └─ Outcome: BAL wins
+│          │       └──── Home/Away teams (DET @ BAL)
+│          └──────────── Date: 2025-09-22
+└──────────────────────── NFL game series
 ```
 
-### Real Examples
+| Full Ticker | Event Segment | Outcome | Meaning |
+|-------------|---------------|---------|---------|
+| `KXNFLGAME-25SEP22DETBAL-DET` | `KXNFLGAME-25SEP22DETBAL` | `DET` | Detroit to win |
+| `KXNFLGAME-25SEP22DETBAL-BAL` | `KXNFLGAME-25SEP22DETBAL` | `BAL` | Baltimore to win |
+| `KXNFLGAME-25SEP25SEAARI-SEA` | `KXNFLGAME-25SEP25SEAARI` | `SEA` | Seattle to win |
 
-| Full Ticker | Event Part | Market Part | Meaning |
-|------------|------------|-------------|---------|
-| `KXNFLGAME-25SEP22DETBAL-DET` | KXNFLGAME-25SEP22DETBAL | DET | Detroit wins the game |
-| `KXNFLGAME-25SEP22DETBAL-BAL` | KXNFLGAME-25SEP22DETBAL | BAL | Baltimore wins the game |
-| `KXNFLGAME-25SEP25SEAARI-SEA` | KXNFLGAME-25SEP25SEAARI | SEA | Seattle wins the game |
-| `KXNFLGAME-25SEP25SEAARI-ARI` | KXNFLGAME-25SEP25SEAARI | ARI | Arizona wins the game |
 
-### Pattern Rules
+> Away/home order nearly always matches reading order (`DETBAL` → Detroit @ Baltimore). Double-check the market title before assuming.
 
-<AccordionGroup>
-  <Accordion title="Date Format: YYMMMDD">
-    - `25SEP22` = 2025, September, 22nd
-    - `25OCT15` = 2025, October, 15th
-    - `25DEC25` = 2025, December, 25th
-    - `26JAN10` = 2026, January, 10th
 
-    **Month Codes:** JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC
-  </Accordion>
+### Quick rules
 
-  <Accordion title="Team Codes: Usually 3 Letters">
-    **Standard Format:**
-    - DET = Detroit Lions
-    - BAL = Baltimore Ravens
-    - SEA = Seattle Seahawks
-    - ARI = Arizona Cardinals
+- Date segment is `YYMMMDD` (months: JAN … DEC).
+- Standard team codes use three letters; Los Angeles/New York teams may use two when there is no ambiguity.
+- Outcomes mirror the team code (`BAL`, `SEA`) rather than `YES/NO` for head-to-head markets.
 
-    **Special Cases:**
-    - LA = Los Angeles (when only one LA team)
-    - LAR = LA Rams (when both LA teams play)
-    - LAC = LA Chargers
-    - NY = New York (when only one NY team)
-    - NYG = NY Giants
-    - NYJ = NY Jets
-  </Accordion>
-
-  <Accordion title="Home vs Away">
-    The order USUALLY indicates away-home:
-    - `DETBAL` = Detroit AT Baltimore (Baltimore is home)
-    - `SEAARI` = Seattle AT Arizona (Arizona is home)
-
-    But always check the market title to be sure!
-  </Accordion>
-</AccordionGroup>
-
-## 🏀 NBA Game Patterns
-
-### Structure
+## NBA (KXNBA)
 
 ```
 KXNBA-25OCT15LALNYK-LAL
-↑     ↑      ↑   ↑   ↑
-│     │      │   │   └── Outcome: Lakers win
-│     │      │   └────── Team 2: Knicks (NYK)
-│     │      └────────── Team 1: Lakers (LAL)
-│     └───────────────── Date: Oct 15, 2025
-└─────────────────────── Sport: NBA Game
 ```
 
-### Common NBA Team Codes
+Same structure as NFL; the prefix changes to `KXNBA`. Common team codes:
 
 | Team | Code | Team | Code |
 |------|------|------|------|
@@ -107,273 +65,61 @@ KXNBA-25OCT15LALNYK-LAL
 | Bucks | MIL | Suns | PHX |
 | Nuggets | DEN | Mavericks | DAL |
 
-## 🎓 College Sports Patterns
+## College Football (KXNCAAFGAME)
 
-### College Football (NCAAF)
+College tickers follow the template but the team abbreviations are less consistent.
 
 ```
 KXNCAAFGAME-25SEP15OHIMICH-MICH
-↑           ↑      ↑    ↑    ↑
-│           │      │    │    └── Michigan wins
-│           │      │    └──────── Michigan
-│           │      └───────────── Ohio State
-│           └──────────────────── Date: Sept 15, 2025
-└──────────────────────────────── NCAA Football Game
 ```
 
-### College Team Codes
-
-| School | Code | School | Code |
-|--------|------|--------|------|
-| Ohio State | OHI/OSU | Michigan | MICH/UM |
-| Alabama | ALA | Georgia | UGA |
-| Texas | TEX | Oklahoma | OU |
-| Notre Dame | ND | USC | USC |
+| School | Seen as | School | Seen as |
+|--------|---------|--------|---------|
+| Ohio State | `OHI`, `OSU`, `OHIOST` | Michigan | `MICH`, `UM`, `UMICH` |
+| Alabama | `ALA` | Georgia | `UGA` |
+| Texas | `TEX` | Oklahoma | `OU` |
+| Notre Dame | `ND` | USC | `USC` |
 
 <Warning>
-**INCONSISTENCY ALERT:** College codes are LESS standardized than pro sports. You might see:
-- Ohio State as: OHI, OSU, or OHIOST
-- Michigan as: MICH, UM, or UMICH
-
-Always search broadly for college games!
+College data sources disagree on abbreviations. When searching, include all known variants and fall back to the market title if automated parsing fails.
 </Warning>
 
-## 🔍 How to Parse Tickers
+## Lessons learned
 
-### Python Code to Decode Any Ticker
+1. **Validate the date block first.** `YYMMMDD` typos are the fastest way to miss a market because the API treats unknown prefixes as different events.
+2. **Keep a mapping file for team aliases.** Especially useful for NCAA and cities with multiple teams.
+3. **Outcome codes mirror the market structure.** Head-to-head markets end in team codes, “Will X happen?” markets end in `YES/NO`.
+4. **Always read the market title.** Tickers are concise but the title confirms home/away ordering and clarifies special props.
+
+## Helper: parse a ticker quickly
 
 ```python
 def parse_ticker(ticker: str) -> dict:
-    """
-    Parse any Kalshi ticker into components.
-
-    Example:
-        parse_ticker("KXNFLGAME-25SEP22DETBAL-BAL")
-        Returns: {
-            'sport': 'KXNFLGAME',
-            'date': '25SEP22',
-            'teams': 'DETBAL',
-            'team1': 'DET',
-            'team2': 'BAL',
-            'outcome': 'BAL',
-            'is_sports': True
-        }
-    """
     parts = ticker.split('-')
-
     if len(parts) < 2:
         return {'error': 'Invalid ticker format'}
 
     result = {
         'full_ticker': ticker,
         'prefix': parts[0],
-        'is_sports': parts[0].startswith('KX')
+        'event': parts[1],
+        'outcome': parts[2] if len(parts) > 2 else None,
+        'is_sports': parts[0].startswith('KX'),
     }
 
-    if result['is_sports'] and len(parts) >= 2:
-        # Sports ticker
-        result['sport'] = parts[0]
-
-        # Parse event part (date + teams)
+    if result['is_sports'] and len(parts[1]) >= 7:
         event = parts[1]
-
-        # Extract date (first 7 characters: YYMMMDD)
-        if len(event) >= 7:
-            result['date'] = event[:7]
-            result['teams'] = event[7:]
-
-            # Try to split teams (usually 3-6 chars each)
-            teams_str = event[7:]
-            if len(teams_str) >= 6:
-                # Assume equal length team codes
-                mid = len(teams_str) // 2
-                result['team1'] = teams_str[:mid]
-                result['team2'] = teams_str[mid:]
-
-        # Get outcome if present
-        if len(parts) >= 3:
-            result['outcome'] = parts[2]
+        result['date_code'] = event[:7]
+        teams = event[7:]
+        if len(teams) >= 6:
+            mid = len(teams) // 2
+            result['team1'] = teams[:mid]
+            result['team2'] = teams[mid:]
 
     return result
 
-# Test it
-ticker = "KXNFLGAME-25SEP22DETBAL-BAL"
-parsed = parse_ticker(ticker)
-print(f"Sport: {parsed['sport']}")
-print(f"Date: {parsed['date']}")
-print(f"Teams: {parsed['team1']} vs {parsed['team2']}")
-print(f"Winner: {parsed['outcome']}")
+# Example
+print(parse_ticker('KXNFLGAME-25SEP22DETBAL-BAL'))
 ```
 
-### Find Games by Date
-
-```python
-async def find_games_on_date(date_str: str):
-    """
-    Find all NFL games on a specific date.
-
-    Args:
-        date_str: Format "25SEP22" for Sept 22, 2025
-    """
-    source = KalshiMarketsSource(
-        series_ticker="KXNFLGAME",
-        status=None
-    )
-
-    async with source:
-        async for df in source.collect():
-            # Filter by date pattern in ticker
-            games_on_date = df[
-                df['ticker'].str.contains(date_str, na=False)
-            ]
-
-            if not games_on_date.empty:
-                print(f"Games on {date_str}:")
-                unique_events = games_on_date['event_ticker'].unique()
-                for event in unique_events:
-                    print(f"  {event}")
-
-            return games_on_date
-```
-
-## 🚨 Critical Ticker Facts
-
-<Cards>
-  <Card title="Tickers Are Case-Sensitive">
-    - ✅ `KXNFLGAME` (correct)
-    - ❌ `kxnflgame` (wrong)
-    - ❌ `KxNflGame` (wrong)
-  </Card>
-
-  <Card title="No Spaces Ever">
-    - ✅ `KXNFLGAME-25SEP22DETBAL`
-    - ❌ `KXNFLGAME - 25SEP22 DET BAL`
-    - ❌ `KXNFLGAME-25SEP22 DETBAL`
-  </Card>
-
-  <Card title="Hyphens Are Delimiters">
-    The hyphen (`-`) separates:
-    1. Sport prefix
-    2. Event identifier
-    3. Outcome
-
-    Never add extra hyphens!
-  </Card>
-
-  <Card title="Order Matters">
-    `DETBAL` ≠ `BALDET`
-
-    The first team is usually visiting team.
-  </Card>
-</Cards>
-
-## 📊 Non-Sports Ticker Patterns
-
-Kalshi has many non-sports markets with different patterns:
-
-### Politics
-
-```
-PRES-2024-DEM    # Democratic candidate wins presidency
-SENATE-2024-GOP  # Republicans control Senate
-```
-
-### Economics
-
-```
-FED-RATE-25MAR-HIKE    # Fed raises rates in March
-INFLATION-2025Q1-OVER3 # Inflation over 3% in Q1 2025
-```
-
-### Entertainment
-
-```
-OSCARS-2025-BESTPICTURE-OPPENHEIMER  # Specific movie wins
-GRAMMYS-2025-AOTY-TAYLOR            # Album of the year
-```
-
-## 🔧 Debugging Ticker Issues
-
-### Step-by-Step Ticker Debugger
-
-```python
-async def debug_ticker(ticker: str):
-    """
-    Debug why a ticker might not be working.
-    """
-    print(f"Debugging ticker: {ticker}")
-    print("-" * 40)
-
-    # Check 1: Format
-    if not ticker.startswith('KX'):
-        print("❌ Doesn't start with KX (not a sports ticker?)")
-
-    parts = ticker.split('-')
-    print(f"✓ Parts: {parts}")
-
-    # Check 2: Try the full ticker
-    try:
-        df = await get_game_markets(ticker)
-        if not df.empty:
-            print(f"✅ Found {len(df)} markets!")
-            return df
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-    # Check 3: Try just the event part
-    if len(parts) >= 2:
-        event_ticker = f"{parts[0]}-{parts[1]}"
-        print(f"\nTrying event ticker: {event_ticker}")
-        try:
-            df = await get_game_markets(event_ticker)
-            if not df.empty:
-                print(f"✅ Found with event ticker!")
-                return df
-        except:
-            pass
-
-    # Check 4: Search for similar
-    print("\nSearching for similar tickers...")
-    source = KalshiMarketsSource(
-        series_ticker=parts[0] if parts else None,
-        status=None
-    )
-
-    async with source:
-        async for df in source.collect():
-            similar = df[df['ticker'].str.contains(parts[1][:5], na=False)]
-            if not similar.empty:
-                print(f"Found similar: {similar['ticker'].values[:5]}")
-
-    print("\n❌ Ticker not found. Check date and team codes!")
-```
-
-## 💡 Quick Reference Card
-
-```python
-# SPORTS PREFIXES (memorize these!)
-NFL_GAMES = "KXNFLGAME"
-NBA_GAMES = "KXNBA"
-MLB_GAMES = "KXMLB"
-NHL_GAMES = "KXNHL"
-COLLEGE_FOOTBALL = "KXNCAAFGAME"
-COLLEGE_BASKETBALL = "KXNCAAB"
-
-# DATE FORMAT
-# YYMMMDD: 25SEP22 = Sept 22, 2025
-
-# FULL PATTERN
-# [PREFIX]-[DATE][TEAMS]-[WINNER]
-# KXNFLGAME-25SEP22DETBAL-BAL
-
-# QUICK TEST
-test_ticker = "KXNFLGAME-25SEP25SEAARI"
-df = await get_game_markets(test_ticker)
-print(f"Works: {not df.empty}")
-```
-
-<Note>
-**Master these patterns and you'll never have "markets not found" errors again!**
-
-Next: Learn to [Create Custom Data Sources](/data-collection/creating-sources) or start [Trading](/trading/setup)
-</Note>
+Use this helper as a starting point, then overlay your own alias tables or validation rules to match the sports you trade most often.

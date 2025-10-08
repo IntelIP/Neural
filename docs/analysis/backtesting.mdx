@@ -1,0 +1,79 @@
+---
+title: 'Backtesting Engine'
+description: 'Simulate Kalshi strategies with fee, slippage, parallel execution, and ESPN data integration.'
+---
+
+`neural.analysis.backtesting.engine.Backtester` provides a production-grade simulation environment for Kalshi markets. It models capital flows, fees, slippage, momentum-driven exits, and concurrent strategy execution.
+
+## Instantiating the Engine
+
+```python
+from neural.analysis.backtesting.engine import Backtester
+from neural.analysis.strategies import create_strategy
+
+strategy = create_strategy("conservative", initial_capital=10_000)
+engine = Backtester(
+    data_source=my_market_data_loader,
+    espn_source=my_espn_data_loader,
+    fee_model="kalshi",
+    slippage=0.01,
+    commission=0.0,
+    initial_capital=10_000,
+    max_workers=4,
+)
+```
+
+- **`data_source`** – any object capable of returning historical market frames.
+- **`espn_source`** – optional provider for play-by-play context.
+- **`fee_model`** – choose between the built-in Kalshi fee schedule or your own logic.
+- **`slippage`/`commission`** – model trade execution frictions.
+
+## Running a Backtest
+
+```python
+results = engine.backtest(
+    strategy,
+    start_date="2023-08-01",
+    end_date="2023-08-31",
+    markets=["KXNFLGAME-25SEP25SEAARI-SEA"],
+    use_espn=True,
+    parallel=True,
+)
+```
+
+The engine will:
+
+1. Reset the strategy state and seed `current_capital`.
+2. Load historical data (`_load_market_data`) and optional ESPN feeds.
+3. Process timestamp-aligned rows, updating positions, computing slippage/fees, and respecting strategy exit conditions.
+4. Return a `BacktestResult` dataclass containing performance metrics and trade details.
+
+## BacktestResult Highlights
+
+```python
+print(results.final_capital)
+print(results.sharpe_ratio)
+trades_df = results.to_dataframe()
+```
+
+Fields include total return, Sharpe, max drawdown, win rate, profit factor, and raw trade logs. `equity_curve` and `daily_returns` are stored as `pandas.Series` for quick charting.
+
+## Parallel Mode
+
+When `parallel=True` and the dataset contains > 1000 rows, the engine uses a `ThreadPoolExecutor` to evaluate strategy logic concurrently across markets. This is helpful when simulating multiple tickers or strategies that perform heavy computations per tick.
+
+## Slippage & Fees
+
+- `_apply_slippage` adjusts exit prices based on direction (`buy`/`sell`).
+- `_calculate_fees` implements the Kalshi fee schedule (or a fixed commission if you choose `fee_model="fixed"`).
+- `_calculate_pnl` accounts for slippage and fees per trade so P&L reflects realistic execution costs.
+
+## Extending the Engine
+
+Override or monkey patch helper methods if you need custom behaviors:
+
+- `_load_market_data` / `_load_espn_data` – integrate bespoke historical providers.
+- `_calculate_results` – add proprietary analytics to the returned dataclass.
+- `_run_sequential_backtest` – alter the event loop when working with exotic data structures.
+
+Armed with accurate historical data from `neural.data_collection.kalshi_historical`, the backtester lets you iterate on strategies before flipping the switch to live trading.

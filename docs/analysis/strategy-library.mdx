@@ -1,0 +1,69 @@
+---
+title: 'Built-in Strategy Library'
+description: 'Leverage the prebuilt Neural strategies for momentum, mean reversion, arbitrage, and sentiment trading.'
+---
+
+Neural ships with a catalogue of ready-to-run strategies housed in `neural.analysis.strategies`. Each class inherits from the common `Strategy` base and focuses on a specific trading style.
+
+## Presets
+
+Use `create_strategy(preset, **overrides)` to spin up a strategy with sensible defaults:
+
+```python
+from neural.analysis.strategies import create_strategy
+
+strategy = create_strategy("momentum", initial_capital=15_000)
+```
+
+Available presets: `conservative`, `momentum`, `arbitrage`, `news`, `aggressive`, `high_frequency`.
+
+## Strategy Catalog
+
+### MeanReversionStrategy
+
+Targets price divergence between Kalshi markets and sportsbook consensus or historical averages.
+
+- Tracks rolling price history per ticker and computes fair value.
+- Configurable divergence threshold, reversion target, and confidence decay.
+- Fits scenarios where you expect prices to revert to a mean (e.g., overreaction to news).
+
+### SportsbookArbitrageStrategy
+
+Specialized flavor of mean reversion that explicitly hedges Kalshi markets against sportsbook lines.
+
+- Consumes external sportsbook data and flags mispricings.
+- Produces dual-legged signals (buy YES / buy NO) for guaranteed spreads.
+
+### MomentumStrategy & GameMomentumStrategy
+
+Follows trends during live games.
+
+- Calculates momentum over configurable lookbacks.
+- Integrates RSI, volume confirmation, and trend-strength (R²) filters.
+- `GameMomentumStrategy` adds ESPN event awareness to fade blowouts or ride momentum after pivotal plays.
+
+### ArbitrageStrategy & HighSpeedArbitrageStrategy
+
+Search for risk-free opportunities.
+
+- Detects YES+NO price sums below $1.00, cross-market discrepancies, and sportsbook vs Kalshi edges.
+- Produces composite signals with metadata instructing the order manager to execute both sides.
+- `HighSpeedArbitrageStrategy` emphasizes low latency with fixed sizes and tight execution rules.
+
+### NewsBasedStrategy & BreakingNewsStrategy
+
+React to injuries, lineup changes, weather, and social chatter.
+
+- Measures sentiment strength, news decay, and social volume.
+- Applies configurable impact maps for different positions (QB, star, role player).
+- `BreakingNewsStrategy` accelerates entries when viral spikes occur.
+
+### SentimentTradingStrategy
+
+Combines aggregated sentiment (Twitter + ESPN) to detect divergence, momentum shifts, viral moments, and contrarian setups.
+
+- Maintains multiple rolling windows of sentiment scores.
+- Applies position sizing curves based on sentiment strength and confidence thresholds.
+- Ideal when running the `MultiSourceAggregator` alongside market data.
+
+Explore the source files in `neural/analysis/strategies/` for deeper implementation details and extend them when you need bespoke logic.

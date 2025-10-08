@@ -1,0 +1,85 @@
+---
+title: 'TradingClient API'
+description: 'Execute Kalshi trades with the Neural TradingClient facade and optional dependency injection.'
+---
+
+`neural.trading.client.TradingClient` wraps the official `kalshi_python` SDK and exposes consistent method signatures to the rest of Neural.
+
+## Construction
+
+```python
+from neural.trading import TradingClient
+
+client = TradingClient(
+    api_key_id="...",            # optional override
+    private_key_pem=b"...",      # bytes or None to load from env/files
+    env="prod",                  # only production is supported
+    timeout=15,
+)
+```
+
+Omitting arguments defers to `neural.auth.env` helpers so environment variables or secrets files drive the configuration.
+
+## Dependency Injection
+
+`TradingClient` accepts a `client_factory` callable to inject a mock or preconfigured `kalshi-python` client—useful for tests and paper simulations.
+
+```python
+class FakeClient:
+    def __init__(self, **kwargs):
+        self.portfolio = ...
+        self.markets = ...
+        self.exchange = ...
+
+client = TradingClient(client_factory=lambda **kwargs: FakeClient(**kwargs))
+```
+
+## Proxies
+
+After initialization, three proxies expose the respective Kalshi API namespaces:
+
+- `client.portfolio`
+- `client.markets`
+- `client.exchange`
+
+Each proxy lazily delegates attribute access, converts return objects to plain Python (`dict`/`list`), and preserves docstrings where available.
+
+```python
+positions = client.portfolio.list_positions()
+markets = client.markets.get_markets(series_ticker="KXNFLGAME-25SEP25SEAARI")
+order = client.exchange.place_order(
+    ticker="KXNFLGAME-25SEP25SEAARI-SEA",
+    side="yes",
+    count=100,
+    price=55,
+)
+```
+
+## Resource Management
+
+`TradingClient` implements context manager hooks:
+
+```python
+with TradingClient() as client:
+    ...
+```
+
+`close()` gracefully shuts down the underlying client if it exposes a `close()` method.
+
+## Error Messaging
+
+If `kalshi_python` is missing, the client raises a clear `ImportError`:
+
+```
+kalshi_python is required for neural.trading. Install with: pip install 'kalshi-python>=2'
+```
+
+This keeps import-time errors descriptive and prevents silent failures.
+
+## Best Practices
+
+- Reuse a single `TradingClient` instance per process to benefit from connection pooling.
+- Inject custom factories in tests to avoid hitting real endpoints.
+- Combine with `OrderManager` to keep strategy logic independent from execution details.
+
+The facade gives you a stable surface even when Kalshi’s SDK evolves, so your algorithms stay focused on trading logic.

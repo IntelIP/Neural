@@ -7,62 +7,66 @@ Neural provides a clean, modular architecture to build trading systems on predic
 
 ## Stacks
 
-### 1) Data Collection (neural.data_collection)
+### 1) Data Collection (`neural.data_collection`)
 
 Purpose: Collect historical and real-time market data
 Includes:
-- Kalshi API sources and helpers
-- REST and WebSocket utilities
-- Transformers and a registry
+- Kalshi REST helpers and authenticated clients
+- Streaming adapters (REST polling, WebSocket)
+- Transformers, registries, and the multi-source aggregator
 
 **Example:**
 
 ```python
-from neural.data_collection import KalshiApiSource, get_all_sports_markets
+from neural.auth.http_client import KalshiHTTPClient
 
-source = KalshiApiSource()
-markets = get_all_sports_markets()
+client = KalshiHTTPClient()
+markets = client.get("/markets", params={"series_ticker": "KXNFLGAME", "status": "open", "limit": 5})
+client.close()
 ```
 
-### 2) Analysis (neural.analysis)
+### 2) Analysis (`neural.analysis`)
 
-Purpose: Research, backtest, risk, and execution modeling
+Purpose: Research, backtest, risk, and execution modelling
 Includes:
-- Backtester
-- Strategy base and examples
-- Risk utilities (kelly_criterion, etc.)
-- Order management helpers
+- Strategy base class and presets
+- Backtester with fee/slippage modelling
+- Position sizing helpers and sentiment toolkit
+- Order manager bridge
 
 **Example:**
 
 ```python
-from neural.analysis import Backtester
+from neural.analysis.strategies.mean_reversion import MeanReversionStrategy
+from neural.analysis.backtesting.engine import Backtester
 
-strategy = ...  # Your Strategy subclass
-engine = Backtester(strategy, initial_capital=10_000)
-results = engine.run(historical_data)
+strategy = MeanReversionStrategy(initial_capital=10_000)
+engine = Backtester(initial_capital=10_000)
+# engine.backtest(strategy, start_date="2023-01-01", end_date="2023-02-01", markets=[...])
 ```
 
-### 3) Trading (neural.trading)
+### 3) Trading (`neural.trading`)
 
 Purpose: Execute orders with production-ready clients
 Includes:
-- TradingClient (modern kalshi client wrapper with DI)
-- REST, WebSocket, and FIX integrations
-- Proxies for portfolio, markets, exchange
+- `TradingClient` (REST), `KalshiWebSocketClient`, and FIX connectors
+- Paper trading simulators and reporting helpers
+- Streaming market data adapters
 
 **Example:**
 
 ```python
-from neural.trading import TradingClient
+from neural.trading.paper_client import PaperTradingClient
 
-client = TradingClient()
-order = client.exchange.place_order(ticker="EXAMPLE", side="yes", count=100, price=55)
+paper = PaperTradingClient(initial_capital=10_000, save_trades=False)
+# await paper.place_order(market_id="KXNFLGAME-…", side="yes", quantity=25)
 ```
 
 ## Design Principles
 
-- Clear public APIs via `__all__` in each package
+- Clear public APIs via `__all__` exports in each package
 - Environment-first credential loading with helpful errors
-- DI-friendly trading client with lazy imports for optional deps
-- Integration tests skip when credentials are absent for reliable CI
+- Optional dependencies are imported lazily so partial installs never crash the SDK
+- Integration tests skip gracefully when credentials are absent for reliable CI
+
+Keep this mental model handy and jump to `architecture/start-here` or `workflows/build-first-bot` for the end-to-end orientation.

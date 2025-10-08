@@ -1,0 +1,88 @@
+---
+title: 'Multi-Source Aggregator'
+description: 'Orchestrate Twitter, ESPN, and Kalshi feeds into unified sentiment-aware data streams.'
+---
+
+`neural.data_collection.aggregator` fuses disparate feeds into a single stream that downstream strategies can consume. It marries:
+
+- Twitter reactions (`TwitterAPISource`)
+- ESPN GameCast play-by-play (`ESPNGameCastSource`)
+- Kalshi market quotes (`KalshiApiSource`)
+- On-the-fly sentiment scoring (`SentimentAnalyzer`)
+
+## Core Data Structures
+
+```python
+from neural.data_collection.aggregator import DataPoint, AggregatedData
+```
+
+- **`DataPoint`** – raw payload plus metadata (source, timestamp, teams).
+- **`AggregatedData`** – synchronized snapshot for a single game containing twitter, ESPN, Kalshi fragments as well as computed sentiment metrics and trading signal stubs.
+
+A ring-buffer (`DataBuffer`) guarantees time-bounded retention for replaying the last few minutes of context, while automatically expiring stale entries.
+
+## MultiSourceAggregator
+
+```python
+from neural.data_collection.aggregator import MultiSourceAggregator, SourceConfig
+
+aggregator = MultiSourceAggregator(
+    game_id="KXNFLGAME-25SEP25SEAARI",
+    teams=["Seattle Seahawks", "Arizona Cardinals"],
+    twitter_config=SourceConfig(poll_interval=30.0, buffer_size=500),
+    espn_config=SourceConfig(poll_interval=5.0),
+    kalshi_config=SourceConfig(poll_interval=10.0, config={"series_ticker": "KXNFLGAME-25SEP25SEAARI"}),
+)
+
+await aggregator.start(
+    twitter_api_key="...",
+    kalshi_config={"series_ticker": "KXNFLGAME-25SEP25SEAARI"},
+)
+```
+
+Highlights:
+
+- Each source can be toggled on/off via `SourceConfig.enabled`.
+- Configurable polling intervals, retry budgets, and buffer sizes per source.
+- Hooks (`data_handlers`) allow strategies to receive every `AggregatedData` snapshot as soon as it is built.
+
+### Lifecycle
+
+1. Call `start()` with required API keys/config.
+2. The aggregator spins background tasks per source and feeds results into the shared buffer.
+3. Sentiment metrics are updated using `GameSentimentTracker` which persists rolling windows for trend analysis.
+4. Call `await aggregator.shutdown()` to tear everything down.
+
+## Sentiment Integration
+
+The aggregator wires in the analysis stack’s `SentimentAnalyzer`:
+
+- Combines VADER, TextBlob (when installed), and a sports-specific lexicon.
+- Tracks sentiment over multiple windows (1, 5, 15 minutes).
+- Flags viral moments, momentum shifts, and sustained trends stored in `AggregatedData.sentiment_metrics`.
+
+Example handler:
+
+```python
+async def handle_update(snapshot: AggregatedData):
+    if snapshot.sentiment_metrics:
+        score = snapshot.sentiment_metrics["overall_score"]
+        if score > 0.6:
+            print("Crowd is extremely bullish", snapshot.teams)
+
+aggregator.data_handlers.append(lambda data: asyncio.create_task(handle_update(data)))
+```
+
+## Error Handling & Resilience
+
+- Each source task retries transient failures according to its `SourceConfig` and emits diagnostics via the module logger.
+- `DataBuffer.cleanup_old_data()` ensures memory usage stays bounded during long-running games.
+- The aggregator exposes per-source coroutines (e.g., `_collect_twitter_data`) that you can customize for bespoke workflows.
+
+## When to Use
+
+- **Live trading bots** – pipe aggregated snapshots directly into strategy analyzers.
+- **Alerting dashboards** – publish metrics to websockets or push notifications when sentiment spikes.
+- **Backtest enrichment** – log `AggregatedData` to disk alongside market data to replay the full context during research.
+
+With one orchestration layer you get synchronized market quotes, narrative context, and fan sentiment—the inputs you need for intraday sports prediction models.

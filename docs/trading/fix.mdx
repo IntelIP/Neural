@@ -1,0 +1,55 @@
+---
+title: 'FIX Order Entry'
+description: 'Leverage the FIX client for ultra-low latency trading and execution reports.'
+---
+
+The FIX client is built around `neural.trading.fix.KalshiFIXClient`, an async FIX 5.0 SP2 session tailored for Kalshi order entry.
+
+## Connecting
+
+```python
+import asyncio
+from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
+
+async def main():
+    client = KalshiFIXClient(
+        config=FIXConnectionConfig(heartbeat_interval=20, reset_seq_num=True),
+        on_message=lambda msg: print("FIX", msg),
+    )
+    await client.connect(timeout=10)
+
+asyncio.run(main())
+```
+
+- Automatically signs logon messages with your Kalshi private key (loaded via `neural.auth`).
+- Supports TLS, cancel-on-disconnect, listener sessions, and settlement reports via config flags.
+- Maintains heartbeats and sequence numbers, exposing `connect()`, `logout()`, and `close()` async methods.
+
+## Sending Orders
+
+Use `_send_message` helpers or the higher-level methods in `FIXStreamingClient` to publish `NewOrderSingle` messages. The FIX client handles signature generation for logon and tags the sequence numbers / timestamps automatically.
+
+## Handling Messages
+
+Pass an `on_message` callback to inspect parsed `simplefix.FixMessage` objects:
+
+```python
+def on_message(msg):
+    msg_type = msg.get(35)
+    if msg_type == b"8":
+        print("Execution report", msg)
+```
+
+The client exposes `_send_lock` to serialize writes and internal tasks for heartbeat + reader loops. Override or extend the class if you need to persist messages or integrate with external monitoring.
+
+## Streaming Wrapper
+
+`FIXStreamingClient` builds on top of `KalshiFIXClient` to manage market data subscriptions and execution callbacks without dealing with raw FIX tags. See the *Market Data Streaming* page for usage examples.
+
+## Troubleshooting
+
+- Ensure your Kalshi account is FIX-enabled; credentials differ from REST/WebSocket keys.
+- Watch for `_logout_event` not being set—this typically indicates network issues or invalid credentials.
+- Adjust `heartbeat_interval` and latency thresholds (e.g., in `HighSpeedArbitrageStrategy`) to match your infrastructure.
+
+When latency matters and you need full control over execution reports, the FIX client provides the building blocks.

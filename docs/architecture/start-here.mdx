@@ -1,0 +1,66 @@
+---
+title: 'Start Here'
+description: 'Map the Neural architecture and know exactly which docs to read first.'
+---
+
+## How the pieces fit
+
+```
+        +-----------------------+
+        |   Data Collection     |
+        |-----------------------|
+        | REST / WebSocket APIs |
+        | Historical Endpoints  |
+        | Aggregator (ESPN/Twitter)
+        +-----------+-----------+
+                    |
+                    v
+        +-----------------------+
+        |   Analysis & Signals   |
+        |-----------------------|
+        | Strategy base & presets|
+        | Backtester             |
+        | Risk & Order Manager   |
+        +-----------+-----------+
+                    |
+                    v
+        +-----------------------+
+        |   Trading & Execution  |
+        |-----------------------|
+        | PaperTradingClient     |
+        | TradingClient / FIX    |
+        | Reporting & Monitoring |
+        +-----------------------+
+```
+
+Data flows top to bottom: you ingest markets (and optional context), transform them into trading signals, and route those signals to either paper or live execution.
+
+## Section cheat sheet
+
+| Stack | Purpose | Read next |
+|-------|---------|-----------|
+| Data Collection | Fetch live, streaming, and historical Kalshi data plus enrichments | `data-collection/overview`, `data-collection/sources`, `data-collection/aggregator`, `data-collection/historical` |
+| Analysis | Express strategies, size risk, backtest, and convert signals into orders | `analysis/strategy-foundations`, `analysis/strategy-library`, `analysis/backtesting`, `analysis/risk-sizing`, `analysis/order-management`, `analysis/sentiment` |
+| Trading | Execute via paper, REST, WebSocket, or FIX; monitor fills and performance | `trading/overview`, `trading/quickstart`, `trading/trading-client`, `trading/market-data`, `trading/fix`, `trading/paper-trading`, `trading/reporting` |
+
+## Fast-track roadmap
+
+1. **Bootstrap the environment** – follow `getting-started` to install, load credentials, and smoke test the APIs.
+2. **Run the quickstart bot** – `workflows/build-first-bot` glues market fetch → signal → paper execution so you see the system end-to-end.
+3. **Deep dive where needed** – branch into the stack-specific docs from the table above.
+4. **Promote to production** – use `workflows/promotion-checklist` once your strategy, risk settings, and monitoring are dialed in.
+
+## Tips for exploring
+
+- Every module doc begins with purpose → when to use → inputs/outputs → code you can run. Copy/paste, then iterate.
+- The `examples/` directory mirrors the architecture: auth smoke test, market fetchers, historical collectors, strategy demos, and execution adapters.
+- When prompting an LLM, quote exact class or function names (`neural.analysis.backtesting.Backtester`)—the docs use the same casing, making retrieval reliable even for smaller models.
+
+Bookmark this page and `getting-started`; together they give you both the 10,000-foot view and the checklist to stand up a new environment quickly.
+
+## Next
+
+- Get hands-on immediately: `getting-started`
+- Review infrastructure dependencies: `basics/infrastructure`
+- Jump to the quickstart bot: `workflows/build-first-bot`
+

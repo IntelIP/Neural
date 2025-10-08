@@ -1,0 +1,56 @@
+---
+title: 'Promotion Checklist'
+description: 'Use this checklist before switching a bot from research to live trading.'
+---
+
+Use this checklist to the recommended path for turning a prototype into a production bot.
+
+## 1. Research & Prototype
+
+- Build your `Strategy` subclass and exercise it with recorded market data.
+- Validate signal logic in notebooks using `PaperTradingClient` to ensure trade metadata is captured correctly.
+
+## 2. Collect Historical Data
+
+- Use `KalshiHistoricalDataSource` to assemble representative datasets (different seasons, liquidity regimes, event types).
+- Store raw trades and candlesticks in Parquet/CSV so you can rerun backtests as assumptions change.
+
+## 3. Backtest Rigorously
+
+- Run `Backtester` simulations across multiple markets and date ranges.
+- Tune risk parameters (Kelly fraction, max position size) via sensitivity analysis.
+- Inspect `BacktestResult` metrics: Sharpe, max drawdown, win rate, volume distribution.
+- Chart the equity curve and review losing streaks to ensure they fit your risk tolerance.
+
+## 4. Integrate Sentiment & Context
+
+- If the strategy relies on narratives, run the `MultiSourceAggregator` alongside the backtester to capture sentiment features for replay.
+- Confirm that ESPN/Twitter signals are stable and latency is acceptable.
+
+## 5. Dry Run in Paper Mode
+
+- Swap `TradingClient` for `PaperTradingClient` (or toggle via dependency injection).
+- Route orders through `OrderManager(dry_run=True)` to verify execution logic, position sizing, and stop-loss behavior.
+- Use `PaperTradingReporter` to review daily P&L, win/loss distribution, and commission drag.
+
+## 6. Operational Readiness
+
+- Implement logging & alerting around key events (missed fills, websocket disconnects, FIX heartbeats).
+- Add health checks for credential expiry and API responses.
+- Document runbooks for manual intervention (throttle strategies, square positions, rotate credentials).
+
+## 7. Launch Live
+
+- Point the strategy at `TradingClient`.
+- Start with conservative sizing (e.g., half Kelly fraction, tighter stop losses).
+- Monitor fills via WebSocket or FIX execution reports.
+- Replay daily logs with the reporting stack to detect behavior drift.
+
+Consistently iterating through this loop keeps strategies resilient as Kalshi microstructure evolves.
+
+## Next
+
+- Wire monitoring pipelines: `workflows/data-pipeline`
+- Review execution surfaces: `trading/trading-client`
+- Keep iterating on strategy design: `analysis/strategy-foundations`
+

@@ -1,0 +1,73 @@
+---
+title: 'Sentiment Analysis Toolkit'
+description: 'Quantify social and game momentum with the SentimentAnalyzer and game trackers.'
+---
+
+`neural.analysis.sentiment` extracts actionable signals from social media and play-by-play feeds. It supports multiple engines, sports-specific lexicons, and provides utilities to track sentiment trends over time.
+
+## Sentiment Engines
+
+```python
+from neural.analysis.sentiment import SentimentAnalyzer, SentimentEngine
+
+analyzer = SentimentAnalyzer(engine=SentimentEngine.COMBINED)
+score = analyzer.analyze_text("That touchdown was insane! #Seahawks")
+print(score.overall_score, score.strength)
+```
+
+Available engines:
+
+- `VADER` – rule-based model tuned for social media.
+- `TEXTBLOB` – adds subjectivity and polarity (optional dependency).
+- `COMBINED` – merges VADER with a sports lexicon and custom overrides (default).
+- `NEURAL_CUSTOM` – plug in your own lexicon weights.
+
+The analyzer normalizes text (lowercasing, removing URLs/mentions) and calculates positive/negative/neutral scores, compound values, magnitude, and confidence.
+
+## Sports Lexicon
+
+The built-in lexicon gives extra weight to sports-specific terms (touchdown, interception, clutch, etc.) and intensity modifiers (“absolutely”, “insane”). Extend it by passing `custom_lexicon` to the constructor.
+
+## Time-Series Tracking
+
+`TimeSeries` keeps a rolling window of sentiment values with helper methods for trend and volatility calculations.
+
+```python
+from neural.analysis.sentiment import TimeSeries
+
+ts = TimeSeries(window_size=100)
+ts.add_value(datetime.utcnow(), 0.65)
+trend = ts.get_trend(minutes=5)
+vol = ts.get_volatility(minutes=5)
+```
+
+## Game-Level Sentiment
+
+`GameSentimentTracker` integrates sentiment with specific teams or tickers. It powers the aggregator and sentiment strategies by:
+
+- Maintaining rolling averages for home/away teams.
+- Detecting momentum shifts after key plays.
+- Flagging viral spikes vs sustained trends.
+
+## Strategy Integration
+
+The sentiment module feeds directly into `SentimentTradingStrategy` where signals are categorized into:
+
+- **Sentiment Divergence** – crowd opinion diverges from Kalshi pricing.
+- **Momentum Shift** – rapid change following game events.
+- **Viral Moment** – social explosion triggering quick trades.
+- **Contrarian Opportunity** – exuberant sentiment vs stagnant prices.
+
+Each bucket maps to configurable thresholds in `SentimentTradingConfig` (minimum strength, required social volume, holding period, etc.).
+
+## Running Standalone
+
+Use the analyzer independently for dashboards or to annotate backtests:
+
+```python
+texts = [tweet["text"] for tweet in tweets_data]
+series = [analyzer.analyze_text(t) for t in texts]
+average = sum(s.overall_score for s in series) / len(series)
+```
+
+Sentiment data provides the qualitative edge—quantify it with these helpers and feed the results straight into strategies or alerting systems.

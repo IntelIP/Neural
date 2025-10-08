@@ -1,0 +1,39 @@
+---
+title: 'Trading Stack Overview'
+description: 'Understand the live trading clients, streaming channels, and paper trading simulators.'
+---
+
+Neural’s trading stack wraps the official `kalshi-python` client, adds market-data streaming options, and provides paper simulations for dry runs. It is designed so strategies can swap between paper and live environments with minimal code changes.
+
+## Components
+
+| Layer | Module | Purpose |
+|-------|--------|---------|
+| API Facade | `TradingClient` | Lazy-instantiated wrapper around `kalshi-python` v2. Exposes `portfolio`, `markets`, and `exchange` proxies. |
+| WebSocket | `KalshiWebSocketClient` | Signed real-time updates over Kalshi’s WebSocket RPC channel. |
+| FIX | `KalshiFIXClient`, `FIXStreamingClient` | High-throughput order entry and market data via FIX 5.0. |
+| REST Streaming | `RESTStreamingClient` | Poll-based “streaming” using authenticated REST when WS/FIX isn’t available. |
+| Simulation | `PaperTradingClient`, `PaperPortfolio`, `PaperTradingReporter` | Offline trading sandbox with reporting. |
+
+## Typical Live Workflow
+
+1. Configure credentials via `neural.auth`.
+2. Instantiate `TradingClient()` (optionally with a custom factory for dependency injection).
+3. Use `client.exchange.place_order(...)` to trade or `client.markets.get_markets(...)` to query listings.
+4. Subscribe to market updates with `KalshiWebSocketClient` or `FIXStreamingClient`.
+5. Feed fills into `OrderManager` / strategies.
+
+## Fail-Safe Behavior
+
+- Lazy import of `kalshi_python`: informative `ImportError` if the optional dependency is missing.
+- Proxy objects wrap the underlying client and normalize return types (`dict`/`list`) even when the SDK returns Pydantic models.
+- Context manager support (`with TradingClient()`) ensures connections are closed cleanly.
+
+Dive into the sub-pages for concrete usage patterns, streaming recipes, and paper trading analytics.
+
+## Next
+
+- Provision credentials and submit an order: `trading/quickstart`
+- Dive into the REST/FIX clients: `trading/trading-client`
+- Set up market data feeds: `trading/market-data`
+

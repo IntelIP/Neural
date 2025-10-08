@@ -1,0 +1,75 @@
+---
+title: 'Market Data Streaming'
+description: 'Stream Kalshi market data using WebSocket, REST polling, and FIX-based feeds.'
+---
+
+Neural offers multiple ways to stay on top of market moves, covering lightweight setups and full FIX connectivity.
+
+## WebSocket Client
+
+`KalshiWebSocketClient` wraps the Kalshi WebSocket RPC service with automatic signing and background thread management.
+
+```python
+from neural.trading import KalshiWebSocketClient
+
+updates = []
+
+def on_message(payload):
+    updates.append(payload)
+
+ws = KalshiWebSocketClient(on_message=on_message)
+ws.connect()
+ws.subscribe(["market.ticker_updates"], params={"tickers": ["KXNFLGAME-25SEP25SEAARI-SEA"]})
+```
+
+Features:
+
+- Builds the correct WS URL based on `env`.
+- Signs headers with `KalshiSigner` (loading credentials if not provided).
+- Maintains connection heartbeat, logs lifecycle events, and exposes helpers for subscribe/unsubscribe flows.
+
+## RESTStreamingClient
+
+When WebSocket access isn’t available, `RESTStreamingClient` simulates streaming by polling the authenticated REST endpoints.
+
+```python
+from neural.trading.rest_streaming import RESTStreamingClient
+
+async def consume():
+    client = RESTStreamingClient(on_market_update=lambda snap: print(snap.ticker, snap.yes_mid))
+    await client.connect()
+    await client.subscribe(["KXNFLGAME-25SEP25SEAARI-SEA"])
+```
+
+Highlights:
+
+- Converts REST responses into `MarketSnapshot` objects with spreads, mids, implied probabilities, and arbitrage checks.
+- Tracks price deltas and triggers `on_price_change` when moves exceed configurable thresholds.
+- Prints periodic diagnostics so you can monitor polling health.
+
+## FIX Streaming
+
+Pair `KalshiFIXClient` with `FIXStreamingClient` for low-latency market data and execution reports.
+
+```python
+from neural.trading.fix_streaming import FIXStreamingClient
+
+async def main():
+    feed = FIXStreamingClient(on_market_data=lambda snap: print(snap.symbol, snap.mid_price))
+    await feed.connect()
+    await feed.subscribe("KXNFLGAME-25SEP25SEAARI-SEA")
+```
+
+- Handles FIX logon, heartbeats, and auto-reconnect.
+- Converts fix messages into `MarketDataSnapshot` objects with spreads, mid prices, volume, and implied probabilities.
+- Supports execution callbacks so fills hit your portfolio logic immediately.
+
+## Choosing a Channel
+
+| Requirement | Recommendation |
+|-------------|----------------|
+| Simple dashboards / notebooks | `RESTStreamingClient` |
+| Real-time trading bots | `KalshiWebSocketClient` |
+| High-frequency strategies or large books | `FIXStreamingClient` + `KalshiFIXClient` |
+
+Whichever route you choose, the snapshots integrate cleanly with the analysis stack and paper trading simulator.

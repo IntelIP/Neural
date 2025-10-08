@@ -27,41 +27,83 @@
   },
   "anchors": [
     {
+      "name": "Start Here",
+      "icon": "map",
+      "url": "architecture/start-here"
+    },
+    {
       "name": "Getting Started",
       "icon": "rocket",
       "url": "getting-started"
     },
     {
-      "name": "Sports Markets",
-      "icon": "football",
-      "url": "data-collection/sports-markets-guide"
+      "name": "Data Collection",
+      "icon": "database",
+      "url": "data-collection/overview"
+    },
+    {
+      "name": "Strategy Design",
+      "icon": "brain",
+      "url": "analysis/overview"
     },
     {
       "name": "Trading",
       "icon": "chart-line",
-      "url": "trading/setup"
+      "url": "trading/overview"
     }
   ],
   "navigation": [
     {
-      "group": "Get Started",
+      "group": "Basics",
       "pages": [
+        "architecture/start-here",
         "getting-started",
-        "README",
-        "architecture/overview"
+        "basics/infrastructure",
+        "README"
       ]
     },
     {
-      "group": "Data Collection",
+      "group": "Data",
       "pages": [
+        "data-collection/overview",
+        "data-collection/sources",
+        "data-collection/kalshi-toolbox",
+        "data-collection/aggregator",
+        "data-collection/historical",
         "data-collection/sports-markets-guide",
         "data-collection/ticker-patterns"
       ]
     },
     {
-      "group": "Trading Infrastructure",
+      "group": "Analysis",
       "pages": [
-        "trading/setup"
+        "analysis/overview",
+        "analysis/strategy-foundations",
+        "analysis/strategy-library",
+        "analysis/backtesting",
+        "analysis/risk-sizing",
+        "analysis/order-management",
+        "analysis/sentiment"
+      ]
+    },
+    {
+      "group": "Execution",
+      "pages": [
+        "trading/overview",
+        "trading/quickstart",
+        "trading/trading-client",
+        "trading/market-data",
+        "trading/fix",
+        "trading/paper-trading",
+        "trading/reporting"
+      ]
+    },
+    {
+      "group": "Workflows",
+      "pages": [
+        "workflows/build-first-bot",
+        "workflows/promotion-checklist",
+        "workflows/data-pipeline"
       ]
     },
     {

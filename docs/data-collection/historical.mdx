@@ -1,0 +1,70 @@
+---
+title: 'Historical Data Pipelines'
+description: 'Build reproducible datasets from Kalshi historical endpoints for backtesting.'
+---
+
+For quantitative research you need more than live quotes. `KalshiHistoricalDataSource` wraps the documented historical endpoints and produces tidy `pandas` frames ready for the backtester.
+
+## Quick Start
+
+```python
+import asyncio
+from neural.data_collection.kalshi_historical import KalshiHistoricalDataSource, DataSourceConfig
+
+async def main():
+    source = KalshiHistoricalDataSource(DataSourceConfig(name="hist"))
+    trades = await source.collect_trades(
+        ticker="KXNFLGAME-25SEP22DETBAL-BAL",
+        start_ts=1694900000,
+        end_ts=1694986400,
+    )
+    print(trades.head())
+
+asyncio.run(main())
+```
+
+Behind the scenes the source leverages `KalshiHTTPClient` which applies signing, pagination, and retry logic automatically.
+
+## Available Methods
+
+| Method | Endpoint | Output |
+|--------|----------|--------|
+| `collect_trades` | `/markets/trades` | Trade-level data with `created_time`, `yes_price`, `no_price`, `count`, `taker_side`. |
+| `collect_market_candles` | `/series/{series}/markets/{ticker}/candlesticks` | OHLC candlesticks for an individual market. |
+| `collect_event_candles` | `/events/{ticker}/candlesticks` | Aggregated event-level bars across outcomes. |
+
+All methods:
+
+- Accept Unix timestamps (`min_ts`, `max_ts`) for precise slicing.
+- Page through results automatically until exhaustion or 100k rows (safety cap).
+- Return frames sorted by `created_time` or `close_time` with timezone-aware timestamps.
+
+## Credential Handling
+
+The class inherits from `BaseDataSource`, so you can use it inside async workflows while it lazily loads credentials once per instance. Provide explicit `api_key` or `private_key_path` if you need to switch accounts programmatically.
+
+```python
+hist = KalshiHistoricalDataSource(
+    DataSourceConfig(name="hist"),
+    api_key="SERVICE_ACCOUNT",
+    private_key_path="/tmp/service-key.pem",
+)
+```
+
+## Integrating with the Backtester
+
+Use the returned data frames as-is with the analysis stack:
+
+```python
+from neural.analysis.backtesting.engine import Backtester
+
+engine = Backtester(initial_capital=25_000)
+results = engine.backtest(
+    strategy,
+    start_date="2023-08-01",
+    end_date="2023-08-31",
+    markets=list(trades["ticker"].unique()),
+)
+```
+
+Historical data feeds let you evaluate strategies under realistic edge cases (low liquidity, spreads, fee drag) before risking live capital.

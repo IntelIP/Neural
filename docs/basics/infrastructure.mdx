@@ -1,0 +1,61 @@
+---
+title: 'Infrastructure Overview'
+description: 'Understand the services, protocols, and health checks behind the Neural trading stack.'
+---
+
+## Purpose
+Summarize the external services Neural touches (REST, WebSocket, FIX), their latency expectations, and how to smoke-test each connection.
+
+## Components
+
+| Layer | Endpoint | Use Case | Status |
+|-------|----------|----------|--------|
+| REST API | `https://api.elections.kalshi.com/trade-api/v2` | Market data, account queries, order placement via `kalshi-python` | ✅ operational |
+| FIX API | `fix.elections.kalshi.com:8228` | Ultra-low-latency order entry and execution reports | ✅ operational |
+| WebSocket | `/trade-api/ws/v2` | Real-time market data stream | ⚠️ requires Kalshi approval |
+
+Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes <100 ms once enabled.
+
+## Quick smoke tests
+
+```bash
+# REST – balance check
+python examples/01_init_user.py
+
+# FIX – connectivity/execution (requires FIX keys)
+python tests/infrastructure/test_fix_handshake.py
+```
+
+Expected REST output includes your portfolio balance. FIX scripts should print “Logon accepted” and receive heartbeats.
+
+## Recommended pipeline (prod)
+
+```
+REST polling (baseline) ─┬─> Strategy / Aggregator ──> TradingClient
+                         └─> Optional FIX stream     └─> Kalshi exchange
+```
+
+- Use REST as the canonical data source even if WebSocket/FIX are unavailable.
+- Enable FIX for execution when you need sub-10 ms fills.
+- Fall back to REST polling (or `RESTStreamingClient`) if WebSocket access is not granted.
+
+## Health checklist
+
+1. Credentials load via `neural.auth.env` at startup.
+2. REST call to `/markets` succeeds with HTTP 200.
+3. FIX `Logon` → `Heartbeat` loop runs without disconnects.
+4. Alerting hooks capture REST timeouts, FIX disconnects, and WebSocket 403s.
+
+## Troubleshooting
+
+- **403 on WebSocket** – request streaming permissions from Kalshi support or keep using REST polling.
+- **FIX handshake fails** – verify FIX-specific keys (different from REST key ID) and check firewall rules for port 8228.
+- **REST rate limiting (429)** – the SDK retries automatically; still, back off to 2–5s polling during off-peak or when testing.
+```
+
+## Next
+
+- Verify install & credentials: `getting-started`
+- Review execution options: `trading/overview`
+- Plan deployment workflows: `workflows/promotion-checklist`
+

@@ -1,0 +1,52 @@
+---
+title: 'Performance Reporting'
+description: 'Analyze paper trading results and live logs with Neural’s reporting utilities.'
+---
+
+Quantitative feedback closes the loop on strategy development. The reporting utilities in `neural.trading.paper_report` and the aggregator sentiment metrics provide a clean starting point for dashboards or notebook analysis.
+
+## PaperTradingReporter
+
+```python
+from neural.trading.paper_report import PaperTradingReporter
+
+reporter = PaperTradingReporter(data_dir="paper_trading_data")
+if reporter.load_data(days_back=30):
+    summary = reporter.generate_performance_summary()
+    print(summary["trade_metrics"], summary["pnl_metrics"])
+```
+
+Outputs include:
+
+- Total trades, win/loss counts, win rate.
+- Aggregate realized P&L, average win/loss, profit factor.
+- Commission/slippage totals.
+- Optional grouped stats by `strategy`, `sentiment_score`, or `confidence` when present in trade logs.
+
+When `pandas` is available the reporter returns nested dictionaries; otherwise it falls back to a pure-Python implementation.
+
+## Visualizations
+
+With `matplotlib` installed the reporter can emit charts (equity curves, daily turnover, trade distribution). Use them in notebooks or export PNGs for stakeholders.
+
+```python
+if reporter.trades_data:
+    reporter.plot_equity_curve(output_path="paper_trading_data/equity.png")
+```
+
+*(Implement your own helpers following the patterns in `PaperTradingReporter` to tailor charts to your metrics.)*
+
+## Integrating Live Logs
+
+- Feed `OrderManager.order_history` into the same format as paper trades to reuse reporting.
+- Combine sentiment snapshots from `MultiSourceAggregator` with trade results to see how crowd mood correlates with P&L.
+
+## Next Steps
+
+Many teams persist trades to a data warehouse or run scheduled notebooks. The provided utilities aim to get you started quickly; extend them with:
+
+1. Performance attribution by market or sport.
+2. Risk analytics (exposure by outcome, drawdown depth/duration).
+3. Alerting when KPIs (win rate, Sharpe, turnover) drift.
+
+Solid reporting ensures strategies stay healthy as Kalshi microstructure changes.

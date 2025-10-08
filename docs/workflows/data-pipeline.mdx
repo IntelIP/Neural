@@ -1,0 +1,53 @@
+---
+title: 'Data Pipeline Patterns'
+description: 'Design reliable pipelines from Kalshi APIs to strategy inputs and analytics.'
+---
+
+Neural’s modular design lets you assemble data pipelines that suit different latency and resiliency requirements. This guide describes common patterns.
+
+## Streaming Bot
+
+```
+Kalshi WebSocket → MultiSourceAggregator → Strategy → OrderManager → TradingClient
+```
+
+- Use `KalshiWebSocketClient` for low-latency quotes.
+- Attach Twitter/ESPN sources in the aggregator to enrich signals.
+- Forward `AggregatedData` to strategies that evaluate sentiment + price in near real-time.
+
+## Polling Dashboard
+
+```
+RESTStreamingClient → DataTransformer → Notebook / Dashboard
+```
+
+- Poll markets every second when WebSocket isn’t available.
+- Normalize payloads with `DataTransformer.flatten_keys`.
+- Feed the data into dashboards or quick analyses without introducing async complexity.
+
+## Research Warehouse
+
+```
+KalshiHistoricalDataSource → Parquet/CSV → Backtester
+```
+
+- Schedule jobs (Airflow, Prefect, cron) to pull `/markets/trades` nightly.
+- Persist raw responses plus enriched columns (e.g., implied probability, spread).
+- Train models, run backtests, and compare strategies over consistent datasets.
+
+## Alerting System
+
+```
+MultiSourceAggregator → Custom Handler → Slack/Webhooks
+```
+
+- Register `aggregator.data_handlers` that push notifications on specific sentiment or price thresholds.
+- Use `GameSentimentTracker` to detect momentum swings worth human attention.
+
+## Reliability Tips
+
+- Wrap collection in `asyncio.create_task` and guard with cancellation + error logs to keep services responsive.
+- Use the registry to swap data sources without touching strategy code—handy when moving from demo to production feeds.
+- Periodically run `DataBuffer.cleanup_old_data()` to prevent memory creep in long-running services.
+
+Good data hygiene powers accurate backtests and dependable live systems. Mix and match the building blocks above to fit your latency, cost, and compliance constraints.

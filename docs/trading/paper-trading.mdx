@@ -1,0 +1,77 @@
+---
+title: 'Paper Trading Sandbox'
+description: 'Simulate Kalshi trades with portfolio tracking, slippage, and trade history exports.'
+---
+
+`PaperTradingClient` mirrors `TradingClient` but keeps everything local so you can battle-test strategies without risking capital.
+
+## Creating a Paper Client
+
+```python
+from neural.trading.paper_client import PaperTradingClient
+
+paper = PaperTradingClient(
+    initial_capital=50_000,
+    commission_per_trade=0.50,
+    slippage_pct=0.002,
+    save_trades=True,
+    data_dir="paper_trading_data",
+)
+```
+
+- Maintains a `PaperPortfolio` with cash, positions, and P&L metrics.
+- Applies commission and slippage on every fill.
+- Persists trades and portfolio snapshots to JSON/JSONL files for post-session analysis.
+
+## Placing Orders
+
+```python
+result = await paper.place_order(
+    market_id="KXNFLGAME-25SEP25SEAARI",
+    side="yes",
+    quantity=100,
+    order_type="market",
+    market_name="Seahawks @ Cardinals",
+    strategy="MomentumStrategy",
+)
+print(result["status"], result["filled_price"])
+```
+
+Features:
+
+- Supports market and limit orders (`order_type`).
+- Tracks `pending_orders` and updates them as fills occur.
+- Allows injecting sentiment/confidence metadata for richer reporting.
+- `update_market_price` keeps mark-to-market valuations current.
+
+## Portfolio Metrics
+
+`PaperPortfolio` exposes useful properties per `Position` and aggregate stats like `max_drawdown`, total commission/slippage, and daily portfolio values.
+
+```python
+for position in paper.portfolio.positions.values():
+    print(position.symbol, position.market_value, position.unrealized_pnl)
+```
+
+## Reporting
+
+Use `PaperTradingReporter` to turn the saved JSON data into analytics.
+
+```python
+from neural.trading.paper_report import PaperTradingReporter
+
+reporter = PaperTradingReporter(data_dir="paper_trading_data")
+reporter.load_data(days_back=14)
+summary = reporter.generate_performance_summary()
+print(summary["trade_metrics"], summary["pnl_metrics"])
+```
+
+When `matplotlib` and `pandas` are installed the reporter generates plots and grouped statistics by strategy, confidence, or sentiment score.
+
+## Workflow Tips
+
+- Write a thin adapter that dispatches strategy signals to either `TradingClient` or `PaperTradingClient` based on environment.
+- Use the paper data directory as a durable audit trail; compress old sessions or feed them into notebooks to compare strategy variants.
+- Combine with `OrderManager(dry_run=True)` to simulate the full analysis → execution pipeline without touching Kalshi.
+
+The sandbox closely mirrors the live API surface, minimizing friction when graduating a strategy to production.

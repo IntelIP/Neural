@@ -1,0 +1,99 @@
+---
+title: 'Strategy Foundations'
+description: 'Build Kalshi trading strategies with the Neural Strategy base class and signal helpers.'
+---
+
+At the center of the analysis stack is `neural.analysis.strategies.base.Strategy`. It manages capital, exposures, signal history, and integrates risk controls so new strategies can focus entirely on deciding when to trade.
+
+## Core Concepts
+
+### Strategy Initialization
+
+```python
+from neural.analysis.strategies.base import Strategy
+
+class MyStrategy(Strategy):
+    def analyze(self, market_data, espn_data=None, **kwargs):
+        # return a Signal based on the latest data frame row
+        ...
+
+strategy = MyStrategy(
+    initial_capital=10_000,
+    max_position_size=0.1,
+    min_edge=0.03,
+    use_kelly=True,
+    kelly_fraction=0.25,
+    stop_loss=0.5,
+    take_profit=2.0,
+    max_positions=5,
+    fee_rate=0.02,
+)
+```
+
+Parameters map directly to risk controls handled inside the base class. `StrategyConfig` and `BaseStrategy` provide an alternative initialization path when you want to pass around configuration objects.
+
+### Signals
+
+Strategies emit `Signal` instances that include everything the execution layer needs:
+
+```python
+from neural.analysis.strategies.base import Signal, SignalType
+
+Signal(
+    signal_type=SignalType.BUY_YES,
+    market_id="KXNFLGAME-25SEP25SEAARI-SEA",
+    recommended_size=50,
+    confidence=0.7,
+    edge=0.06,
+    expected_value=0.04,
+    metadata={"momentum": 0.12},
+)
+```
+
+Legacy properties (`type`, `ticker`, `size`) are retained for backwards compatibility, so existing bots require minimal updates.
+
+### Position Tracking
+
+The strategy maintains open/closed `Position` objects and exposes helpers to compute exposure, drawdowns, and realized/unrealized P&L.
+
+```python
+for position in strategy.positions:
+    print(position.ticker, position.pnl, position.pnl_percentage)
+```
+
+## Convenience Methods
+
+The base class ships with helper methods to keep strategy code expressive:
+
+- `buy_yes`, `buy_no`, `sell_yes`, `sell_no`, `close_position`, `hold` – construct properly populated signals.
+- `calculate_position_size(edge, odds, confidence)` – leverages Kelly or fixed-percentage sizing based on config flags.
+- `calculate_edge(true_probability, market_price)` – compute normalized edge metrics.
+- `update_position(position, price)` – track real-time P&L.
+- `risk_checks(signal)` – opt-in pre-trade safety checks.
+
+Example from `MeanReversionStrategy`:
+
+```python
+if divergence > 0:
+    return self.buy_no(
+        ticker=ticker,
+        size=size,
+        confidence=confidence,
+        entry_price=no_price,
+        target_price=1 - fair_value,
+        stop_loss=no_price * 1.2,
+        divergence=divergence,
+    )
+```
+
+## ESPN & Sportsbook Data Hooks
+
+`Strategy` tracks optional ESPN play-by-play (`self.espn_data`) and sportsbook consensus values (`self.sportsbook_data`). Subclasses can toggle these data sources on/off depending on whether they need live context or just market prices.
+
+## Reset & Lifecycle
+
+- `reset()` – clears positions, signals, and P&L (used by the backtester before each run).
+- `__str__` – quick summary of capital and open positions.
+- Strategies are reusable across backtests and live sessions; simply call `reset()` when you need a clean slate.
+
+Once you inherit from `Strategy`, you get consistent risk handling and signal semantics across backtests, live trading, and paper simulations.

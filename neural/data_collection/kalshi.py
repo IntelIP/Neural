@@ -1,3 +1,217 @@
+from __future__ import annotations
+import re
+from typing import Optional
+
+import pandas as pd
+
+import asyncio
+from typing import Any, Dict, Iterable, List
+
+import requests
+
+from neural.auth.http_client import KalshiHTTPClient
+
+_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
+_SPORT_SERIES_MAP = {
+    "NFL": "KXNFLGAME",
+    "NBA": "KXNBA",
+    "MLB": "KXMLB",
+    "NHL": "KXNHL",
+    "NCAAF": "KXNCAAFGAME",
+    "CFB": "KXNCAAFGAME",
+    "NCAA": "KXNCAAFGAME",
+}
+
+def _normalize_series(identifier: str | None) -> str | None:
+    if identifier is None:
+        return None
+    if identifier.upper().startswith("KX"):
+        return identifier
+    return _SPORT_SERIES_MAP.get(identifier.upper(), identifier)
+
+def _resolve_series_list(series: Iterable[str] | None) -> List[str]:
+    if not series:
+        return list({v for v in _SPORT_SERIES_MAP.values()})
+    return [s for s in (_normalize_series(item) for item in series) if s]
+
+async def _fetch_markets(
+    params: Dict[str, Any],
+    *,
+    use_authenticated: bool,
+    api_key_id: Optional[str],
+    private_key_pem: Optional[bytes],
+) -> pd.DataFrame:
+    def _request() -> Dict[str, Any]:
+        if use_authenticated:
+            client = KalshiHTTPClient(api_key_id=api_key_id, private_key_pem=private_key_pem)
+            try:
+                return client.get("/markets", params=params)
+            finally:
+                client.close()
+        url = f"{_BASE_URL}/markets"
+        resp = requests.get(url, params=params, timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
+    payload = await asyncio.to_thread(_request)
+    return pd.DataFrame(payload.get("markets", []))
+
+class KalshiMarketsSource:
+    """Fetch markets for a given Kalshi series ticker."""
+
+    def __init__(
+        self,
+        *,
+        series_ticker: Optional[str] = None,
+        status: Optional[str] = "open",
+        limit: int = 200,
+        use_authenticated: bool = True,
+        api_key_id: Optional[str] = None,
+        private_key_pem: Optional[bytes] = None,
+    ) -> None:
+        self.series_ticker = _normalize_series(series_ticker)
+        self.status = status
+        self.limit = limit
+        self.use_authenticated = use_authenticated
+        self.api_key_id = api_key_id
+        self.private_key_pem = private_key_pem
+
+    async def fetch(self) -> pd.DataFrame:
+        params: Dict[str, Any] = {"limit": self.limit}
+        if self.series_ticker:
+            params["series_ticker"] = self.series_ticker
+        if self.status is not None:
+            params["status"] = self.status
+        return await _fetch_markets(
+            params,
+            use_authenticated=self.use_authenticated,
+            api_key_id=self.api_key_id,
+            private_key_pem=self.private_key_pem,
+        )
+
+async def get_sports_series(
+    leagues: Iterable[str] | None = None,
+    *,
+    status: Optional[str] = "open",
+    limit: int = 200,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> Dict[str, List[Dict[str, Any]]]:
+    series_ids = _resolve_series_list(leagues)
+    results: Dict[str, List[Dict[str, Any]]] = {}
+    for series_id in series_ids:
+        df = await get_markets_by_sport(
+            series_id,
+            status=status,
+            limit=limit,
+            use_authenticated=use_authenticated,
+            api_key_id=api_key_id,
+            private_key_pem=private_key_pem,
+        )
+        if not df.empty:
+            results[series_id] = df.to_dict(orient="records")
+    return results
+
+async def get_markets_by_sport(
+    sport: str,
+    *,
+    status: Optional[str] = "open",
+    limit: int = 200,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> pd.DataFrame:
+    series = _normalize_series(sport)
+    params: Dict[str, Any] = {"limit": limit}
+    if series:
+        params["series_ticker"] = series
+    if status is not None:
+        params["status"] = status
+    return await _fetch_markets(
+        params,
+        use_authenticated=use_authenticated,
+        api_key_id=api_key_id,
+        private_key_pem=private_key_pem,
+    )
+
+async def get_all_sports_markets(
+    sports: Iterable[str] | None = None,
+    *,
+    status: Optional[str] = "open",
+    limit: int = 200,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> pd.DataFrame:
+    frames: List[pd.DataFrame] = []
+    for series in _resolve_series_list(sports):
+        df = await get_markets_by_sport(
+            series,
+            status=status,
+            limit=limit,
+            use_authenticated=use_authenticated,
+            api_key_id=api_key_id,
+            private_key_pem=private_key_pem,
+        )
+        if not df.empty:
+            frames.append(df)
+    if frames:
+        return pd.concat(frames, ignore_index=True)
+    return pd.DataFrame()
+
+async def search_markets(
+    query: str,
+    *,
+    status: Optional[str] = None,
+    limit: int = 200,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> pd.DataFrame:
+    params: Dict[str, Any] = {"search": query, "limit": limit}
+    if status is not None:
+        params["status"] = status
+    return await _fetch_markets(
+        params,
+        use_authenticated=use_authenticated,
+        api_key_id=api_key_id,
+        private_key_pem=private_key_pem,
+    )
+
+async def get_game_markets(
+    event_ticker: str,
+    *,
+    status: Optional[str] = None,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> pd.DataFrame:
+    params: Dict[str, Any] = {"event_ticker": event_ticker}
+    if status is not None:
+        params["status"] = status
+    return await _fetch_markets(
+        params,
+        use_authenticated=use_authenticated,
+        api_key_id=api_key_id,
+        private_key_pem=private_key_pem,
+    )
+
+async def get_live_sports(
+    *,
+    limit: int = 200,
+    use_authenticated: bool = True,
+    api_key_id: Optional[str] = None,
+    private_key_pem: Optional[bytes] = None,
+) -> pd.DataFrame:
+    return await _fetch_markets(
+        {"status": "live", "limit": limit},
+        use_authenticated=use_authenticated,
+        api_key_id=api_key_id,
+        private_key_pem=private_key_pem,
+    )
+
+
 async def get_nfl_games(
     status: str = "open",
     limit: int = 50,

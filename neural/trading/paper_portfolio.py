@@ -486,3 +486,6 @@ class PaperPortfolio:
             f"  Win Rate: {metrics['win_rate']:.1f}%\n"
             f"  Max Drawdown: {metrics['max_drawdown']:.2f}%"
         )
+    def get_portfolio_metrics(self) -> Dict[str, float]:
+        """Return high-level portfolio metrics for quick inspection."""
+        return {"cash": self.cash, "total_value": self.total_portfolio_value, "unrealized_pnl": self.unrealized_pnl, "realized_pnl": self.realized_pnl, "total_pnl": self.total_pnl, "total_return_pct": self.total_return_pct, "open_positions": self.position_count}
