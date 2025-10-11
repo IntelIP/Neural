@@ -1,10 +1,10 @@
 [project]
 name = "neural-sdk"
 version = "0.1.0"
-description = "Professional-grade SDK for algorithmic trading on prediction markets"
+description = "Professional-grade SDK for algorithmic trading on prediction markets (Beta - Core features stable, advanced modules experimental)"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 keywords = [
     "kalshi",
     "prediction-markets",
@@ -51,7 +51,11 @@ dependencies = [
     "websockets>=11.0.0",
     "simplefix>=1.0.17",
     "pandas>=2.0.0",
-    "numpy>=1.24.0",
+    # Bug Fix #3, #13: NumPy 2.x compatibility - SDK compiled against NumPy 1.x API
+    # Must use NumPy <2.0 to avoid runtime crashes
+    "numpy>=1.24.0,<2.0",
+    # Bug Fix #5: Added certifi for proper SSL certificate verification
+    "certifi>=2023.0.0",
     # Sentiment Analysis Dependencies
     "textblob>=0.17.1",
     "vaderSentiment>=3.3.2",
@@ -127,6 +131,9 @@ addopts = [
     "--cov=neural",
     "--cov-report=term-missing",
     "--cov-report=html",
+]
+markers = [
+    "integration: marks tests as integration tests (may require external services)",
 ]
 
 [tool.black]

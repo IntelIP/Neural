@@ -59,6 +59,16 @@ class KalshiWebSocketClient:
 		return urlunparse((scheme, parsed.netloc, self.path, "", "", ""))
 
 	def _sign_headers(self) -> Dict[str, str]:
+		"""
+		Generate authentication headers for WebSocket handshake.
+		
+		Bug Fix #11 Note: This method generates PSS (Probabilistic Signature Scheme) 
+		signatures required by Kalshi's WebSocket API. The signature must be included 
+		in the initial HTTP upgrade request headers.
+		
+		Returns:
+			Dict with KALSHI-ACCESS-KEY, KALSHI-ACCESS-SIGNATURE, and KALSHI-ACCESS-TIMESTAMP
+		"""
 		assert self.signer is not None
 		return dict(self.signer.headers("GET", self._path))
 
@@ -87,7 +97,21 @@ class KalshiWebSocketClient:
 		_LOG.error("Kalshi websocket error: %s", error)
 
 	def connect(self, *, block: bool = True) -> None:
-		"""Open the WebSocket connection in a background thread."""
+		"""
+		Open the WebSocket connection in a background thread.
+		
+		Bug Fix #11 Note: For proper SSL certificate verification, pass sslopt parameter
+		when initializing the client. Example:
+			import ssl, certifi
+			sslopt = {"cert_reqs": ssl.CERT_REQUIRED, "ca_certs": certifi.where()}
+			client = KalshiWebSocketClient(sslopt=sslopt)
+		
+		Args:
+			block: If True, wait for connection to establish before returning
+		
+		Raises:
+			TimeoutError: If connection doesn't establish within timeout period
+		"""
 		if self._ws_app is not None:
 			return
 
@@ -135,12 +159,41 @@ class KalshiWebSocketClient:
 		self._request_id += 1
 		return request_id
 
-	def subscribe(self, channels: list[str], *, params: Optional[Dict[str, Any]] = None, request_id: Optional[int] = None) -> int:
+	def subscribe(
+		self, 
+		channels: list[str], 
+		*, 
+		market_tickers: Optional[list[str]] = None,
+		params: Optional[Dict[str, Any]] = None, 
+		request_id: Optional[int] = None
+	) -> int:
+		"""
+		Subscribe to WebSocket channels with optional market filtering.
+		
+		Bug Fix #14: Added market_tickers parameter for server-side filtering.
+		
+		Args:
+			channels: List of channel names (e.g., ["orderbook_delta", "trade"])
+			market_tickers: Optional list of market tickers to filter (e.g., ["KXNFLGAME-..."])
+			params: Additional parameters to merge into subscription
+			request_id: Optional request ID for tracking
+		
+		Returns:
+			Request ID used for this subscription
+		"""
 		req_id = request_id or self._next_id()
+		
+		# Bug Fix #14: Build params with market_tickers support
+		subscribe_params = {"channels": channels}
+		if market_tickers:
+			subscribe_params["market_tickers"] = market_tickers
+		if params:
+			subscribe_params.update(params)
+		
 		payload = {
 			"id": req_id,
 			"cmd": "subscribe",
-			"params": {"channels": channels, **(params or {})},
+			"params": subscribe_params
 		}
 		self.send(payload)
 		return req_id

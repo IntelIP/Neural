@@ -16,7 +16,8 @@ import logging
 from .base import DataSource
 from .twitter_source import TwitterAPISource, create_twitter_source
 from .espn_enhanced import ESPNGameCastSource, create_gamecast_source
-from .kalshi_api_source import KalshiAPISource
+# Bug Fix #2: Corrected import - class name is KalshiApiSource (lowercase 'pi'), not KalshiAPISource
+from .kalshi_api_source import KalshiApiSource
 from ..analysis.sentiment import SentimentAnalyzer, GameSentimentTracker, create_sentiment_analyzer
 
 
@@ -126,7 +127,7 @@ class MultiSourceAggregator:
         # Data sources
         self.twitter_source: Optional[TwitterAPISource] = None
         self.espn_source: Optional[ESPNGameCastSource] = None
-        self.kalshi_source: Optional[KalshiAPISource] = None
+        self.kalshi_source: Optional[KalshiApiSource] = None
 
         # Data management
         self.data_buffer = DataBuffer(max_size=5000, max_age_minutes=120)
@@ -173,7 +174,7 @@ class MultiSourceAggregator:
             if self.kalshi_config.enabled:
                 kalshi_config = source_kwargs.get('kalshi_config', {})
                 if kalshi_config:
-                    self.kalshi_source = KalshiAPISource(kalshi_config)
+                    self.kalshi_source = KalshiApiSource(kalshi_config)
                     await self.kalshi_source.connect()
                     self.logger.info("Kalshi source initialized")
 
