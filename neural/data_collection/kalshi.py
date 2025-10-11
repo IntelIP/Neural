@@ -301,8 +301,9 @@ async def get_nfl_games(
 
         df["game_date"] = df["ticker"].apply(parse_game_date)
 
-        # Filter to ensure NFL-specific
-        nfl_mask = df["series_ticker"].str.contains("KXNFLGAME", na=False) | df[
+        # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
+        # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
+        nfl_mask = df["ticker"].str.contains("KXNFLGAME", na=False) | df[
             "title"
         ].str.contains("NFL", case=False, na=False)
         df = df[nfl_mask]
@@ -397,8 +398,9 @@ async def get_cfb_games(
 
         df["game_date"] = df["ticker"].apply(parse_game_date)
 
-        # Filter to ensure CFB-specific
-        cfb_mask = df["series_ticker"].str.contains("KXNCAAFGAME", na=False) | df[
+        # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
+        # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
+        cfb_mask = df["ticker"].str.contains("KXNCAAFGAME", na=False) | df[
             "title"
         ].str.contains("NCAA|College Football", case=False, na=False)
         df = df[cfb_mask]

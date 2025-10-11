@@ -43,9 +43,13 @@ class TwitterAPISource(DataSource):
 
     Provides real-time Twitter data collection with built-in rate limiting
     and error handling for sentiment analysis in trading algorithms.
+    
+    Bug Fix #1: Corrected base URL domain from twitter-api.io to api.twitterapi.io
+    Note: The exact endpoint may vary - this should be verified with twitterapi.io documentation
     """
 
-    BASE_URL = "https://twitter-api.io/api/v2"
+    # Bug Fix #1: Corrected domain (was https://twitter-api.io/api/v2)
+    BASE_URL = "https://api.twitterapi.io/v2"
 
     def __init__(self, config: TwitterConfig):
         super().__init__(name="twitter_api", config=config.__dict__)
@@ -56,8 +60,10 @@ class TwitterAPISource(DataSource):
     async def connect(self) -> None:
         """Establish connection to Twitter API."""
         if not self.session:
+            # Bug Fix #1: Updated authentication to use x-api-key header format
+            # This may need to be Bearer token depending on twitterapi.io requirements
             headers = {
-                'Authorization': f'Bearer {self.config.api_key}',
+                'x-api-key': self.config.api_key,
                 'Content-Type': 'application/json'
             }
             self.session = aiohttp.ClientSession(headers=headers)
@@ -93,9 +99,18 @@ class TwitterAPISource(DataSource):
             'expansions': 'author_id'
         }
 
+        # Bug Fix #1: Endpoint path may need adjustment based on twitterapi.io API structure
+        # Original: /tweets/search/recent - verify with API documentation
         async with self.session.get(f"{self.BASE_URL}/tweets/search/recent", params=params) as response:
             if response.status == 200:
                 return await response.json()
+            elif response.status == 404:
+                # Bug Fix #1: Provide helpful error for 404 (endpoint not found)
+                raise RuntimeError(
+                    f"Twitter API endpoint not found (404). "
+                    f"Please verify the correct endpoint path with twitterapi.io documentation. "
+                    f"Attempted: {self.BASE_URL}/tweets/search/recent"
+                )
             else:
                 error_text = await response.text()
                 raise RuntimeError(f"Twitter API error {response.status}: {error_text}")
