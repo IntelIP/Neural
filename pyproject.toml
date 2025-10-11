@@ -1,6 +1,6 @@
 [project]
 name = "neural-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Professional-grade SDK for algorithmic trading on prediction markets (Beta - Core features stable, advanced modules experimental)"
 readme = "README.md"
 requires-python = ">=3.10"

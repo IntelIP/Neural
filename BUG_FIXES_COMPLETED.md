@@ -1,7 +1,7 @@
 # Neural SDK Bug Fixes - Completed
 
 **Date:** October 11, 2025  
-**Version:** Neural SDK v0.1.0 Beta  
+**Version:** Neural SDK Beta v0.2.0  
 **Total Bugs Fixed:** 15 bugs documented in BETA_BUGS_TRACKING.md
 
 ---
@@ -203,7 +203,7 @@ Already documented in WEBSOCKET_INTEGRATION_GUIDE.md. Users should follow the pa
 
 1. **Install/Upgrade SDK:**
    ```bash
-   pip install --upgrade neural-sdk
+   pip install --upgrade neural-sdk==0.2.0
    ```
 
 2. **Ensure NumPy <2.0:**
@@ -280,5 +280,5 @@ All fixes have been:
 4. Update version number and changelog
 5. Deploy to PyPI
 
-**Version Recommendation:** Bump to v0.1.1 with bug fix release notes.
+**Version Recommendation:** Bump to Beta v0.2.0 with bug fix release notes.
 
