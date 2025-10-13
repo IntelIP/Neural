@@ -6,18 +6,18 @@ data, game flow analysis, and momentum tracking for sentiment-based trading.
 """
 
 import asyncio
-import re
-from datetime import datetime
-from typing import Dict, List, Optional, AsyncGenerator, Any, Tuple
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from .rest_api import RestApiSource
 from .base import DataSource
 
 
 class PlayType(Enum):
     """Types of plays that can affect game momentum."""
+
     TOUCHDOWN = "touchdown"
     FIELD_GOAL = "field_goal"
     INTERCEPTION = "interception"
@@ -36,6 +36,7 @@ class PlayType(Enum):
 
 class MomentumDirection(Enum):
     """Direction of momentum shift."""
+
     POSITIVE = "positive"
     NEGATIVE = "negative"
     NEUTRAL = "neutral"
@@ -44,27 +45,29 @@ class MomentumDirection(Enum):
 @dataclass
 class PlayData:
     """Structured play-by-play data."""
+
     id: str
     sequence_number: int
     quarter: int
     time_remaining: str
-    down: Optional[int]
-    distance: Optional[int]
-    yard_line: Optional[str]
+    down: int | None
+    distance: int | None
+    yard_line: str | None
     play_type: PlayType
     description: str
-    team: Optional[str]
+    team: str | None
     scoring_play: bool
     turnover: bool
     momentum_score: float  # -1 to 1, calculated based on play impact
     momentum_direction: MomentumDirection
     timestamp: datetime
-    raw_data: Dict[str, Any]
+    raw_data: dict[str, Any]
 
 
 @dataclass
 class GameState:
     """Current game state for momentum analysis."""
+
     game_id: str
     home_team: str
     away_team: str
@@ -72,12 +75,12 @@ class GameState:
     away_score: int
     quarter: int
     time_remaining: str
-    possession: Optional[str]
-    down: Optional[int]
-    distance: Optional[int]
-    yard_line: Optional[str]
+    possession: str | None
+    down: int | None
+    distance: int | None
+    yard_line: str | None
     game_status: str
-    recent_plays: List[PlayData]
+    recent_plays: list[PlayData]
     momentum_home: float  # Running momentum score for home team
     momentum_away: float  # Running momentum score for away team
 
@@ -95,7 +98,7 @@ class ESPNGameCastSource(DataSource):
         game_id: str,
         sport: str = "football/nfl",
         poll_interval: float = 5.0,
-        momentum_window: int = 10
+        momentum_window: int = 10,
     ):
         super().__init__(name=f"espn_gamecast_{game_id}")
         self.game_id = game_id
@@ -107,12 +110,26 @@ class ESPNGameCastSource(DataSource):
 
         # Momentum keywords for play analysis
         self.positive_keywords = [
-            'touchdown', 'score', 'interception', 'fumble recovery',
-            'sack', 'big gain', 'converted', 'first down', 'field goal'
+            "touchdown",
+            "score",
+            "interception",
+            "fumble recovery",
+            "sack",
+            "big gain",
+            "converted",
+            "first down",
+            "field goal",
         ]
         self.negative_keywords = [
-            'fumble', 'interception', 'sacked', 'penalty', 'incomplete',
-            'punt', 'turnover', 'missed', 'blocked'
+            "fumble",
+            "interception",
+            "sacked",
+            "penalty",
+            "incomplete",
+            "punt",
+            "turnover",
+            "missed",
+            "blocked",
         ]
 
     async def connect(self) -> None:
@@ -123,7 +140,7 @@ class ESPNGameCastSource(DataSource):
         """Close connection."""
         self._connected = False
 
-    async def get_game_summary(self) -> Dict[str, Any]:
+    async def get_game_summary(self) -> dict[str, Any]:
         """Get current game summary data."""
         import aiohttp
 
@@ -137,7 +154,7 @@ class ESPNGameCastSource(DataSource):
                 else:
                     raise RuntimeError(f"ESPN API error {response.status}")
 
-    async def get_play_by_play(self) -> Dict[str, Any]:
+    async def get_play_by_play(self) -> dict[str, Any]:
         """Get detailed play-by-play data."""
         import aiohttp
 
@@ -155,32 +172,32 @@ class ESPNGameCastSource(DataSource):
         """Extract play type from play description."""
         play_text_lower = play_text.lower()
 
-        if any(word in play_text_lower for word in ['touchdown', 'td']):
+        if any(word in play_text_lower for word in ["touchdown", "td"]):
             return PlayType.TOUCHDOWN
-        elif 'field goal' in play_text_lower:
+        elif "field goal" in play_text_lower:
             return PlayType.FIELD_GOAL
-        elif 'interception' in play_text_lower:
+        elif "interception" in play_text_lower:
             return PlayType.INTERCEPTION
-        elif 'fumble' in play_text_lower and 'recovered' not in play_text_lower:
+        elif "fumble" in play_text_lower and "recovered" not in play_text_lower:
             return PlayType.FUMBLE
-        elif 'safety' in play_text_lower:
+        elif "safety" in play_text_lower:
             return PlayType.SAFETY
-        elif 'punt' in play_text_lower:
+        elif "punt" in play_text_lower:
             return PlayType.PUNT
-        elif 'two point' in play_text_lower or '2-pt' in play_text_lower:
+        elif "two point" in play_text_lower or "2-pt" in play_text_lower:
             return PlayType.TWO_POINT
-        elif 'penalty' in play_text_lower:
+        elif "penalty" in play_text_lower:
             return PlayType.PENALTY
-        elif 'timeout' in play_text_lower:
+        elif "timeout" in play_text_lower:
             return PlayType.TIMEOUT
-        elif 'end of' in play_text_lower and 'quarter' in play_text_lower:
+        elif "end of" in play_text_lower and "quarter" in play_text_lower:
             return PlayType.END_QUARTER
-        elif 'injury' in play_text_lower:
+        elif "injury" in play_text_lower:
             return PlayType.INJURY
         else:
             return PlayType.UNKNOWN
 
-    def _calculate_momentum_score(self, play: Dict[str, Any]) -> Tuple[float, MomentumDirection]:
+    def _calculate_momentum_score(self, play: dict[str, Any]) -> tuple[float, MomentumDirection]:
         """
         Calculate momentum score for a play (-1 to 1).
 
@@ -190,7 +207,7 @@ class ESPNGameCastSource(DataSource):
         Returns:
             Tuple of (momentum_score, momentum_direction)
         """
-        text = play.get('text', '').lower()
+        text = play.get("text", "").lower()
         play_type = self._extract_play_type(text)
 
         # Base momentum scores by play type
@@ -204,7 +221,7 @@ class ESPNGameCastSource(DataSource):
             PlayType.PUNT: -0.1,
             PlayType.TWO_POINT: 0.5,
             PlayType.PENALTY: -0.2,
-            PlayType.UNKNOWN: 0.0
+            PlayType.UNKNOWN: 0.0,
         }
 
         base_score = base_scores.get(play_type, 0.0)
@@ -226,78 +243,92 @@ class ESPNGameCastSource(DataSource):
 
         return final_score, direction
 
-    def _process_play(self, play: Dict[str, Any], drive_info: Dict[str, Any] = None) -> PlayData:
+    def _process_play(self, play: dict[str, Any], drive_info: dict[str, Any] = None) -> PlayData:
         """Process raw play data into structured format."""
-        play_id = play.get('id', str(play.get('sequenceNumber', 0)))
-        description = play.get('text', '')
+        play_id = play.get("id", str(play.get("sequenceNumber", 0)))
+        description = play.get("text", "")
 
         momentum_score, momentum_direction = self._calculate_momentum_score(play)
 
         return PlayData(
             id=play_id,
-            sequence_number=play.get('sequenceNumber', 0),
-            quarter=play.get('period', {}).get('number', 0),
-            time_remaining=play.get('clock', {}).get('displayValue', ''),
-            down=play.get('start', {}).get('down'),
-            distance=play.get('start', {}).get('distance'),
-            yard_line=play.get('start', {}).get('yardLine'),
+            sequence_number=play.get("sequenceNumber", 0),
+            quarter=play.get("period", {}).get("number", 0),
+            time_remaining=play.get("clock", {}).get("displayValue", ""),
+            down=play.get("start", {}).get("down"),
+            distance=play.get("start", {}).get("distance"),
+            yard_line=play.get("start", {}).get("yardLine"),
             play_type=self._extract_play_type(description),
             description=description,
-            team=play.get('start', {}).get('team', {}).get('abbreviation'),
-            scoring_play=play.get('scoringPlay', False),
-            turnover='turnover' in description.lower() or 'interception' in description.lower(),
+            team=play.get("start", {}).get("team", {}).get("abbreviation"),
+            scoring_play=play.get("scoringPlay", False),
+            turnover="turnover" in description.lower() or "interception" in description.lower(),
             momentum_score=momentum_score,
             momentum_direction=momentum_direction,
             timestamp=datetime.now(),
-            raw_data=play
+            raw_data=play,
         )
 
-    def _update_game_state(self, game_data: Dict[str, Any], plays: List[PlayData]) -> GameState:
+    def _update_game_state(self, game_data: dict[str, Any], plays: list[PlayData]) -> GameState:
         """Update game state with latest data."""
-        header = game_data.get('header', {})
-        competitions = header.get('competitions', [{}])
+        header = game_data.get("header", {})
+        competitions = header.get("competitions", [{}])
 
         if competitions:
             competition = competitions[0]
-            competitors = competition.get('competitors', [])
+            competitors = competition.get("competitors", [])
 
-            home_team = next((c for c in competitors if c.get('homeAway') == 'home'), {})
-            away_team = next((c for c in competitors if c.get('homeAway') == 'away'), {})
+            home_team = next((c for c in competitors if c.get("homeAway") == "home"), {})
+            away_team = next((c for c in competitors if c.get("homeAway") == "away"), {})
 
             # Calculate running momentum
-            recent_plays = plays[-self.momentum_window:] if len(plays) > self.momentum_window else plays
+            recent_plays = (
+                plays[-self.momentum_window :] if len(plays) > self.momentum_window else plays
+            )
 
-            home_momentum = sum(
-                p.momentum_score for p in recent_plays
-                if p.team == home_team.get('team', {}).get('abbreviation')
-            ) / len(recent_plays) if recent_plays else 0.0
+            home_momentum = (
+                sum(
+                    p.momentum_score
+                    for p in recent_plays
+                    if p.team == home_team.get("team", {}).get("abbreviation")
+                )
+                / len(recent_plays)
+                if recent_plays
+                else 0.0
+            )
 
-            away_momentum = sum(
-                p.momentum_score for p in recent_plays
-                if p.team == away_team.get('team', {}).get('abbreviation')
-            ) / len(recent_plays) if recent_plays else 0.0
+            away_momentum = (
+                sum(
+                    p.momentum_score
+                    for p in recent_plays
+                    if p.team == away_team.get("team", {}).get("abbreviation")
+                )
+                / len(recent_plays)
+                if recent_plays
+                else 0.0
+            )
 
             return GameState(
                 game_id=self.game_id,
-                home_team=home_team.get('team', {}).get('displayName', ''),
-                away_team=away_team.get('team', {}).get('displayName', ''),
-                home_score=int(home_team.get('score', '0')),
-                away_score=int(away_team.get('score', '0')),
-                quarter=competition.get('status', {}).get('period', 0),
-                time_remaining=competition.get('status', {}).get('displayClock', ''),
+                home_team=home_team.get("team", {}).get("displayName", ""),
+                away_team=away_team.get("team", {}).get("displayName", ""),
+                home_score=int(home_team.get("score", "0")),
+                away_score=int(away_team.get("score", "0")),
+                quarter=competition.get("status", {}).get("period", 0),
+                time_remaining=competition.get("status", {}).get("displayClock", ""),
                 possession=None,  # Would need additional parsing
                 down=None,
                 distance=None,
                 yard_line=None,
-                game_status=competition.get('status', {}).get('type', {}).get('description', ''),
+                game_status=competition.get("status", {}).get("type", {}).get("description", ""),
                 recent_plays=recent_plays,
                 momentum_home=home_momentum,
-                momentum_away=away_momentum
+                momentum_away=away_momentum,
             )
 
         return None
 
-    async def collect(self) -> AsyncGenerator[Dict[str, Any], None]:
+    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
         """
         Continuously collect ESPN GameCast data.
 
@@ -317,11 +348,11 @@ class ESPNGameCastSource(DataSource):
 
                     # Process new plays
                     new_plays = []
-                    if 'drives' in pbp_data:
-                        for drive in pbp_data['drives']:
-                            if 'plays' in drive:
-                                for play in drive['plays']:
-                                    play_id = play.get('id', str(play.get('sequenceNumber', 0)))
+                    if "drives" in pbp_data:
+                        for drive in pbp_data["drives"]:
+                            if "plays" in drive:
+                                for play in drive["plays"]:
+                                    play_id = play.get("id", str(play.get("sequenceNumber", 0)))
 
                                     # Only process new plays
                                     if self.last_play_id is None or play_id != self.last_play_id:
@@ -331,7 +362,9 @@ class ESPNGameCastSource(DataSource):
 
                                         # Update last play ID
                                         if processed_play.sequence_number > (
-                                            int(self.last_play_id) if self.last_play_id and self.last_play_id.isdigit() else 0
+                                            int(self.last_play_id)
+                                            if self.last_play_id and self.last_play_id.isdigit()
+                                            else 0
                                         ):
                                             self.last_play_id = play_id
 
@@ -341,40 +374,44 @@ class ESPNGameCastSource(DataSource):
                     # Yield data if we have new plays or game state updates
                     if new_plays or self.game_state:
                         yield {
-                            'source': 'espn_gamecast',
-                            'game_id': self.game_id,
-                            'timestamp': datetime.now(),
-                            'game_state': self.game_state.__dict__ if self.game_state else None,
-                            'new_plays': [play.__dict__ for play in new_plays],
-                            'momentum_home': self.game_state.momentum_home if self.game_state else 0.0,
-                            'momentum_away': self.game_state.momentum_away if self.game_state else 0.0,
-                            'total_plays': len(all_plays),
-                            'raw_game_data': game_data
+                            "source": "espn_gamecast",
+                            "game_id": self.game_id,
+                            "timestamp": datetime.now(),
+                            "game_state": self.game_state.__dict__ if self.game_state else None,
+                            "new_plays": [play.__dict__ for play in new_plays],
+                            "momentum_home": (
+                                self.game_state.momentum_home if self.game_state else 0.0
+                            ),
+                            "momentum_away": (
+                                self.game_state.momentum_away if self.game_state else 0.0
+                            ),
+                            "total_plays": len(all_plays),
+                            "raw_game_data": game_data,
                         }
 
                 except Exception as pbp_error:
                     # If play-by-play fails, still provide game state
                     print(f"Play-by-play error: {pbp_error}")
                     yield {
-                        'source': 'espn_gamecast',
-                        'game_id': self.game_id,
-                        'timestamp': datetime.now(),
-                        'game_state': None,
-                        'new_plays': [],
-                        'momentum_home': 0.0,
-                        'momentum_away': 0.0,
-                        'total_plays': len(all_plays),
-                        'raw_game_data': game_data,
-                        'error': str(pbp_error)
+                        "source": "espn_gamecast",
+                        "game_id": self.game_id,
+                        "timestamp": datetime.now(),
+                        "game_state": None,
+                        "new_plays": [],
+                        "momentum_home": 0.0,
+                        "momentum_away": 0.0,
+                        "total_plays": len(all_plays),
+                        "raw_game_data": game_data,
+                        "error": str(pbp_error),
                     }
 
             except Exception as e:
                 print(f"ESPN GameCast error: {e}")
                 yield {
-                    'source': 'espn_gamecast',
-                    'game_id': self.game_id,
-                    'timestamp': datetime.now(),
-                    'error': str(e)
+                    "source": "espn_gamecast",
+                    "game_id": self.game_id,
+                    "timestamp": datetime.now(),
+                    "error": str(e),
                 }
 
             await asyncio.sleep(self.poll_interval)
@@ -392,21 +429,48 @@ class ESPNSentimentSource(ESPNGameCastSource):
 
         # Enhanced sentiment keywords
         self.excitement_words = [
-            'amazing', 'incredible', 'fantastic', 'spectacular', 'huge', 'big',
-            'clutch', 'perfect', 'brilliant', 'outstanding', 'explosive'
+            "amazing",
+            "incredible",
+            "fantastic",
+            "spectacular",
+            "huge",
+            "big",
+            "clutch",
+            "perfect",
+            "brilliant",
+            "outstanding",
+            "explosive",
         ]
 
         self.negative_words = [
-            'terrible', 'awful', 'disaster', 'mistake', 'error', 'bad',
-            'poor', 'miss', 'fail', 'drop', 'overthrow', 'underthrow'
+            "terrible",
+            "awful",
+            "disaster",
+            "mistake",
+            "error",
+            "bad",
+            "poor",
+            "miss",
+            "fail",
+            "drop",
+            "overthrow",
+            "underthrow",
         ]
 
         self.intensity_words = [
-            'crushing', 'devastating', 'dominant', 'powerful', 'fierce',
-            'aggressive', 'massive', 'enormous', 'critical', 'crucial'
+            "crushing",
+            "devastating",
+            "dominant",
+            "powerful",
+            "fierce",
+            "aggressive",
+            "massive",
+            "enormous",
+            "critical",
+            "crucial",
         ]
 
-    def _extract_play_sentiment(self, play_text: str) -> Dict[str, float]:
+    def _extract_play_sentiment(self, play_text: str) -> dict[str, float]:
         """
         Extract sentiment metrics from play description.
 
@@ -424,42 +488,47 @@ class ESPNSentimentSource(ESPNGameCastSource):
         intensity_score = sum(1 for word in self.intensity_words if word in text_lower)
 
         # Calculate overall sentiment (-1 to 1)
-        raw_sentiment = (excitement_score - negative_score) / max(1, excitement_score + negative_score)
+        raw_sentiment = (excitement_score - negative_score) / max(
+            1, excitement_score + negative_score
+        )
 
         # Adjust for intensity
         intensity_multiplier = 1 + (intensity_score * 0.2)
         final_sentiment = raw_sentiment * intensity_multiplier
 
         return {
-            'sentiment_score': max(-1.0, min(1.0, final_sentiment)),
-            'excitement_level': excitement_score,
-            'negative_level': negative_score,
-            'intensity_level': intensity_score,
-            'text_length': len(play_text.split())
+            "sentiment_score": max(-1.0, min(1.0, final_sentiment)),
+            "excitement_level": excitement_score,
+            "negative_level": negative_score,
+            "intensity_level": intensity_score,
+            "text_length": len(play_text.split()),
         }
 
-    async def collect(self) -> AsyncGenerator[Dict[str, Any], None]:
+    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
         """Collect ESPN data with enhanced sentiment analysis."""
         async for data in super().collect():
             # Add sentiment analysis to new plays
-            if 'new_plays' in data:
-                for play_data in data['new_plays']:
-                    sentiment_metrics = self._extract_play_sentiment(play_data['description'])
-                    play_data['sentiment'] = sentiment_metrics
+            if "new_plays" in data:
+                for play_data in data["new_plays"]:
+                    sentiment_metrics = self._extract_play_sentiment(play_data["description"])
+                    play_data["sentiment"] = sentiment_metrics
 
             # Add overall game sentiment
-            if data.get('game_state') and data.get('new_plays'):
-                recent_plays = data['new_plays']
+            if data.get("game_state") and data.get("new_plays"):
+                recent_plays = data["new_plays"]
                 if recent_plays:
                     avg_sentiment = sum(
-                        play.get('sentiment', {}).get('sentiment_score', 0)
-                        for play in recent_plays
+                        play.get("sentiment", {}).get("sentiment_score", 0) for play in recent_plays
                     ) / len(recent_plays)
 
-                    data['game_sentiment'] = {
-                        'average_sentiment': avg_sentiment,
-                        'sentiment_trend': 'positive' if avg_sentiment > 0.1 else 'negative' if avg_sentiment < -0.1 else 'neutral',
-                        'play_count': len(recent_plays)
+                    data["game_sentiment"] = {
+                        "average_sentiment": avg_sentiment,
+                        "sentiment_trend": (
+                            "positive"
+                            if avg_sentiment > 0.1
+                            else "negative" if avg_sentiment < -0.1 else "neutral"
+                        ),
+                        "play_count": len(recent_plays),
                     }
 
             yield data
@@ -470,7 +539,7 @@ def create_gamecast_source(
     game_id: str,
     sport: str = "football/nfl",
     poll_interval: float = 5.0,
-    enhanced_sentiment: bool = True
+    enhanced_sentiment: bool = True,
 ) -> ESPNGameCastSource:
     """
     Create ESPN GameCast source with options.
@@ -492,20 +561,23 @@ def create_gamecast_source(
 
 # Example usage
 if __name__ == "__main__":
+
     async def example():
         # Example game ID (would be from actual ESPN)
         game_source = create_gamecast_source(
-            game_id="401547439",  # Example NFL game ID
-            sport="football/nfl",
-            poll_interval=10.0
+            game_id="401547439", sport="football/nfl", poll_interval=10.0  # Example NFL game ID
         )
 
         async with game_source:
             async for data in game_source.collect():
-                print(f"Game momentum - Home: {data.get('momentum_home', 0):.2f}, Away: {data.get('momentum_away', 0):.2f}")
-                if data.get('new_plays'):
-                    for play in data['new_plays']:
-                        print(f"  Play: {play['description'][:50]}... (momentum: {play['momentum_score']:.2f})")
+                print(
+                    f"Game momentum - Home: {data.get('momentum_home', 0):.2f}, Away: {data.get('momentum_away', 0):.2f}"
+                )
+                if data.get("new_plays"):
+                    for play in data["new_plays"]:
+                        print(
+                            f"  Play: {play['description'][:50]}... (momentum: {play['momentum_score']:.2f})"
+                        )
                 break
 
     asyncio.run(example())

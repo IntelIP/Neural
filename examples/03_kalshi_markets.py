@@ -5,15 +5,15 @@ This demonstrates fetching sports tickers from Kalshi,
 returning as Pandas DataFrame.
 """
 
-import sys
 import os
-from typing import Optional
+import sys
 
 # Add the neural package to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+import asyncio
 
 from neural.data_collection import KalshiMarketsSource, get_markets_by_sport
-import asyncio
 
 
 async def collect_kalshi_markets(series_ticker: str = "NFL"):
@@ -23,7 +23,7 @@ async def collect_kalshi_markets(series_ticker: str = "NFL"):
         series_ticker=series_ticker,
         status="open",
         use_authenticated=False,  # Use public API by default
-        interval=60.0
+        interval=60.0,
     )
 
     async with source:
@@ -31,11 +31,11 @@ async def collect_kalshi_markets(series_ticker: str = "NFL"):
             print(f"Fetched {len(df)} markets for {series_ticker}")
 
             # Example filtering
-            if not df.empty and 'title' in df.columns:
-                ravens_lions = df[df['title'].str.contains('Ravens|Lions', case=False, na=False)]
+            if not df.empty and "title" in df.columns:
+                ravens_lions = df[df["title"].str.contains("Ravens|Lions", case=False, na=False)]
                 if not ravens_lions.empty:
                     print(f"Found {len(ravens_lions)} Ravens/Lions markets")
-                    display_cols = ['ticker', 'title', 'yes_ask', 'volume_24h']
+                    display_cols = ["ticker", "title", "yes_ask", "volume_24h"]
                     available_cols = [col for col in display_cols if col in df.columns]
                     print(ravens_lions[available_cols].head())
                 else:
@@ -43,7 +43,7 @@ async def collect_kalshi_markets(series_ticker: str = "NFL"):
 
             # Show sample of data
             print("\nSample of DataFrame:")
-            display_cols = ['ticker', 'title', 'yes_ask', 'volume_24h', 'mid_price']
+            display_cols = ["ticker", "title", "yes_ask", "volume_24h", "mid_price"]
             available_cols = [col for col in display_cols if col in df.columns]
             print(df[available_cols].head(10))
 
@@ -56,7 +56,7 @@ async def main():
 
     # Fetch NFL markets using proper ticker
     print("Fetching NFL markets...")
-    df = await collect_kalshi_markets("NFL")
+    await collect_kalshi_markets("NFL")
 
     # Alternative: Use utility function
     print("\n=== Using Utility Function ===")

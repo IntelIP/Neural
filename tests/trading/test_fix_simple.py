@@ -4,12 +4,13 @@ Simple FIX API test using existing Neural SDK infrastructure
 """
 
 import asyncio
-import os
 from datetime import datetime
-from dotenv import load_dotenv
+
 import simplefix
-from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
+from dotenv import load_dotenv
+
 from neural.auth.env import get_api_key_id, get_private_key_material
+from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +20,7 @@ async def test_fix_basic():
     """Test basic FIX connection with minimal setup"""
 
     print("🔧 Testing FIX API Connection")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # Try to get credentials using the SDK's built-in methods
@@ -45,31 +46,27 @@ async def test_fix_basic():
     def handle_message(msg: simplefix.FixMessage):
         msg_dict = KalshiFIXClient.to_dict(msg)
         msg_type = msg_dict.get(35)
-        timestamp = datetime.now().strftime('%H:%M:%S')
+        timestamp = datetime.now().strftime("%H:%M:%S")
 
         messages_received.append(msg_type)
 
-        if msg_type == 'A':
+        if msg_type == "A":
             print(f"[{timestamp}] ✅ LOGON SUCCESS - FIX connection established!")
-        elif msg_type == '5':
+        elif msg_type == "5":
             print(f"[{timestamp}] 👋 Logout acknowledged")
-        elif msg_type == '0':
+        elif msg_type == "0":
             print(f"[{timestamp}] 💓 Heartbeat")
-        elif msg_type == '3':
+        elif msg_type == "3":
             print(f"[{timestamp}] ❌ Reject: {msg_dict.get(58)}")
         else:
             print(f"[{timestamp}] 📨 Message type: {msg_type}")
 
     # Create FIX client with minimal config
     config = FIXConnectionConfig(
-        reset_seq_num=True,  # Reset sequence numbers
-        heartbeat_interval=30
+        reset_seq_num=True, heartbeat_interval=30  # Reset sequence numbers
     )
 
-    client = KalshiFIXClient(
-        config=config,
-        on_message=handle_message
-    )
+    client = KalshiFIXClient(config=config, on_message=handle_message)
 
     try:
         # Connect and stay connected for 5 seconds
@@ -83,7 +80,7 @@ async def test_fix_basic():
         await client.logout()
         await client.close()
 
-        print(f"\n📊 Summary:")
+        print("\n📊 Summary:")
         print(f"  Messages received: {len(messages_received)}")
         print(f"  Message types: {set(messages_received)}")
 
@@ -92,6 +89,7 @@ async def test_fix_basic():
     except Exception as e:
         print(f"\n❌ Connection failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

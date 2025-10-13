@@ -11,7 +11,7 @@ def load_kalshi_credentials(
 
     Returns a tuple of (api_key_id, private_key_pem_bytes).
     """
-    with open(api_key_path, "r") as f:
+    with open(api_key_path) as f:
         api_key_id = f.read().strip()
     with open(private_key_path, "rb") as f:
         private_key_pem = f.read()

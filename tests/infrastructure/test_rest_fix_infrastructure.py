@@ -5,19 +5,20 @@ Demonstrates working trading pipeline without WebSocket
 """
 
 import asyncio
-from datetime import datetime
-from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
 import simplefix
 
-from neural.trading.rest_streaming import RESTStreamingClient, MarketSnapshot
-from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
-from neural.auth.env import get_api_key_id, get_private_key_material
+from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
+from neural.trading.rest_streaming import MarketSnapshot, RESTStreamingClient
 
 
 @dataclass
 class TradingSignal:
     """Trading signal generated from market conditions"""
+
     timestamp: datetime
     ticker: str
     team: str
@@ -38,7 +39,7 @@ class HybridTradingInfrastructure:
 
     def __init__(self):
         # Market data
-        self.market_snapshots: Dict[str, MarketSnapshot] = {}
+        self.market_snapshots: dict[str, MarketSnapshot] = {}
         self.signals_generated = []
         self.orders_placed = []
         self.execution_reports = []
@@ -65,10 +66,12 @@ class HybridTradingInfrastructure:
         self.market_snapshots[ticker] = snapshot
 
         # Display update
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        print(f"[{timestamp}] 📊 {team}: "
-              f"${snapshot.yes_bid:.3f} / ${snapshot.yes_ask:.3f} "
-              f"(Spread: ${snapshot.yes_spread:.3f}, Prob: {snapshot.implied_probability:.1f}%)")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(
+            f"[{timestamp}] 📊 {team}: "
+            f"${snapshot.yes_bid:.3f} / ${snapshot.yes_ask:.3f} "
+            f"(Spread: ${snapshot.yes_spread:.3f}, Prob: {snapshot.implied_probability:.1f}%)"
+        )
 
         # Check for trading opportunities
         if self.trading_enabled:
@@ -87,7 +90,7 @@ class HybridTradingInfrastructure:
                 action="BUY",
                 price=snapshot.yes_bid + 0.001,  # Improve bid by 0.1 cent
                 reason=f"Extremely tight spread ${snapshot.yes_spread:.3f}",
-                confidence=0.8
+                confidence=0.8,
             )
             self._generate_signal(signal)
 
@@ -112,7 +115,7 @@ class HybridTradingInfrastructure:
                         action="BUY_BOTH",
                         price=sea_snap.yes_ask,
                         reason=f"Arbitrage opportunity: ${profit/100:.3f} profit",
-                        confidence=0.95
+                        confidence=0.95,
                     )
                     self._generate_signal(signal)
 
@@ -128,7 +131,7 @@ class HybridTradingInfrastructure:
                 action=action,
                 price=snapshot.yes_mid,
                 reason=f"Extreme probability: {snapshot.implied_probability:.1f}%",
-                confidence=0.6
+                confidence=0.6,
             )
             self._generate_signal(signal)
 
@@ -144,60 +147,52 @@ class HybridTradingInfrastructure:
         print(f"  Confidence: {signal.confidence:.0%}")
 
         if self.fix_connected and not self.demo_mode:
-            print(f"  → Would execute via FIX")
+            print("  → Would execute via FIX")
 
     def handle_fix_message(self, message: simplefix.FixMessage) -> None:
         """Process FIX execution reports"""
         msg_dict = KalshiFIXClient.to_dict(message)
         msg_type = msg_dict.get(35)
 
-        if msg_type == 'A':  # Logon
+        if msg_type == "A":  # Logon
             self.fix_connected = True
             print("✅ FIX: Connected for order execution")
 
-        elif msg_type == '8':  # Execution Report
+        elif msg_type == "8":  # Execution Report
             self._handle_execution(msg_dict)
 
-        elif msg_type == '5':  # Logout
+        elif msg_type == "5":  # Logout
             self.fix_connected = False
 
-    def _handle_execution(self, msg: Dict[int, Any]) -> None:
+    def _handle_execution(self, msg: dict[int, Any]) -> None:
         """Handle order execution report"""
         order_id = msg.get(11)
         status = msg.get(39)
         symbol = msg.get(55)
 
-        status_map = {
-            '0': 'NEW',
-            '2': 'FILLED',
-            '4': 'CANCELLED',
-            '8': 'REJECTED'
-        }
+        status_map = {"0": "NEW", "2": "FILLED", "4": "CANCELLED", "8": "REJECTED"}
 
         status_text = status_map.get(status, status)
 
-        self.execution_reports.append({
-            'order_id': order_id,
-            'symbol': symbol,
-            'status': status_text,
-            'timestamp': datetime.now()
-        })
+        self.execution_reports.append(
+            {
+                "order_id": order_id,
+                "symbol": symbol,
+                "status": status_text,
+                "timestamp": datetime.now(),
+            }
+        )
 
-        timestamp = datetime.now().strftime('%H:%M:%S')
+        timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] 📊 FIX Order: {order_id} is {status_text}")
 
     async def place_order(
-        self,
-        client: KalshiFIXClient,
-        ticker: str,
-        side: str,
-        price: float,
-        size: int = 1
+        self, client: KalshiFIXClient, ticker: str, side: str, price: float, size: int = 1
     ) -> None:
         """Place order via FIX"""
         order_id = f"HYBRID_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-        print(f"\n📤 Placing FIX Order:")
+        print("\n📤 Placing FIX Order:")
         print(f"  ID: {order_id}")
         print(f"  Symbol: {ticker}")
         print(f"  Side: {side.upper()}")
@@ -211,41 +206,45 @@ class HybridTradingInfrastructure:
             quantity=size,
             price=int(price * 100),  # Convert to cents
             order_type="limit",
-            time_in_force="ioc"  # Immediate or cancel for safety
+            time_in_force="ioc",  # Immediate or cancel for safety
         )
 
-        self.orders_placed.append({
-            'order_id': order_id,
-            'ticker': ticker,
-            'side': side,
-            'price': price,
-            'size': size,
-            'timestamp': datetime.now()
-        })
+        self.orders_placed.append(
+            {
+                "order_id": order_id,
+                "ticker": ticker,
+                "side": side,
+                "price": price,
+                "size": size,
+                "timestamp": datetime.now(),
+            }
+        )
 
     def print_summary(self) -> None:
         """Print infrastructure summary"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📊 HYBRID INFRASTRUCTURE SUMMARY")
-        print("="*70)
+        print("=" * 70)
 
-        print(f"\n🔌 Infrastructure Status:")
+        print("\n🔌 Infrastructure Status:")
         print(f"  REST API: {'✅ Connected' if self.rest_connected else '❌ Disconnected'}")
         print(f"  FIX API: {'✅ Connected' if self.fix_connected else '❌ Disconnected'}")
         print(f"  Mode: {'DEMO' if self.demo_mode else 'LIVE'}")
 
         if self.market_snapshots:
-            print(f"\n📈 Current Market State:")
+            print("\n📈 Current Market State:")
             total_prob = 0
             for ticker, snap in self.market_snapshots.items():
                 team = "Seattle" if "SEA" in ticker else "Arizona"
-                print(f"  {team}: ${snap.yes_mid:.3f} ({snap.implied_probability:.1f}%) "
-                      f"Spread: ${snap.yes_spread:.3f}")
+                print(
+                    f"  {team}: ${snap.yes_mid:.3f} ({snap.implied_probability:.1f}%) "
+                    f"Spread: ${snap.yes_spread:.3f}"
+                )
                 total_prob += snap.implied_probability
 
             print(f"  Total Probability: {total_prob:.1f}%")
             if abs(total_prob - 100) > 2:
-                print(f"  ⚠️ MISPRICING: Total != 100%")
+                print("  ⚠️ MISPRICING: Total != 100%")
 
         if self.signals_generated:
             print(f"\n🎯 Trading Signals: {len(self.signals_generated)}")
@@ -261,13 +260,17 @@ class HybridTradingInfrastructure:
             # Show recent signals
             print("\nRecent signals:")
             for signal in self.signals_generated[-3:]:
-                print(f"  [{signal.timestamp.strftime('%H:%M:%S')}] "
-                      f"{signal.signal_type}: {signal.team} {signal.action} @ ${signal.price:.3f}")
+                print(
+                    f"  [{signal.timestamp.strftime('%H:%M:%S')}] "
+                    f"{signal.signal_type}: {signal.team} {signal.action} @ ${signal.price:.3f}"
+                )
 
         if self.orders_placed:
             print(f"\n📝 Orders Placed: {len(self.orders_placed)}")
             for order in self.orders_placed:
-                print(f"  {order['order_id']}: {order['side']} {order['ticker']} @ ${order['price']:.2f}")
+                print(
+                    f"  {order['order_id']}: {order['side']} {order['ticker']} @ ${order['price']:.2f}"
+                )
 
         if self.execution_reports:
             print(f"\n✅ Execution Reports: {len(self.execution_reports)}")
@@ -278,7 +281,7 @@ class HybridTradingInfrastructure:
 async def run_hybrid_infrastructure():
     """Run complete REST + FIX infrastructure"""
     print("🚀 Hybrid Infrastructure Test: REST Polling + FIX Execution")
-    print("="*70)
+    print("=" * 70)
 
     # Initialize infrastructure
     infra = HybridTradingInfrastructure()
@@ -287,28 +290,22 @@ async def run_hybrid_infrastructure():
     sea_ticker = "KXNFLGAME-25SEP25SEAARI-SEA"
     ari_ticker = "KXNFLGAME-25SEP25SEAARI-ARI"
 
-    print(f"\n📊 Markets to monitor:")
+    print("\n📊 Markets to monitor:")
     print(f"  - {sea_ticker} (Seattle Seahawks)")
     print(f"  - {ari_ticker} (Arizona Cardinals)")
 
     # Create REST client for market data
     print("\n📡 Connecting REST API for market data...")
     rest_client = RESTStreamingClient(
-        on_market_update=infra.handle_market_update,
-        poll_interval=1.0  # Poll every second
+        on_market_update=infra.handle_market_update, poll_interval=1.0  # Poll every second
     )
 
     # Create FIX client for execution
     print("🔧 Connecting FIX API for order execution...")
     fix_config = FIXConnectionConfig(
-        heartbeat_interval=30,
-        reset_seq_num=True,
-        cancel_on_disconnect=False
+        heartbeat_interval=30, reset_seq_num=True, cancel_on_disconnect=False
     )
-    fix_client = KalshiFIXClient(
-        config=fix_config,
-        on_message=infra.handle_fix_message
-    )
+    fix_client = KalshiFIXClient(config=fix_config, on_message=infra.handle_fix_message)
 
     try:
         # Connect both systems
@@ -324,9 +321,9 @@ async def run_hybrid_infrastructure():
             # Wait for initial data
             await asyncio.sleep(3)
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("🔄 MONITORING PHASE (30 seconds)")
-            print("="*70)
+            print("=" * 70)
             print("Watching for:")
             print("  - Tight spreads (< 1 cent)")
             print("  - Arbitrage opportunities")
@@ -340,26 +337,20 @@ async def run_hybrid_infrastructure():
 
             # Demo order placement
             if infra.fix_connected and infra.market_snapshots:
-                print("\n" + "="*70)
+                print("\n" + "=" * 70)
                 print("📝 EXECUTION DEMO")
-                print("="*70)
+                print("=" * 70)
 
                 # Place a demo order if we have signals
                 if infra.signals_generated and infra.signals_generated[-1].confidence > 0.7:
                     last_signal = infra.signals_generated[-1]
-                    print(f"\nExecuting high-confidence signal:")
+                    print("\nExecuting high-confidence signal:")
                     print(f"  Type: {last_signal.signal_type}")
                     print(f"  Market: {last_signal.team}")
 
                     # Place order below market (won't fill)
                     demo_price = last_signal.price - 0.05
-                    await infra.place_order(
-                        fix_client,
-                        last_signal.ticker,
-                        "buy",
-                        demo_price,
-                        1
-                    )
+                    await infra.place_order(fix_client, last_signal.ticker, "buy", demo_price, 1)
 
                     # Wait for execution report
                     await asyncio.sleep(3)
@@ -370,9 +361,9 @@ async def run_hybrid_infrastructure():
                         last_order = infra.orders_placed[-1]
                         await fix_client.cancel_order(
                             cl_order_id=f"CANCEL_{last_order['order_id']}",
-                            orig_cl_order_id=last_order['order_id'],
-                            symbol=last_order['ticker'],
-                            side=last_order['side']
+                            orig_cl_order_id=last_order["order_id"],
+                            symbol=last_order["ticker"],
+                            side=last_order["side"],
                         )
                         await asyncio.sleep(2)
 
@@ -386,6 +377,7 @@ async def run_hybrid_infrastructure():
     except Exception as e:
         print(f"\n❌ Infrastructure error: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         infra.print_summary()

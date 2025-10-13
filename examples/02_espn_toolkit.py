@@ -5,14 +5,13 @@ This example demonstrates how to create custom data sources for ESPN APIs
 to gather games, scores, news, and real-time updates for analysis.
 """
 
-import sys
 import os
-from typing import Dict, Any, Optional
+import sys
 
 # Add the neural package to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from neural.data_collection import RestApiSource, DataTransformer, register_source
+from neural.data_collection import DataTransformer, RestApiSource, register_source
 
 
 # Custom ESPN data sources
@@ -20,7 +19,7 @@ from neural.data_collection import RestApiSource, DataTransformer, register_sour
 class ESPNNFLScoreboard(RestApiSource):
     """Real-time NFL scoreboard data."""
 
-    def __init__(self, interval: float = 30.0, dates: Optional[str] = None):
+    def __init__(self, interval: float = 30.0, dates: str | None = None):
         params = {}
         if dates:
             params["dates"] = dates
@@ -28,7 +27,7 @@ class ESPNNFLScoreboard(RestApiSource):
             name="espn_nfl_scoreboard",
             url="http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
             params=params,
-            interval=interval  # Configurable polling interval
+            interval=interval,  # Configurable polling interval
         )
 
 
@@ -41,7 +40,7 @@ class ESPNCollegeFootballScoreboard(RestApiSource):
             name="espn_college_football_scoreboard",
             url="http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
             params={"groups": groups},
-            interval=60.0
+            interval=60.0,
         )
 
 
@@ -53,7 +52,7 @@ class ESPNNFLNews(RestApiSource):
         super().__init__(
             name="espn_nfl_news",
             url="http://site.api.espn.com/apis/site/v2/sports/football/nfl/news",
-            interval=300.0  # News updates every 5 minutes
+            interval=300.0,  # News updates every 5 minutes
         )
 
 
@@ -65,7 +64,7 @@ class ESPNNBAScoreboard(RestApiSource):
         super().__init__(
             name="espn_nba_scoreboard",
             url="http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
-            interval=30.0
+            interval=30.0,
         )
 
 
@@ -77,7 +76,7 @@ class ESPNCollegeFootballRankings(RestApiSource):
         super().__init__(
             name="espn_college_football_rankings",
             url="http://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings",
-            interval=3600.0  # Rankings update hourly
+            interval=3600.0,  # Rankings update hourly
         )
 
 
@@ -90,32 +89,45 @@ class ESPNGameSummary(RestApiSource):
             name=f"espn_game_summary_{game_id}",
             url=f"http://site.api.espn.com/apis/site/v2/sports/{sport}/summary",
             params={"event": game_id},
-            interval=interval  # Poll every 10 seconds for real-time updates
+            interval=interval,  # Poll every 10 seconds for real-time updates
         )
 
 
 # Custom transformers for ESPN data
-espn_scoreboard_transformer = DataTransformer([
-    DataTransformer.flatten_keys,  # Flatten nested structures
-    lambda data: {k: v for k, v in data.items() if k in ['events', 'leagues', 'season']},  # Filter relevant fields
-])
+espn_scoreboard_transformer = DataTransformer(
+    [
+        DataTransformer.flatten_keys,  # Flatten nested structures
+        lambda data: {
+            k: v for k, v in data.items() if k in ["events", "leagues", "season"]
+        },  # Filter relevant fields
+    ]
+)
 
-espn_news_transformer = DataTransformer([
-    lambda data: {k: v for k, v in data.items() if k in ['articles', 'header']},
-])
+espn_news_transformer = DataTransformer(
+    [
+        lambda data: {k: v for k, v in data.items() if k in ["articles", "header"]},
+    ]
+)
 
-espn_rankings_transformer = DataTransformer([
-    DataTransformer.flatten_keys,
-])
+espn_rankings_transformer = DataTransformer(
+    [
+        DataTransformer.flatten_keys,
+    ]
+)
 
-espn_game_summary_transformer = DataTransformer([
-    lambda data: {k: v for k, v in data.items() if k in ['header', 'drives', 'scoringPlays', 'pickcenter']},  # Focus on game details and plays
-    DataTransformer.flatten_keys,
-])
+espn_game_summary_transformer = DataTransformer(
+    [
+        lambda data: {
+            k: v for k, v in data.items() if k in ["header", "drives", "scoringPlays", "pickcenter"]
+        },  # Focus on game details and plays
+        DataTransformer.flatten_keys,
+    ]
+)
 
 
 # Register transformers
 from neural.data_collection import registry
+
 registry.transformers["espn_nfl_scoreboard"] = espn_scoreboard_transformer
 registry.transformers["espn_college_football_scoreboard"] = espn_scoreboard_transformer
 registry.transformers["espn_nba_scoreboard"] = espn_scoreboard_transformer
@@ -145,13 +157,15 @@ async def find_ravens_lions_game(interval: float = 5.0):
     async with source:
         async for raw_data in source.collect():
             transformed = transformer.transform(raw_data)
-            events = transformed.get('events', [])
+            events = transformed.get("events", [])
             for event in events:
-                competitors = event.get('competitions', [{}])[0].get('competitors', [])
+                competitors = event.get("competitions", [{}])[0].get("competitors", [])
                 if len(competitors) == 2:
-                    team1 = competitors[0].get('team', {}).get('name', '')
-                    team2 = competitors[1].get('team', {}).get('name', '')
-                    if ('Ravens' in team1 and 'Lions' in team2) or ('Lions' in team1 and 'Ravens' in team2):
+                    team1 = competitors[0].get("team", {}).get("name", "")
+                    team2 = competitors[1].get("team", {}).get("name", "")
+                    if ("Ravens" in team1 and "Lions" in team2) or (
+                        "Lions" in team1 and "Ravens" in team2
+                    ):
                         print(f"Found Ravens vs Lions game: {event}")
                         return event
             print(f"No Ravens vs Lions game found in {len(events)} events")
@@ -193,7 +207,7 @@ async def collect_news_analytics():
     async with source:
         async for raw_data in source.collect():
             transformed = transformer.transform(raw_data)
-            articles = transformed.get('articles', [])
+            articles = transformed.get("articles", [])
             print(f"NFL News: {len(articles)} articles")
             if articles:
                 print(f"Latest: {articles[0].get('headline', 'N/A')}")
@@ -208,12 +222,12 @@ async def collect_ravens_lions_play_by_play(game_id: str = "401671000", interval
     async with source:
         async for raw_data in source.collect():
             transformed = transformer.transform(raw_data)
-            drives = transformed.get('drives', [])
+            drives = transformed.get("drives", [])
             print(f"Game Summary: {len(drives)} drives")
             if drives:
                 # Show latest drive plays
                 latest_drive = drives[-1]
-                plays = latest_drive.get('plays', [])
+                plays = latest_drive.get("plays", [])
                 print(f"Latest Drive: {len(plays)} plays")
                 for play in plays[-3:]:  # Last 3 plays
                     print(f"- {play.get('text', 'N/A')}")
@@ -230,12 +244,12 @@ async def collect_past_game_play_by_play(dates: str = "20240915-20240921"):
     async with scoreboard_source:
         async for raw_data in scoreboard_source.collect():
             transformed = transformer.transform(raw_data)
-            events = transformed.get('events', [])
+            events = transformed.get("events", [])
             # Pick the first completed game
             for event in events:
-                status = event.get('status', {}).get('type', {}).get('completed', False)
+                status = event.get("status", {}).get("type", {}).get("completed", False)
                 if status:
-                    game_id = event.get('id')
+                    game_id = event.get("id")
                     print(f"Found past game: {event.get('shortName', 'N/A')} (ID: {game_id})")
                     break
             break
@@ -248,14 +262,14 @@ async def collect_past_game_play_by_play(dates: str = "20240915-20240921"):
         async with summary_source:
             async for raw_data in summary_source.collect():
                 transformed = summary_transformer.transform(raw_data)
-                drives = transformed.get('drives', [])
+                drives = transformed.get("drives", [])
                 print(f"Past Game Play-by-Play: {len(drives)} drives")
-                total_plays = sum(len(drive.get('plays', [])) for drive in drives)
+                total_plays = sum(len(drive.get("plays", [])) for drive in drives)
                 print(f"Total Plays: {total_plays}")
                 if drives:
                     # Show first drive's plays as example
                     first_drive = drives[0]
-                    plays = first_drive.get('plays', [])
+                    plays = first_drive.get("plays", [])
                     print(f"First Drive Plays ({len(plays)}):")
                     for play in plays[:5]:  # First 5 plays
                         print(f"- {play.get('text', 'N/A')}")
@@ -272,30 +286,33 @@ async def collect_chiefs_giants_play_by_play(game_id: str = "401772920"):
     async with summary_source:
         async for raw_data in summary_source.collect():
             transformed = summary_transformer.transform(raw_data)
-            drives = transformed.get('drives', [])
+            drives = transformed.get("drives", [])
             print(f"Game Play-by-Play: {len(drives)} drives")
-            total_plays = sum(len(drive.get('plays', [])) for drive in drives)
+            total_plays = sum(len(drive.get("plays", [])) for drive in drives)
             print(f"Total Plays: {total_plays}")
             if drives:
                 # Show scoring plays
                 scoring_plays = []
                 for drive in drives:
-                    for play in drive.get('plays', []):
-                        if 'field goal' in play.get('text', '').lower() or 'touchdown' in play.get('text', '').lower():
-                            scoring_plays.append(play.get('text', 'N/A'))
+                    for play in drive.get("plays", []):
+                        if (
+                            "field goal" in play.get("text", "").lower()
+                            or "touchdown" in play.get("text", "").lower()
+                        ):
+                            scoring_plays.append(play.get("text", "N/A"))
                 print("Scoring Plays:")
                 for play in scoring_plays:
                     print(f"- {play}")
                 # Show final score from header
-                header = transformed.get('header', {})
-                if 'competitions' in header:
-                    comp = header['competitions'][0]
-                    home = comp.get('competitors', [])[0]
-                    away = comp.get('competitors', [])[1]
-                    home_score = home.get('score', 'N/A')
-                    away_score = away.get('score', 'N/A')
-                    home_name = home.get('team', {}).get('name', 'Home')
-                    away_name = away.get('team', {}).get('name', 'Away')
+                header = transformed.get("header", {})
+                if "competitions" in header:
+                    comp = header["competitions"][0]
+                    home = comp.get("competitors", [])[0]
+                    away = comp.get("competitors", [])[1]
+                    home_score = home.get("score", "N/A")
+                    away_score = away.get("score", "N/A")
+                    home_name = home.get("team", {}).get("name", "Home")
+                    away_name = away.get("team", {}).get("name", "Away")
                     print(f"Final Score: {away_name} {away_score}, {home_name} {home_score}")
             else:
                 print("No drives available")
@@ -314,10 +331,10 @@ async def main():
             print(f"- ID: {game.get('id')}")
             print(f"- Date: {game.get('date')}")
             print(f"- Status: {game.get('status', {}).get('type', {}).get('description')}")
-            competitors = game.get('competitions', [{}])[0].get('competitors', [])
+            competitors = game.get("competitions", [{}])[0].get("competitors", [])
             for comp in competitors:
-                team = comp.get('team', {})
-                score = comp.get('score', 'N/A')
+                team = comp.get("team", {})
+                score = comp.get("score", "N/A")
                 print(f"- {team.get('name')} ({team.get('abbreviation')}): {score}")
     except Exception as e:
         print(f"Game search failed: {e}")
@@ -377,4 +394,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

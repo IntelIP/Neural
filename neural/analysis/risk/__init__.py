@@ -5,16 +5,16 @@ Provides position sizing, portfolio management, and risk controls.
 """
 
 from .position_sizing import (
-    kelly_criterion,
-    fixed_percentage,
-    edge_proportional,
-    martingale,
+    PositionSizer,
     anti_martingale,
-    volatility_adjusted,
     confidence_weighted,
+    edge_proportional,
+    fixed_percentage,
+    kelly_criterion,
+    martingale,
     optimal_f,
     risk_parity,
-    PositionSizer
+    volatility_adjusted,
 )
 
 __all__ = [

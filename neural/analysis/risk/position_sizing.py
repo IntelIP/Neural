@@ -6,14 +6,10 @@ fixed percentage, and edge-proportional sizing.
 """
 
 import numpy as np
-from typing import Optional, Dict, Tuple
 
 
 def kelly_criterion(
-    edge: float,
-    odds: float,
-    kelly_fraction: float = 0.25,
-    max_position: float = 0.3
+    edge: float, odds: float, kelly_fraction: float = 0.25, max_position: float = 0.3
 ) -> float:
     """
     Calculate position size using Kelly Criterion.
@@ -60,7 +56,7 @@ def fixed_percentage(
     capital: float,
     percentage: float = 0.02,
     min_contracts: int = 10,
-    max_contracts: Optional[int] = None
+    max_contracts: int | None = None,
 ) -> int:
     """
     Fixed percentage position sizing.
@@ -98,7 +94,7 @@ def edge_proportional(
     base_percentage: float = 0.01,
     edge_multiplier: float = 2.0,
     min_edge: float = 0.02,
-    max_percentage: float = 0.1
+    max_percentage: float = 0.1,
 ) -> int:
     """
     Position size proportional to edge.
@@ -124,7 +120,9 @@ def edge_proportional(
 
     # Scale position with edge
     edge_factor = edge / min_edge
-    position_percentage = base_percentage * min(edge_factor * edge_multiplier, max_percentage / base_percentage)
+    position_percentage = base_percentage * min(
+        edge_factor * edge_multiplier, max_percentage / base_percentage
+    )
 
     # Cap at maximum
     position_percentage = min(position_percentage, max_percentage)
@@ -138,7 +136,7 @@ def martingale(
     consecutive_losses: int,
     base_size: float = 0.01,
     multiplier: float = 2.0,
-    max_size: float = 0.16
+    max_size: float = 0.16,
 ) -> int:
     """
     Martingale position sizing (USE WITH CAUTION).
@@ -161,7 +159,7 @@ def martingale(
         >>> contracts = martingale(capital=10000, consecutive_losses=3)
     """
     # Calculate current size
-    current_size = base_size * (multiplier ** consecutive_losses)
+    current_size = base_size * (multiplier**consecutive_losses)
 
     # Cap at maximum
     current_size = min(current_size, max_size)
@@ -175,7 +173,7 @@ def anti_martingale(
     consecutive_wins: int,
     base_size: float = 0.01,
     multiplier: float = 1.5,
-    max_size: float = 0.1
+    max_size: float = 0.1,
 ) -> int:
     """
     Anti-Martingale (Paroli) position sizing.
@@ -197,7 +195,7 @@ def anti_martingale(
         >>> contracts = anti_martingale(capital=10000, consecutive_wins=2)
     """
     # Calculate current size
-    current_size = base_size * (multiplier ** consecutive_wins)
+    current_size = base_size * (multiplier**consecutive_wins)
 
     # Cap at maximum
     current_size = min(current_size, max_size)
@@ -212,7 +210,7 @@ def volatility_adjusted(
     target_volatility: float = 0.15,
     base_size: float = 0.02,
     min_size: float = 0.005,
-    max_size: float = 0.1
+    max_size: float = 0.1,
 ) -> int:
     """
     Adjust position size based on market volatility.
@@ -256,7 +254,7 @@ def confidence_weighted(
     confidence: float,
     max_size: float = 0.1,
     min_confidence: float = 0.5,
-    confidence_power: float = 2.0
+    confidence_power: float = 2.0,
 ) -> int:
     """
     Size position based on confidence level.
@@ -284,7 +282,7 @@ def confidence_weighted(
 
     # Scale position with confidence
     confidence_factor = (confidence - min_confidence) / (1 - min_confidence)
-    confidence_factor = confidence_factor ** confidence_power
+    confidence_factor = confidence_factor**confidence_power
 
     position_size = max_size * confidence_factor
     position_value = capital * position_size
@@ -293,11 +291,7 @@ def confidence_weighted(
 
 
 def optimal_f(
-    capital: float,
-    win_rate: float,
-    avg_win: float,
-    avg_loss: float,
-    safety_factor: float = 0.5
+    capital: float, win_rate: float, avg_win: float, avg_loss: float, safety_factor: float = 0.5
 ) -> int:
     """
     Ralph Vince's Optimal F position sizing.
@@ -348,10 +342,10 @@ def optimal_f(
 
 def risk_parity(
     capital: float,
-    positions: Dict[str, Dict],
+    positions: dict[str, dict],
     target_risk: float = 0.02,
-    correlation_matrix: Optional[np.ndarray] = None
-) -> Dict[str, int]:
+    correlation_matrix: np.ndarray | None = None,
+) -> dict[str, int]:
     """
     Risk parity position sizing across multiple positions.
 
@@ -376,18 +370,18 @@ def risk_parity(
     if not positions:
         return {}
 
-    n_positions = len(positions)
+    len(positions)
     sizes = {}
 
     # Simple risk parity without correlations
     if correlation_matrix is None:
-        total_inv_vol = sum(1 / p['volatility'] for p in positions.values())
+        total_inv_vol = sum(1 / p["volatility"] for p in positions.values())
 
         for ticker, pos_data in positions.items():
             # Weight inversely proportional to volatility
-            weight = (1 / pos_data['volatility']) / total_inv_vol
+            weight = (1 / pos_data["volatility"]) / total_inv_vol
             position_value = capital * weight * target_risk
-            sizes[ticker] = int(position_value / pos_data.get('price', 1))
+            sizes[ticker] = int(position_value / pos_data.get("price", 1))
     else:
         # TODO: Implement with correlation matrix
         # Requires optimization to find weights where each position
@@ -405,10 +399,7 @@ class PositionSizer:
     """
 
     def __init__(
-        self,
-        initial_capital: float,
-        default_method: str = "kelly",
-        track_performance: bool = True
+        self, initial_capital: float, default_method: str = "kelly", track_performance: bool = True
     ):
         """
         Initialize position sizer.
@@ -431,11 +422,7 @@ class PositionSizer:
         self.total_profit = 0
         self.total_loss = 0
 
-    def calculate_size(
-        self,
-        method: Optional[str] = None,
-        **kwargs
-    ) -> int:
+    def calculate_size(self, method: str | None = None, **kwargs) -> int:
         """
         Calculate position size using specified method.
 
@@ -455,17 +442,9 @@ class PositionSizer:
         elif method == "edge":
             return edge_proportional(capital=self.current_capital, **kwargs)
         elif method == "martingale":
-            return martingale(
-                self.current_capital,
-                self.consecutive_losses,
-                **kwargs
-            )
+            return martingale(self.current_capital, self.consecutive_losses, **kwargs)
         elif method == "anti_martingale":
-            return anti_martingale(
-                self.current_capital,
-                self.consecutive_wins,
-                **kwargs
-            )
+            return anti_martingale(self.current_capital, self.consecutive_wins, **kwargs)
         elif method == "volatility":
             return volatility_adjusted(self.current_capital, **kwargs)
         elif method == "confidence":
@@ -476,13 +455,7 @@ class PositionSizer:
                 win_rate = self.winning_trades / self.total_trades
                 avg_win = self.total_profit / max(self.winning_trades, 1)
                 avg_loss = self.total_loss / max(self.total_trades - self.winning_trades, 1)
-                return optimal_f(
-                    self.current_capital,
-                    win_rate,
-                    avg_win,
-                    avg_loss,
-                    **kwargs
-                )
+                return optimal_f(self.current_capital, win_rate, avg_win, avg_loss, **kwargs)
             else:
                 # Fall back to fixed percentage
                 return fixed_percentage(self.current_capital, **kwargs)
@@ -505,15 +478,15 @@ class PositionSizer:
 
         self.current_capital += pnl
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get current performance statistics"""
         return {
-            'current_capital': self.current_capital,
-            'total_return': (self.current_capital / self.initial_capital - 1) * 100,
-            'total_trades': self.total_trades,
-            'win_rate': self.winning_trades / max(self.total_trades, 1),
-            'consecutive_wins': self.consecutive_wins,
-            'consecutive_losses': self.consecutive_losses,
-            'avg_win': self.total_profit / max(self.winning_trades, 1),
-            'avg_loss': self.total_loss / max(self.total_trades - self.winning_trades, 1)
+            "current_capital": self.current_capital,
+            "total_return": (self.current_capital / self.initial_capital - 1) * 100,
+            "total_trades": self.total_trades,
+            "win_rate": self.winning_trades / max(self.total_trades, 1),
+            "consecutive_wins": self.consecutive_wins,
+            "consecutive_losses": self.consecutive_losses,
+            "avg_win": self.total_profit / max(self.winning_trades, 1),
+            "avg_loss": self.total_loss / max(self.total_trades - self.winning_trades, 1),
         }

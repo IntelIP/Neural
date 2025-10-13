@@ -5,12 +5,13 @@ This test requires real Kalshi credentials. If not provided via env vars or file
 skip gracefully to keep CI green.
 """
 
-import os
 import base64
-import time
+import os
 import ssl
-import requests
+import time
+
 import pytest
+import requests
 import websocket
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -50,7 +51,7 @@ def test_rest_and_ws_authentication() -> None:
 
     headers = signer.headers(method, path)
 
-    print(f"\n📡 Testing REST API:")
+    print("\n📡 Testing REST API:")
     print(f"  URL: {url}")
     print(f"  Method: {method}")
 
@@ -69,7 +70,7 @@ def test_rest_and_ws_authentication() -> None:
     timestamp_ms = int(time.time() * 1000)
     ws_path = "/trade-api/ws/v2"
     ws_method = "GET"
-    msg = f"{timestamp_ms}{ws_method.upper()}{ws_path}".encode("utf-8")
+    msg = f"{timestamp_ms}{ws_method.upper()}{ws_path}".encode()
 
     private_key = serialization.load_pem_private_key(private_key_pem, password=None)
     signature = private_key.sign(

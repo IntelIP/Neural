@@ -8,9 +8,11 @@ This script tests the FIX protocol connection to stream real-time market data.
 import asyncio
 import os
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
+
 import simplefix
-from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
+
+from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
 
 
 class MarketDataHandler:
@@ -29,56 +31,56 @@ class MarketDataHandler:
         msg_dict = KalshiFIXClient.to_dict(message)
         msg_type = msg_dict.get(35)  # Tag 35 is MsgType
 
-        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
         # Handle different message types
-        if msg_type == 'A':  # Logon
+        if msg_type == "A":  # Logon
             print(f"[{timestamp}] ✅ LOGON successful")
 
-        elif msg_type == '5':  # Logout
+        elif msg_type == "5":  # Logout
             print(f"[{timestamp}] 👋 LOGOUT received")
 
-        elif msg_type == '0':  # Heartbeat
+        elif msg_type == "0":  # Heartbeat
             self.last_heartbeat = datetime.now()
             print(f"[{timestamp}] 💓 Heartbeat received")
 
-        elif msg_type == '1':  # Test Request
+        elif msg_type == "1":  # Test Request
             print(f"[{timestamp}] 🧪 Test request received")
 
-        elif msg_type == '3':  # Reject
+        elif msg_type == "3":  # Reject
             reason = msg_dict.get(58, "Unknown")
             print(f"[{timestamp}] ❌ REJECT: {reason}")
 
-        elif msg_type == '8':  # Execution Report
+        elif msg_type == "8":  # Execution Report
             self._handle_execution_report(timestamp, msg_dict)
 
-        elif msg_type == 'W':  # Market Data Snapshot/Full Refresh
+        elif msg_type == "W":  # Market Data Snapshot/Full Refresh
             self._handle_market_data(timestamp, msg_dict)
 
-        elif msg_type == 'X':  # Market Data Incremental Refresh
+        elif msg_type == "X":  # Market Data Incremental Refresh
             self._handle_market_update(timestamp, msg_dict)
 
         else:
             print(f"[{timestamp}] 📨 Message type {msg_type}: {msg_dict}")
 
-    def _handle_execution_report(self, timestamp: str, msg: Dict[int, Any]) -> None:
+    def _handle_execution_report(self, timestamp: str, msg: dict[int, Any]) -> None:
         """Handle execution report (order updates)"""
         order_id = msg.get(11)  # ClOrdID
         status = msg.get(39)  # OrdStatus
         symbol = msg.get(55)  # Symbol
 
         status_map = {
-            '0': 'NEW',
-            '1': 'PARTIALLY_FILLED',
-            '2': 'FILLED',
-            '4': 'CANCELLED',
-            '8': 'REJECTED'
+            "0": "NEW",
+            "1": "PARTIALLY_FILLED",
+            "2": "FILLED",
+            "4": "CANCELLED",
+            "8": "REJECTED",
         }
 
         status_text = status_map.get(status, status)
         print(f"[{timestamp}] 📊 ORDER UPDATE: {symbol} - Order {order_id} is {status_text}")
 
-    def _handle_market_data(self, timestamp: str, msg: Dict[int, Any]) -> None:
+    def _handle_market_data(self, timestamp: str, msg: dict[int, Any]) -> None:
         """Handle market data snapshot"""
         symbol = msg.get(55)  # Symbol
         bid_price = msg.get(132)  # BidPx
@@ -94,24 +96,26 @@ class MarketDataHandler:
                 spread = (float(ask_price) - float(bid_price)) / 100
                 print(f"    Spread: ${spread:.2f}")
 
-            self.market_updates.append({
-                'timestamp': datetime.now(),
-                'symbol': symbol,
-                'bid': bid_price,
-                'ask': ask_price,
-                'bid_size': bid_size,
-                'ask_size': ask_size
-            })
+            self.market_updates.append(
+                {
+                    "timestamp": datetime.now(),
+                    "symbol": symbol,
+                    "bid": bid_price,
+                    "ask": ask_price,
+                    "bid_size": bid_size,
+                    "ask_size": ask_size,
+                }
+            )
 
-    def _handle_market_update(self, timestamp: str, msg: Dict[int, Any]) -> None:
+    def _handle_market_update(self, timestamp: str, msg: dict[int, Any]) -> None:
         """Handle incremental market data update"""
         print(f"[{timestamp}] 🔄 MARKET UPDATE: {msg}")
 
     def print_summary(self) -> None:
         """Print session summary"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📊 SESSION SUMMARY")
-        print("="*60)
+        print("=" * 60)
         print(f"Total messages received: {self.message_count}")
         print(f"Market updates received: {len(self.market_updates)}")
         if self.last_heartbeat:
@@ -129,10 +133,10 @@ async def test_fix_connection():
     """Test basic FIX connection and market data subscription"""
 
     print("🚀 Kalshi FIX API Streaming Test")
-    print("="*60)
+    print("=" * 60)
 
     # Get credentials from environment
-    api_key = os.getenv('KALSHI_API_KEY_ID')
+    api_key = os.getenv("KALSHI_API_KEY_ID")
 
     if not api_key:
         print("❌ KALSHI_API_KEY_ID not set in environment")
@@ -152,14 +156,11 @@ async def test_fix_connection():
         heartbeat_interval=30,
         reset_seq_num=True,
         listener_session=False,  # Set to True to receive market data
-        use_tls=True
+        use_tls=True,
     )
 
     # Create FIX client
-    client = KalshiFIXClient(
-        config=config,
-        on_message=handler.on_message
-    )
+    client = KalshiFIXClient(config=config, on_message=handler.on_message)
 
     print(f"\n📡 Connecting to {config.host}:{config.port}...")
 
@@ -184,6 +185,7 @@ async def test_fix_connection():
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         handler.print_summary()
@@ -193,17 +195,16 @@ async def test_order_flow():
     """Test order placement via FIX"""
 
     print("\n🎯 Testing Order Flow")
-    print("="*60)
+    print("=" * 60)
 
-    api_key = os.getenv('KALSHI_API_KEY_ID')
+    api_key = os.getenv("KALSHI_API_KEY_ID")
     if not api_key:
         print("❌ KALSHI_API_KEY_ID not set")
         return
 
     handler = MarketDataHandler()
     config = FIXConnectionConfig(
-        sender_comp_id=api_key,
-        cancel_on_disconnect=True  # Cancel orders on disconnect
+        sender_comp_id=api_key, cancel_on_disconnect=True  # Cancel orders on disconnect
     )
 
     client = KalshiFIXClient(config=config, on_message=handler.on_message)
@@ -224,7 +225,7 @@ async def test_order_flow():
                 quantity=1,
                 price=45,  # $0.45 in cents
                 order_type="limit",
-                time_in_force="ioc"  # Immediate or cancel
+                time_in_force="ioc",  # Immediate or cancel
             )
 
             # Wait for execution report

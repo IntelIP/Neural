@@ -6,9 +6,10 @@ when WebSocket or FIX market data is unavailable.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Optional, Callable, Dict, Any, List
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
+
 import pandas as pd
 
 from neural.data_collection import KalshiMarketsSource
@@ -17,6 +18,7 @@ from neural.data_collection import KalshiMarketsSource
 @dataclass
 class MarketSnapshot:
     """Market data snapshot from REST API"""
+
     timestamp: datetime
     ticker: str
     title: str
@@ -26,7 +28,7 @@ class MarketSnapshot:
     no_ask: float
     volume: int
     open_interest: int
-    last_price: Optional[float] = None
+    last_price: float | None = None
 
     @property
     def yes_spread(self) -> float:
@@ -62,11 +64,11 @@ class RESTStreamingClient:
 
     def __init__(
         self,
-        on_market_update: Optional[Callable[[MarketSnapshot], None]] = None,
-        on_price_change: Optional[Callable[[str, float, float], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None,
+        on_market_update: Callable[[MarketSnapshot], None] | None = None,
+        on_price_change: Callable[[str, float, float], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
         poll_interval: float = 1.0,
-        min_price_change: float = 0.001  # Minimum change to trigger update (0.1 cent)
+        min_price_change: float = 0.001,  # Minimum change to trigger update (0.1 cent)
     ):
         """
         Initialize REST streaming client.
@@ -84,11 +86,11 @@ class RESTStreamingClient:
         self.poll_interval = max(0.5, poll_interval)  # Enforce minimum interval
         self.min_price_change = min_price_change
 
-        self.client: Optional[KalshiMarketsSource] = None
-        self.market_cache: Dict[str, MarketSnapshot] = {}
-        self.subscribed_tickers: List[str] = []
+        self.client: KalshiMarketsSource | None = None
+        self.market_cache: dict[str, MarketSnapshot] = {}
+        self.subscribed_tickers: list[str] = []
         self._running = False
-        self._poll_task: Optional[asyncio.Task] = None
+        self._poll_task: asyncio.Task | None = None
 
     async def connect(self) -> None:
         """Connect to Kalshi REST API"""
@@ -113,7 +115,7 @@ class RESTStreamingClient:
         self.client = None
         print(f"[{self._timestamp()}] 👋 Disconnected from REST API")
 
-    async def subscribe(self, tickers: List[str]) -> None:
+    async def subscribe(self, tickers: list[str]) -> None:
         """
         Subscribe to market tickers for polling.
 
@@ -130,7 +132,7 @@ class RESTStreamingClient:
         if self._running and not self._poll_task:
             self._poll_task = asyncio.create_task(self._poll_loop())
 
-    async def unsubscribe(self, tickers: List[str]) -> None:
+    async def unsubscribe(self, tickers: list[str]) -> None:
         """Unsubscribe from market tickers"""
         for ticker in tickers:
             if ticker in self.subscribed_tickers:
@@ -152,10 +154,17 @@ class RESTStreamingClient:
 
                 # Show periodic status
                 if poll_count % 10 == 0:  # Every 10 polls
-                    active_markets = len([m for m in self.market_cache.values()
-                                         if (datetime.now() - m.timestamp).seconds < 5])
-                    print(f"[{self._timestamp()}] 📈 Polling {len(self.subscribed_tickers)} markets, "
-                          f"{active_markets} active")
+                    active_markets = len(
+                        [
+                            m
+                            for m in self.market_cache.values()
+                            if (datetime.now() - m.timestamp).seconds < 5
+                        ]
+                    )
+                    print(
+                        f"[{self._timestamp()}] 📈 Polling {len(self.subscribed_tickers)} markets, "
+                        f"{active_markets} active"
+                    )
 
                 # Wait before next poll
                 await asyncio.sleep(self.poll_interval)
@@ -186,14 +195,14 @@ class RESTStreamingClient:
             snapshot = MarketSnapshot(
                 timestamp=datetime.now(),
                 ticker=ticker,
-                title=market.get('title', ''),
-                yes_bid=market.get('yes_bid', 0) / 100,  # Convert cents to dollars
-                yes_ask=market.get('yes_ask', 0) / 100,
-                no_bid=market.get('no_bid', 0) / 100,
-                no_ask=market.get('no_ask', 0) / 100,
-                volume=market.get('volume', 0),
-                open_interest=market.get('open_interest', 0),
-                last_price=market.get('last_price', 0) / 100 if market.get('last_price') else None
+                title=market.get("title", ""),
+                yes_bid=market.get("yes_bid", 0) / 100,  # Convert cents to dollars
+                yes_ask=market.get("yes_ask", 0) / 100,
+                no_bid=market.get("no_bid", 0) / 100,
+                no_ask=market.get("no_ask", 0) / 100,
+                volume=market.get("volume", 0),
+                open_interest=market.get("open_interest", 0),
+                last_price=market.get("last_price", 0) / 100 if market.get("last_price") else None,
             )
 
             # Check for price changes
@@ -209,9 +218,11 @@ class RESTStreamingClient:
                     # Show significant changes
                     if price_change >= 0.01:  # 1 cent or more
                         direction = "📈" if snapshot.yes_mid > old_snapshot.yes_mid else "📉"
-                        print(f"[{self._timestamp()}] {direction} {ticker}: "
-                              f"${old_snapshot.yes_mid:.3f} → ${snapshot.yes_mid:.3f} "
-                              f"({price_change*100:.1f}¢ move)")
+                        print(
+                            f"[{self._timestamp()}] {direction} {ticker}: "
+                            f"${old_snapshot.yes_mid:.3f} → ${snapshot.yes_mid:.3f} "
+                            f"({price_change*100:.1f}¢ move)"
+                        )
 
             # Update cache
             self.market_cache[ticker] = snapshot
@@ -224,17 +235,17 @@ class RESTStreamingClient:
             if self.on_error:
                 self.on_error(f"Error fetching {ticker}: {e}")
 
-    def get_snapshot(self, ticker: str) -> Optional[MarketSnapshot]:
+    def get_snapshot(self, ticker: str) -> MarketSnapshot | None:
         """Get latest snapshot for a ticker"""
         return self.market_cache.get(ticker)
 
-    def get_all_snapshots(self) -> Dict[str, MarketSnapshot]:
+    def get_all_snapshots(self) -> dict[str, MarketSnapshot]:
         """Get all cached snapshots"""
         return self.market_cache.copy()
 
     def _timestamp(self) -> str:
         """Get current timestamp string"""
-        return datetime.now().strftime('%H:%M:%S')
+        return datetime.now().strftime("%H:%M:%S")
 
     async def __aenter__(self):
         await self.connect()
@@ -245,10 +256,10 @@ class RESTStreamingClient:
 
 
 async def stream_via_rest(
-    tickers: List[str],
+    tickers: list[str],
     duration_seconds: int = 60,
     poll_interval: float = 1.0,
-    on_update: Optional[Callable[[MarketSnapshot], None]] = None
+    on_update: Callable[[MarketSnapshot], None] | None = None,
 ) -> pd.DataFrame:
     """
     Stream market data via REST API polling.
@@ -266,28 +277,27 @@ async def stream_via_rest(
 
     def handle_update(snapshot: MarketSnapshot):
         # Record to history
-        history.append({
-            'timestamp': snapshot.timestamp,
-            'ticker': snapshot.ticker,
-            'yes_bid': snapshot.yes_bid,
-            'yes_ask': snapshot.yes_ask,
-            'yes_spread': snapshot.yes_spread,
-            'yes_mid': snapshot.yes_mid,
-            'implied_prob': snapshot.implied_probability,
-            'volume': snapshot.volume,
-            'open_interest': snapshot.open_interest,
-            'arbitrage': snapshot.arbitrage_opportunity
-        })
+        history.append(
+            {
+                "timestamp": snapshot.timestamp,
+                "ticker": snapshot.ticker,
+                "yes_bid": snapshot.yes_bid,
+                "yes_ask": snapshot.yes_ask,
+                "yes_spread": snapshot.yes_spread,
+                "yes_mid": snapshot.yes_mid,
+                "implied_prob": snapshot.implied_probability,
+                "volume": snapshot.volume,
+                "open_interest": snapshot.open_interest,
+                "arbitrage": snapshot.arbitrage_opportunity,
+            }
+        )
 
         # Call user callback
         if on_update:
             on_update(snapshot)
 
     # Create streaming client
-    client = RESTStreamingClient(
-        on_market_update=handle_update,
-        poll_interval=poll_interval
-    )
+    client = RESTStreamingClient(on_market_update=handle_update, poll_interval=poll_interval)
 
     try:
         async with client:
@@ -304,7 +314,7 @@ async def stream_via_rest(
     # Convert history to DataFrame
     if history:
         df = pd.DataFrame(history)
-        df = df.sort_values(['ticker', 'timestamp'])
+        df = df.sort_values(["ticker", "timestamp"])
         return df
     else:
         return pd.DataFrame()

@@ -1,4 +1,3 @@
-from typing import Dict, Type, Any
 from .base import DataSource
 from .transformer import DataTransformer
 
@@ -7,10 +6,12 @@ class DataSourceRegistry:
     """Registry for managing data sources."""
 
     def __init__(self):
-        self.sources: Dict[str, Type[DataSource]] = {}
-        self.transformers: Dict[str, DataTransformer] = {}
+        self.sources: dict[str, type[DataSource]] = {}
+        self.transformers: dict[str, DataTransformer] = {}
 
-    def register_source(self, source_class: Type[DataSource], transformer: DataTransformer = None):
+    def register_source(
+        self, source_class: type[DataSource], transformer: DataTransformer | None = None
+    ):
         """Register a data source class."""
         self.sources[source_class.__name__] = source_class
         if transformer:
@@ -31,9 +32,11 @@ class DataSourceRegistry:
 registry = DataSourceRegistry()
 
 
-def register_source(transformer: DataTransformer = None):
+def register_source(transformer: DataTransformer | None = None):
     """Decorator to register a data source class."""
-    def decorator(cls: Type[DataSource]):
+
+    def decorator(cls: type[DataSource]):
         registry.register_source(cls, transformer)
         return cls
+
     return decorator

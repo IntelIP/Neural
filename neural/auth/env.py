@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 PROD_BASE_URL = "https://api.elections.kalshi.com"
 
@@ -10,7 +9,7 @@ DEFAULT_API_KEY_PATH = SECRETS_DIR / "kalshi_api_key_id.txt"
 DEFAULT_PRIVATE_KEY_PATH = SECRETS_DIR / "kalshi_private_key.pem"
 
 
-def get_base_url(env: Optional[str] = None) -> str:
+def get_base_url(env: str | None = None) -> str:
     """Return the trading API host (production by default).
     Demo endpoints are not supported; raise if a non-prod env is requested.
     """
@@ -28,13 +27,13 @@ def get_api_key_id() -> str:
         return api_key
     api_key_path = os.getenv("KALSHI_API_KEY_PATH") or str(DEFAULT_API_KEY_PATH)
     try:
-        with open(api_key_path, "r", encoding="utf-8") as f:
+        with open(api_key_path, encoding="utf-8") as f:
             return f.read().strip()
     except FileNotFoundError:
         # Provide a clearer error guiding users to set env vars in CI
         raise FileNotFoundError(
             f"Kalshi API key not found. Set KALSHI_API_KEY_ID or provide a file at {api_key_path}."
-        )
+        ) from None
 
 
 def get_private_key_material() -> bytes:
@@ -53,4 +52,4 @@ def get_private_key_material() -> bytes:
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Kalshi private key not found. Set KALSHI_PRIVATE_KEY_BASE64 or provide a file at {key_path}."
-        )
+        ) from None

@@ -1,20 +1,21 @@
-from typing import Dict, Any, Callable, List, Optional
 import datetime
+from collections.abc import Callable
+from typing import Any
 
 
 class DataTransformer:
     """Transforms raw data from sources into normalized format for analysis."""
 
     def __init__(
-        self, transformations: Optional[List[Callable[[Dict[str, Any]], Dict[str, Any]]]] = None
+        self, transformations: list[Callable[[dict[str, Any]], dict[str, Any]]] | None = None
     ):
         self.transformations = transformations or []
 
-    def add_transformation(self, func: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
+    def add_transformation(self, func: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
         """Add a transformation function."""
         self.transformations.append(func)
 
-    def transform(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def transform(self, data: dict[str, Any]) -> dict[str, Any]:
         """Apply all transformations to the data."""
         for transform in self.transformations:
             data = transform(data)
@@ -24,7 +25,7 @@ class DataTransformer:
         return data
 
     @staticmethod
-    def flatten_keys(data: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+    def flatten_keys(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         """Flatten nested dict keys."""
         flattened = {}
         for key, value in data.items():
@@ -36,7 +37,7 @@ class DataTransformer:
         return flattened
 
     @staticmethod
-    def normalize_types(data: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_types(data: dict[str, Any]) -> dict[str, Any]:
         """Normalize data types (e.g., strings to numbers where possible)."""
         normalized = {}
         for key, value in data.items():

@@ -12,16 +12,18 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 try:
     import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
 try:
     import pandas as pd
+
     PANDAS_AVAILABLE = True
 except ImportError:
     PANDAS_AVAILABLE = False
@@ -40,8 +42,8 @@ class PaperTradingReporter:
             data_dir: Directory containing paper trading data
         """
         self.data_dir = Path(data_dir)
-        self.trades_data: List[Dict[str, Any]] = []
-        self.portfolio_snapshots: List[Dict[str, Any]] = []
+        self.trades_data: list[dict[str, Any]] = []
+        self.portfolio_snapshots: list[dict[str, Any]] = []
 
     def load_data(self, days_back: int = 30) -> bool:
         """
@@ -62,11 +64,11 @@ class PaperTradingReporter:
             current_date = start_date
 
             while current_date <= end_date:
-                date_str = current_date.strftime('%Y%m%d')
+                date_str = current_date.strftime("%Y%m%d")
                 trade_file = self.data_dir / f"trades_{date_str}.jsonl"
 
                 if trade_file.exists():
-                    with open(trade_file, 'r') as f:
+                    with open(trade_file) as f:
                         for line in f:
                             if line.strip():
                                 trade = json.loads(line.strip())
@@ -78,20 +80,22 @@ class PaperTradingReporter:
             self.portfolio_snapshots = []
             for snapshot_file in self.data_dir.glob("portfolio_snapshot_*.json"):
                 try:
-                    with open(snapshot_file, 'r') as f:
+                    with open(snapshot_file) as f:
                         snapshot = json.load(f)
                         self.portfolio_snapshots.append(snapshot)
                 except Exception as e:
                     logger.warning(f"Error loading snapshot {snapshot_file}: {e}")
 
-            logger.info(f"Loaded {len(self.trades_data)} trades and {len(self.portfolio_snapshots)} snapshots")
+            logger.info(
+                f"Loaded {len(self.trades_data)} trades and {len(self.portfolio_snapshots)} snapshots"
+            )
             return True
 
         except Exception as e:
             logger.error(f"Error loading data: {e}")
             return False
 
-    def generate_performance_summary(self) -> Dict[str, Any]:
+    def generate_performance_summary(self) -> dict[str, Any]:
         """Generate performance summary."""
         if not self.trades_data:
             return {"error": "No trade data available"}
@@ -102,65 +106,79 @@ class PaperTradingReporter:
         try:
             # Convert to DataFrame for analysis
             df = pd.DataFrame(self.trades_data)
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
 
             # Basic metrics
             total_trades = len(df)
-            winning_trades = len(df[df['realized_pnl'] > 0])
-            losing_trades = len(df[df['realized_pnl'] < 0])
+            winning_trades = len(df[df["realized_pnl"] > 0])
+            losing_trades = len(df[df["realized_pnl"] < 0])
             win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
 
             # P&L metrics
-            total_realized_pnl = df['realized_pnl'].fillna(0).sum()
-            avg_win = df[df['realized_pnl'] > 0]['realized_pnl'].mean() if winning_trades > 0 else 0
-            avg_loss = df[df['realized_pnl'] < 0]['realized_pnl'].mean() if losing_trades > 0 else 0
+            total_realized_pnl = df["realized_pnl"].fillna(0).sum()
+            avg_win = df[df["realized_pnl"] > 0]["realized_pnl"].mean() if winning_trades > 0 else 0
+            avg_loss = df[df["realized_pnl"] < 0]["realized_pnl"].mean() if losing_trades > 0 else 0
 
             # Strategy analysis
-            strategy_performance = df.groupby('strategy').agg({
-                'realized_pnl': ['count', 'sum', 'mean'],
-                'sentiment_score': 'mean',
-                'confidence': 'mean'
-            }).round(3) if 'strategy' in df.columns else None
+            strategy_performance = (
+                df.groupby("strategy")
+                .agg(
+                    {
+                        "realized_pnl": ["count", "sum", "mean"],
+                        "sentiment_score": "mean",
+                        "confidence": "mean",
+                    }
+                )
+                .round(3)
+                if "strategy" in df.columns
+                else None
+            )
 
             # Time analysis
-            first_trade = df['timestamp'].min()
-            last_trade = df['timestamp'].max()
+            first_trade = df["timestamp"].min()
+            last_trade = df["timestamp"].max()
             trading_period = (last_trade - first_trade).days if total_trades > 1 else 0
 
             return {
-                'period': {
-                    'start_date': first_trade.isoformat() if first_trade else None,
-                    'end_date': last_trade.isoformat() if last_trade else None,
-                    'trading_days': trading_period
+                "period": {
+                    "start_date": first_trade.isoformat() if first_trade else None,
+                    "end_date": last_trade.isoformat() if last_trade else None,
+                    "trading_days": trading_period,
                 },
-                'trade_metrics': {
-                    'total_trades': total_trades,
-                    'winning_trades': winning_trades,
-                    'losing_trades': losing_trades,
-                    'win_rate': win_rate,
-                    'avg_trades_per_day': total_trades / max(trading_period, 1)
+                "trade_metrics": {
+                    "total_trades": total_trades,
+                    "winning_trades": winning_trades,
+                    "losing_trades": losing_trades,
+                    "win_rate": win_rate,
+                    "avg_trades_per_day": total_trades / max(trading_period, 1),
                 },
-                'pnl_metrics': {
-                    'total_realized_pnl': total_realized_pnl,
-                    'avg_win': avg_win,
-                    'avg_loss': avg_loss,
-                    'profit_factor': abs(avg_win / avg_loss) if avg_loss < 0 else float('inf'),
-                    'total_commission': df['commission'].sum(),
-                    'total_slippage': df['slippage'].sum()
+                "pnl_metrics": {
+                    "total_realized_pnl": total_realized_pnl,
+                    "avg_win": avg_win,
+                    "avg_loss": avg_loss,
+                    "profit_factor": abs(avg_win / avg_loss) if avg_loss < 0 else float("inf"),
+                    "total_commission": df["commission"].sum(),
+                    "total_slippage": df["slippage"].sum(),
                 },
-                'strategy_performance': strategy_performance.to_dict() if strategy_performance is not None else None
+                "strategy_performance": (
+                    strategy_performance.to_dict() if strategy_performance is not None else None
+                ),
             }
 
         except Exception as e:
             logger.error(f"Error generating performance summary: {e}")
             return {"error": str(e)}
 
-    def _generate_performance_summary_basic(self) -> Dict[str, Any]:
+    def _generate_performance_summary_basic(self) -> dict[str, Any]:
         """Generate basic performance summary without pandas."""
         try:
             # Basic calculations without pandas
             total_trades = len(self.trades_data)
-            realized_pnls = [trade.get('realized_pnl', 0) for trade in self.trades_data if trade.get('realized_pnl') is not None]
+            realized_pnls = [
+                trade.get("realized_pnl", 0)
+                for trade in self.trades_data
+                if trade.get("realized_pnl") is not None
+            ]
 
             winning_trades = sum(1 for pnl in realized_pnls if pnl > 0)
             losing_trades = sum(1 for pnl in realized_pnls if pnl < 0)
@@ -171,49 +189,58 @@ class PaperTradingReporter:
             avg_loss = sum(pnl for pnl in realized_pnls if pnl < 0) / max(losing_trades, 1)
 
             # Time analysis
-            timestamps = [trade.get('timestamp') for trade in self.trades_data if trade.get('timestamp')]
+            timestamps = [
+                trade.get("timestamp")
+                for trade in self.trades_data
+                if trade.get("timestamp") is not None
+            ]
             if timestamps:
-                first_trade = min(timestamps)
-                last_trade = max(timestamps)
+                first_trade = min(t for t in timestamps if t is not None)
+                last_trade = max(t for t in timestamps if t is not None)
                 # Basic date parsing
                 try:
-                    first_dt = datetime.fromisoformat(first_trade.replace('Z', '+00:00'))
-                    last_dt = datetime.fromisoformat(last_trade.replace('Z', '+00:00'))
-                    trading_period = (last_dt - first_dt).days
-                except:
+                    if first_trade is not None and last_trade is not None:
+                        first_dt = datetime.fromisoformat(first_trade.replace("Z", "+00:00"))
+                        last_dt = datetime.fromisoformat(last_trade.replace("Z", "+00:00"))
+                        trading_period = (last_dt - first_dt).days
+                    else:
+                        trading_period = 0
+                except Exception:
                     trading_period = 0
             else:
                 first_trade = last_trade = None
                 trading_period = 0
 
             return {
-                'period': {
-                    'start_date': first_trade,
-                    'end_date': last_trade,
-                    'trading_days': trading_period
+                "period": {
+                    "start_date": first_trade,
+                    "end_date": last_trade,
+                    "trading_days": trading_period,
                 },
-                'trade_metrics': {
-                    'total_trades': total_trades,
-                    'winning_trades': winning_trades,
-                    'losing_trades': losing_trades,
-                    'win_rate': win_rate,
-                    'avg_trades_per_day': total_trades / max(trading_period, 1)
+                "trade_metrics": {
+                    "total_trades": total_trades,
+                    "winning_trades": winning_trades,
+                    "losing_trades": losing_trades,
+                    "win_rate": win_rate,
+                    "avg_trades_per_day": total_trades / max(trading_period, 1),
                 },
-                'pnl_metrics': {
-                    'total_realized_pnl': total_realized_pnl,
-                    'avg_win': avg_win,
-                    'avg_loss': avg_loss,
-                    'profit_factor': abs(avg_win / avg_loss) if avg_loss < 0 else float('inf'),
-                    'total_commission': sum(trade.get('commission', 0) for trade in self.trades_data),
-                    'total_slippage': sum(trade.get('slippage', 0) for trade in self.trades_data)
-                }
+                "pnl_metrics": {
+                    "total_realized_pnl": total_realized_pnl,
+                    "avg_win": avg_win,
+                    "avg_loss": avg_loss,
+                    "profit_factor": abs(avg_win / avg_loss) if avg_loss < 0 else float("inf"),
+                    "total_commission": sum(
+                        trade.get("commission", 0) for trade in self.trades_data
+                    ),
+                    "total_slippage": sum(trade.get("slippage", 0) for trade in self.trades_data),
+                },
             }
 
         except Exception as e:
             logger.error(f"Error generating basic performance summary: {e}")
             return {"error": str(e)}
 
-    def generate_sentiment_analysis(self) -> Dict[str, Any]:
+    def generate_sentiment_analysis(self) -> dict[str, Any]:
         """Analyze performance by sentiment levels."""
         if not self.trades_data:
             return {"error": "No trade data available"}
@@ -225,51 +252,67 @@ class PaperTradingReporter:
             df = pd.DataFrame(self.trades_data)
 
             # Filter trades with sentiment data
-            sentiment_trades = df[df['sentiment_score'].notna() & df['confidence'].notna()]
+            sentiment_trades = df[df["sentiment_score"].notna() & df["confidence"].notna()]
 
             if sentiment_trades.empty:
                 return {"error": "No sentiment data available"}
 
             # Sentiment bins
-            sentiment_trades['sentiment_bin'] = pd.cut(
-                sentiment_trades['sentiment_score'],
+            sentiment_trades["sentiment_bin"] = pd.cut(
+                sentiment_trades["sentiment_score"],
                 bins=[-1, -0.3, 0.3, 1],
-                labels=['Bearish', 'Neutral', 'Bullish']
+                labels=["Bearish", "Neutral", "Bullish"],
             )
 
             confidence_trades = sentiment_trades.copy()
-            confidence_trades['confidence_bin'] = pd.cut(
-                confidence_trades['confidence'],
+            confidence_trades["confidence_bin"] = pd.cut(
+                confidence_trades["confidence"],
                 bins=[0, 0.6, 0.8, 1],
-                labels=['Low', 'Medium', 'High']
+                labels=["Low", "Medium", "High"],
             )
 
             # Performance by sentiment
-            sentiment_perf = sentiment_trades.groupby('sentiment_bin').agg({
-                'realized_pnl': ['count', 'mean', 'sum'],
-                'sentiment_score': 'mean',
-                'confidence': 'mean'
-            }).round(3)
+            sentiment_perf = (
+                sentiment_trades.groupby("sentiment_bin")
+                .agg(
+                    {
+                        "realized_pnl": ["count", "mean", "sum"],
+                        "sentiment_score": "mean",
+                        "confidence": "mean",
+                    }
+                )
+                .round(3)
+            )
 
             # Performance by confidence
-            confidence_perf = confidence_trades.groupby('confidence_bin').agg({
-                'realized_pnl': ['count', 'mean', 'sum'],
-                'sentiment_score': 'mean',
-                'confidence': 'mean'
-            }).round(3)
+            confidence_perf = (
+                confidence_trades.groupby("confidence_bin")
+                .agg(
+                    {
+                        "realized_pnl": ["count", "mean", "sum"],
+                        "sentiment_score": "mean",
+                        "confidence": "mean",
+                    }
+                )
+                .round(3)
+            )
 
             return {
-                'sentiment_performance': sentiment_perf.to_dict(),
-                'confidence_performance': confidence_perf.to_dict(),
-                'correlation_sentiment_pnl': sentiment_trades['sentiment_score'].corr(sentiment_trades['realized_pnl'].fillna(0)),
-                'correlation_confidence_pnl': confidence_trades['confidence'].corr(confidence_trades['realized_pnl'].fillna(0))
+                "sentiment_performance": sentiment_perf.to_dict(),
+                "confidence_performance": confidence_perf.to_dict(),
+                "correlation_sentiment_pnl": sentiment_trades["sentiment_score"].corr(
+                    sentiment_trades["realized_pnl"].fillna(0)
+                ),
+                "correlation_confidence_pnl": confidence_trades["confidence"].corr(
+                    confidence_trades["realized_pnl"].fillna(0)
+                ),
             }
 
         except Exception as e:
             logger.error(f"Error generating sentiment analysis: {e}")
             return {"error": str(e)}
 
-    def create_equity_curve_plot(self, save_path: Optional[str] = None) -> str:
+    def create_equity_curve_plot(self, save_path: str | None = None) -> str:
         """Create equity curve plot."""
         if not MATPLOTLIB_AVAILABLE or not PANDAS_AVAILABLE:
             return "Error: matplotlib and pandas required for plotting"
@@ -279,32 +322,38 @@ class PaperTradingReporter:
                 return "No trade data available"
 
             df = pd.DataFrame(self.trades_data)
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            df = df.sort_values('timestamp')
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df = df.sort_values("timestamp")
 
             # Calculate cumulative P&L
-            df['cumulative_pnl'] = df['realized_pnl'].fillna(0).cumsum()
+            df["cumulative_pnl"] = df["realized_pnl"].fillna(0).cumsum()
 
             # Assume starting capital of $10,000
             starting_capital = 10000
-            df['portfolio_value'] = starting_capital + df['cumulative_pnl']
+            df["portfolio_value"] = starting_capital + df["cumulative_pnl"]
 
             plt.figure(figsize=(12, 6))
-            plt.plot(df['timestamp'], df['portfolio_value'], linewidth=2, color='blue')
-            plt.axhline(y=starting_capital, color='gray', linestyle='--', alpha=0.7, label='Starting Capital')
+            plt.plot(df["timestamp"], df["portfolio_value"], linewidth=2, color="blue")
+            plt.axhline(
+                y=starting_capital,
+                color="gray",
+                linestyle="--",
+                alpha=0.7,
+                label="Starting Capital",
+            )
 
-            plt.title('Paper Trading Equity Curve')
-            plt.xlabel('Date')
-            plt.ylabel('Portfolio Value ($)')
+            plt.title("Paper Trading Equity Curve")
+            plt.xlabel("Date")
+            plt.ylabel("Portfolio Value ($)")
             plt.grid(True, alpha=0.3)
             plt.legend()
 
             # Format y-axis as currency
             ax = plt.gca()
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"${x:,.0f}"))
 
             if save_path:
-                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                plt.savefig(save_path, dpi=300, bbox_inches="tight")
                 plt.close()
                 return f"Equity curve saved to {save_path}"
             else:
@@ -398,7 +447,7 @@ class PaperTradingReporter:
             </html>
             """
 
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 f.write(html_content)
 
             return f"HTML report saved to {output_file}"
@@ -420,15 +469,15 @@ class PaperTradingReporter:
             return
 
         # Trading period
-        period = performance['period']
-        print(f"\n📅 Trading Period:")
+        period = performance["period"]
+        print("\n📅 Trading Period:")
         print(f"   Start: {period.get('start_date', 'N/A')}")
         print(f"   End: {period.get('end_date', 'N/A')}")
         print(f"   Days: {period.get('trading_days', 0)}")
 
         # Trade metrics
-        trades = performance['trade_metrics']
-        print(f"\n📈 Trade Statistics:")
+        trades = performance["trade_metrics"]
+        print("\n📈 Trade Statistics:")
         print(f"   Total Trades: {trades['total_trades']}")
         print(f"   Winning Trades: {trades['winning_trades']}")
         print(f"   Losing Trades: {trades['losing_trades']}")
@@ -436,8 +485,8 @@ class PaperTradingReporter:
         print(f"   Avg Trades/Day: {trades['avg_trades_per_day']:.1f}")
 
         # P&L metrics
-        pnl = performance['pnl_metrics']
-        print(f"\n💰 P&L Analysis:")
+        pnl = performance["pnl_metrics"]
+        print("\n💰 P&L Analysis:")
         print(f"   Total Realized P&L: ${pnl['total_realized_pnl']:.2f}")
         print(f"   Average Win: ${pnl['avg_win']:.2f}")
         print(f"   Average Loss: ${pnl['avg_loss']:.2f}")
@@ -448,9 +497,13 @@ class PaperTradingReporter:
         # Sentiment analysis
         sentiment = self.generate_sentiment_analysis()
         if "error" not in sentiment:
-            print(f"\n🎯 Sentiment Performance:")
-            print(f"   Sentiment-P&L Correlation: {sentiment.get('correlation_sentiment_pnl', 0):.3f}")
-            print(f"   Confidence-P&L Correlation: {sentiment.get('correlation_confidence_pnl', 0):.3f}")
+            print("\n🎯 Sentiment Performance:")
+            print(
+                f"   Sentiment-P&L Correlation: {sentiment.get('correlation_sentiment_pnl', 0):.3f}"
+            )
+            print(
+                f"   Confidence-P&L Correlation: {sentiment.get('correlation_confidence_pnl', 0):.3f}"
+            )
 
         print("\n" + "=" * 60)
 

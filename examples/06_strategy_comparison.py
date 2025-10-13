@@ -6,14 +6,16 @@ Demonstrates backtesting and comparing different strategies.
 """
 
 import asyncio
-import pandas as pd
 from datetime import datetime, timedelta
+
+import pandas as pd
+
 from neural.analysis.backtesting import Backtester
 from neural.analysis.strategies import (
+    ArbitrageStrategy,
     MeanReversionStrategy,
     MomentumStrategy,
-    ArbitrageStrategy,
-    create_strategy
+    create_strategy,
 )
 
 
@@ -29,38 +31,21 @@ async def compare_strategies():
     strategies = [
         # Conservative mean reversion
         MeanReversionStrategy(
-            name="Conservative MR",
-            divergence_threshold=0.08,
-            max_position_size=0.05,
-            stop_loss=0.2
+            name="Conservative MR", divergence_threshold=0.08, max_position_size=0.05, stop_loss=0.2
         ),
-
         # Aggressive mean reversion
         MeanReversionStrategy(
-            name="Aggressive MR",
-            divergence_threshold=0.03,
-            max_position_size=0.15,
-            use_kelly=True
+            name="Aggressive MR", divergence_threshold=0.03, max_position_size=0.15, use_kelly=True
         ),
-
         # Momentum strategy
         MomentumStrategy(
-            name="Momentum",
-            lookback_periods=10,
-            momentum_threshold=0.1,
-            use_rsi=True
+            name="Momentum", lookback_periods=10, momentum_threshold=0.1, use_rsi=True
         ),
-
         # Arbitrage strategy
-        ArbitrageStrategy(
-            name="Arbitrage",
-            min_arbitrage_profit=0.01,
-            speed_priority=True
-        ),
-
+        ArbitrageStrategy(name="Arbitrage", min_arbitrage_profit=0.01, speed_priority=True),
         # Using preset
         create_strategy("conservative", name="Preset Conservative"),
-        create_strategy("aggressive", name="Preset Aggressive")
+        create_strategy("aggressive", name="Preset Aggressive"),
     ]
 
     # Test period
@@ -68,7 +53,7 @@ async def compare_strategies():
     start_date = end_date - timedelta(days=30)
 
     print(f"\n📅 Test Period: {start_date.date()} to {end_date.date()}")
-    print(f"💰 Initial Capital: $10,000")
+    print("💰 Initial Capital: $10,000")
     print(f"🎯 Testing {len(strategies)} strategies\n")
 
     # Run comparison
@@ -77,7 +62,7 @@ async def compare_strategies():
             strategies=strategies,
             start_date=start_date,
             end_date=end_date,
-            markets=["KXNFLGAME", "KXNBA"]  # NFL and NBA
+            markets=["KXNFLGAME", "KXNBA"],  # NFL and NBA
         )
 
         # Display results table
@@ -86,12 +71,12 @@ async def compare_strategies():
 
         # Format and display results
         display_columns = [
-            'total_return',
-            'sharpe_ratio',
-            'max_drawdown',
-            'win_rate',
-            'total_trades',
-            'profit_factor'
+            "total_return",
+            "sharpe_ratio",
+            "max_drawdown",
+            "win_rate",
+            "total_trades",
+            "profit_factor",
         ]
 
         for col in display_columns:
@@ -99,9 +84,9 @@ async def compare_strategies():
                 print(f"\n{col.replace('_', ' ').title()}:")
                 for strategy_name, value in comparison_df[col].items():
                     if isinstance(value, float):
-                        if 'rate' in col or 'ratio' in col:
+                        if "rate" in col or "ratio" in col:
                             print(f"  {strategy_name:20s}: {value:>7.2f}")
-                        elif 'return' in col or 'drawdown' in col:
+                        elif "return" in col or "drawdown" in col:
                             print(f"  {strategy_name:20s}: {value:>7.1f}%")
                         else:
                             print(f"  {strategy_name:20s}: {value:>7.2f}")
@@ -110,12 +95,18 @@ async def compare_strategies():
 
         # Find best strategy
         print("\n🏆 Best Performers:")
-        print(f"  Highest Return: {comparison_df['total_return'].idxmax()} "
-              f"({comparison_df['total_return'].max():.1f}%)")
-        print(f"  Best Sharpe: {comparison_df['sharpe_ratio'].idxmax()} "
-              f"({comparison_df['sharpe_ratio'].max():.2f})")
-        print(f"  Lowest Drawdown: {comparison_df['max_drawdown'].idxmin()} "
-              f"({comparison_df['max_drawdown'].min():.1f}%)")
+        print(
+            f"  Highest Return: {comparison_df['total_return'].idxmax()} "
+            f"({comparison_df['total_return'].max():.1f}%)"
+        )
+        print(
+            f"  Best Sharpe: {comparison_df['sharpe_ratio'].idxmax()} "
+            f"({comparison_df['sharpe_ratio'].max():.2f})"
+        )
+        print(
+            f"  Lowest Drawdown: {comparison_df['max_drawdown'].idxmin()} "
+            f"({comparison_df['max_drawdown'].min():.1f}%)"
+        )
 
     except Exception as e:
         print(f"❌ Comparison failed: {e}")
@@ -136,7 +127,7 @@ async def optimize_strategy_parameters():
     print(f"  Divergence Thresholds: {divergence_thresholds}")
     print(f"  Position Sizes: {position_sizes}")
 
-    best_return = -float('inf')
+    best_return = -float("inf")
     best_params = {}
     results = []
 
@@ -150,7 +141,7 @@ async def optimize_strategy_parameters():
                 name=f"MR_{divergence}_{position_size}",
                 divergence_threshold=divergence,
                 max_position_size=position_size,
-                initial_capital=10000
+                initial_capital=10000,
             )
 
             try:
@@ -159,17 +150,17 @@ async def optimize_strategy_parameters():
                     strategy=strategy,
                     start_date=start_date,
                     end_date=end_date,
-                    markets=["KXNFLGAME"]
+                    markets=["KXNFLGAME"],
                 )
 
                 # Store results
                 param_result = {
-                    'divergence': divergence,
-                    'position_size': position_size,
-                    'total_return': result.total_return,
-                    'sharpe_ratio': result.sharpe_ratio,
-                    'max_drawdown': result.max_drawdown,
-                    'total_trades': result.total_trades
+                    "divergence": divergence,
+                    "position_size": position_size,
+                    "total_return": result.total_return,
+                    "sharpe_ratio": result.sharpe_ratio,
+                    "max_drawdown": result.max_drawdown,
+                    "total_trades": result.total_trades,
                 }
                 results.append(param_result)
 
@@ -178,9 +169,11 @@ async def optimize_strategy_parameters():
                     best_return = result.total_return
                     best_params = param_result
 
-                print(f"  D={divergence:.2f}, P={position_size:.2f}: "
-                      f"Return={result.total_return:.1f}%, "
-                      f"Sharpe={result.sharpe_ratio:.2f}")
+                print(
+                    f"  D={divergence:.2f}, P={position_size:.2f}: "
+                    f"Return={result.total_return:.1f}%, "
+                    f"Sharpe={result.sharpe_ratio:.2f}"
+                )
 
             except Exception as e:
                 print(f"  D={divergence:.2f}, P={position_size:.2f}: Failed - {e}")
@@ -190,7 +183,7 @@ async def optimize_strategy_parameters():
         results_df = pd.DataFrame(results)
 
         print("\n📈 Optimization Results:")
-        print(f"\n🏆 Best Parameters:")
+        print("\n🏆 Best Parameters:")
         print(f"  Divergence Threshold: {best_params['divergence']:.2f}")
         print(f"  Position Size: {best_params['position_size']:.2f}")
         print(f"  Total Return: {best_params['total_return']:.1f}%")
@@ -198,12 +191,8 @@ async def optimize_strategy_parameters():
 
         # Show heatmap (text version)
         print("\n📊 Return Heatmap:")
-        pivot = results_df.pivot(
-            index='divergence',
-            columns='position_size',
-            values='total_return'
-        )
-        print(pivot.to_string(float_format=lambda x: f'{x:>6.1f}%'))
+        pivot = results_df.pivot(index="divergence", columns="position_size", values="total_return")
+        print(pivot.to_string(float_format=lambda x: f"{x:>6.1f}%"))
 
 
 async def risk_analysis():
@@ -214,25 +203,18 @@ async def risk_analysis():
     # Create strategies with different risk profiles
     strategies = {
         "Low Risk": MeanReversionStrategy(
-            max_position_size=0.02,
-            stop_loss=0.1,
-            min_edge=0.05,
-            use_kelly=False
+            max_position_size=0.02, stop_loss=0.1, min_edge=0.05, use_kelly=False
         ),
         "Medium Risk": MeanReversionStrategy(
             max_position_size=0.10,
             stop_loss=0.2,
             min_edge=0.03,
             use_kelly=True,
-            kelly_fraction=0.25
+            kelly_fraction=0.25,
         ),
         "High Risk": MomentumStrategy(
-            max_position_size=0.20,
-            stop_loss=0.3,
-            min_edge=0.02,
-            use_kelly=True,
-            kelly_fraction=0.5
-        )
+            max_position_size=0.20, stop_loss=0.3, min_edge=0.02, use_kelly=True, kelly_fraction=0.5
+        ),
     }
 
     backtester = Backtester(initial_capital=10000)
@@ -245,10 +227,7 @@ async def risk_analysis():
     for name, strategy in strategies.items():
         try:
             result = await backtester.backtest(
-                strategy=strategy,
-                start_date=start_date,
-                end_date=end_date,
-                markets=["KXNFLGAME"]
+                strategy=strategy, start_date=start_date, end_date=end_date, markets=["KXNFLGAME"]
             )
 
             print(f"\n{name}:")

@@ -3,16 +3,17 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 try:
-	import websocket
+    import websocket
 except ImportError as exc:
-	raise ImportError("websocket-client is required for Neural Kalshi WebSocket support.") from exc
+    raise ImportError("websocket-client is required for Neural Kalshi WebSocket support.") from exc
 
-from neural.auth.env import get_api_key_id, get_private_key_material, get_base_url
+from neural.auth.env import get_api_key_id, get_base_url, get_private_key_material
 from neural.auth.signers.kalshi import KalshiSigner
 
 _LOG = logging.getLogger(__name__)
@@ -20,216 +21,229 @@ _LOG = logging.getLogger(__name__)
 
 @dataclass
 class KalshiWebSocketClient:
-	"""Thin wrapper over the Kalshi WebSocket RPC channel."""
+    """Thin wrapper over the Kalshi WebSocket RPC channel."""
 
-	signer: KalshiSigner | None = None
-	api_key_id: Optional[str] = None
-	private_key_pem: Optional[bytes] = None
-	env: Optional[str] = None
-	url: Optional[str] = None
-	path: str = "/trade-api/ws/v2"
-	on_message: Optional[Callable[[Dict[str, Any]], None]] = None
-	on_event: Optional[Callable[[str, Dict[str, Any]], None]] = None
-	sslopt: Optional[Dict[str, Any]] = None
-	ping_interval: float = 25.0
-	ping_timeout: float = 10.0
-	_connect_timeout: float = 10.0
-	_request_id: int = field(init=False, default=1)
+    signer: KalshiSigner | None = None
+    api_key_id: str | None = None
+    private_key_pem: bytes | None = None
+    env: str | None = None
+    url: str | None = None
+    path: str = "/trade-api/ws/v2"
+    on_message: Callable[[dict[str, Any]], None] | None = None
+    on_event: Callable[[str, dict[str, Any]], None] | None = None
+    sslopt: dict[str, Any] | None = None
+    ping_interval: float = 25.0
+    ping_timeout: float = 10.0
+    _connect_timeout: float = 10.0
+    _request_id: int = field(init=False, default=1)
 
-	def __post_init__(self) -> None:
-		if self.signer is None:
-			api_key = self.api_key_id or get_api_key_id()
-			priv = self.private_key_pem or get_private_key_material()
-			priv_material = priv.decode("utf-8") if isinstance(priv, (bytes, bytearray)) else priv
-			self.signer = KalshiSigner(api_key, priv_material.encode("utf-8") if isinstance(priv_material, str) else priv_material)
+    def __post_init__(self) -> None:
+        if self.signer is None:
+            api_key = self.api_key_id or get_api_key_id()
+            priv = self.private_key_pem or get_private_key_material()
+            priv_material = priv.decode("utf-8") if isinstance(priv, (bytes, bytearray)) else priv
+            self.signer = KalshiSigner(
+                api_key,
+                priv_material.encode("utf-8") if isinstance(priv_material, str) else priv_material,
+            )
 
-		self._ws_app: websocket.WebSocketApp | None = None
-		self._thread: threading.Thread | None = None
-		self._ready = threading.Event()
-		self._closing = threading.Event()
+        self._ws_app: websocket.WebSocketApp | None = None
+        self._thread: threading.Thread | None = None
+        self._ready = threading.Event()
+        self._closing = threading.Event()
 
-		self._resolved_url = self.url or self._build_default_url()
-		parsed = urlparse(self._resolved_url)
-		self._path = parsed.path or "/"
+        self._resolved_url = self.url or self._build_default_url()
+        parsed = urlparse(self._resolved_url)
+        self._path = parsed.path or "/"
 
-	def _build_default_url(self) -> str:
-		base = get_base_url(self.env)
-		parsed = urlparse(base)
-		scheme = "wss" if parsed.scheme == "https" else "ws"
-		return urlunparse((scheme, parsed.netloc, self.path, "", "", ""))
+    def _build_default_url(self) -> str:
+        base = get_base_url(self.env)
+        parsed = urlparse(base)
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        return urlunparse((scheme, parsed.netloc, self.path, "", "", ""))
 
-	def _sign_headers(self) -> Dict[str, str]:
-		"""
-		Generate authentication headers for WebSocket handshake.
-		
-		Bug Fix #11 Note: This method generates PSS (Probabilistic Signature Scheme) 
-		signatures required by Kalshi's WebSocket API. The signature must be included 
-		in the initial HTTP upgrade request headers.
-		
-		Returns:
-			Dict with KALSHI-ACCESS-KEY, KALSHI-ACCESS-SIGNATURE, and KALSHI-ACCESS-TIMESTAMP
-		"""
-		assert self.signer is not None
-		return dict(self.signer.headers("GET", self._path))
+    def _sign_headers(self) -> dict[str, str]:
+        """
+        Generate authentication headers for WebSocket handshake.
 
-	def _handle_message(self, _ws: websocket.WebSocketApp, message: str) -> None:
-		try:
-			payload = json.loads(message)
-		except json.JSONDecodeError:
-			_LOG.debug("non-json websocket payload: %s", message)
-			return
-		if self.on_message:
-			self.on_message(payload)
-		if self.on_event and (msg_type := payload.get("type")):
-			self.on_event(msg_type, payload)
+        Bug Fix #11 Note: This method generates PSS (Probabilistic Signature Scheme)
+        signatures required by Kalshi's WebSocket API. The signature must be included
+        in the initial HTTP upgrade request headers.
 
-	def _handle_open(self, _ws: websocket.WebSocketApp) -> None:
-		self._ready.set()
-		_LOG.debug("Kalshi websocket connection opened")
+        Returns:
+                Dict with KALSHI-ACCESS-KEY, KALSHI-ACCESS-SIGNATURE, and KALSHI-ACCESS-TIMESTAMP
+        """
+        assert self.signer is not None
+        return dict(self.signer.headers("GET", self._path))
 
-	def _handle_close(self, _ws: websocket.WebSocketApp, status_code: int, msg: str) -> None:
-		self._ready.clear()
-		self._thread = None
-		if not self._closing.is_set():
-			_LOG.warning("Kalshi websocket closed (%s) %s", status_code, msg)
+    def _handle_message(self, _ws: websocket.WebSocketApp, message: str) -> None:
+        try:
+            payload = json.loads(message)
+        except json.JSONDecodeError:
+            _LOG.debug("non-json websocket payload: %s", message)
+            return
+        if self.on_message:
+            self.on_message(payload)
+        if self.on_event and (msg_type := payload.get("type")):
+            self.on_event(msg_type, payload)
 
-	def _handle_error(self, _ws: websocket.WebSocketApp, error: Exception) -> None:
-		_LOG.error("Kalshi websocket error: %s", error)
+    def _handle_open(self, _ws: websocket.WebSocketApp) -> None:
+        self._ready.set()
+        _LOG.debug("Kalshi websocket connection opened")
 
-	def connect(self, *, block: bool = True) -> None:
-		"""
-		Open the WebSocket connection in a background thread.
-		
-		Bug Fix #11 Note: For proper SSL certificate verification, pass sslopt parameter
-		when initializing the client. Example:
-			import ssl, certifi
-			sslopt = {"cert_reqs": ssl.CERT_REQUIRED, "ca_certs": certifi.where()}
-			client = KalshiWebSocketClient(sslopt=sslopt)
-		
-		Args:
-			block: If True, wait for connection to establish before returning
-		
-		Raises:
-			TimeoutError: If connection doesn't establish within timeout period
-		"""
-		if self._ws_app is not None:
-			return
+    def _handle_close(self, _ws: websocket.WebSocketApp, status_code: int, msg: str) -> None:
+        self._ready.clear()
+        self._thread = None
+        if not self._closing.is_set():
+            _LOG.warning("Kalshi websocket closed (%s) %s", status_code, msg)
 
-		signed_headers = self._sign_headers()
-		header_list = [f"{k}: {v}" for k, v in signed_headers.items()]
-		self._ws_app = websocket.WebSocketApp(
-			self._resolved_url,
-			header=header_list,
-			on_message=self._handle_message,
-			on_error=self._handle_error,
-			on_close=self._handle_close,
-			on_open=self._handle_open,
-		)
+    def _handle_error(self, _ws: websocket.WebSocketApp, error: Exception) -> None:
+        _LOG.error("Kalshi websocket error: %s", error)
 
-		sslopt = self.sslopt or {}
-		self._thread = threading.Thread(
-			target=self._ws_app.run_forever,
-			kwargs={"sslopt": sslopt, "ping_interval": self.ping_interval, "ping_timeout": self.ping_timeout},
-			daemon=True,
-		)
-		self._thread.start()
-		if block:
-			connected = self._ready.wait(self._connect_timeout)
-			if not connected:
-				raise TimeoutError("Timed out waiting for Kalshi websocket to open")
+    def connect(self, *, block: bool = True) -> None:
+        """
+        Open the WebSocket connection in a background thread.
 
-	def close(self) -> None:
-		self._closing.set()
-		if self._ws_app is not None:
-			self._ws_app.close()
-		self._ws_app = None
-		if self._thread and self._thread.is_alive():
-			self._thread.join(timeout=2)
-		self._thread = None
-		self._ready.clear()
-		self._closing.clear()
+        Bug Fix #11 Note: For proper SSL certificate verification, pass sslopt parameter
+        when initializing the client. Example:
+                import ssl, certifi
+                sslopt = {"cert_reqs": ssl.CERT_REQUIRED, "ca_certs": certifi.where()}
+                client = KalshiWebSocketClient(sslopt=sslopt)
 
-	def send(self, payload: Dict[str, Any]) -> None:
-		if not self._ws_app or not self._ready.is_set():
-			raise RuntimeError("WebSocket connection is not ready")
-		self._ws_app.send(json.dumps(payload))
+        Args:
+                block: If True, wait for connection to establish before returning
 
-	def _next_id(self) -> int:
-		request_id = self._request_id
-		self._request_id += 1
-		return request_id
+        Raises:
+                TimeoutError: If connection doesn't establish within timeout period
+        """
+        if self._ws_app is not None:
+            return
 
-	def subscribe(
-		self, 
-		channels: list[str], 
-		*, 
-		market_tickers: Optional[list[str]] = None,
-		params: Optional[Dict[str, Any]] = None, 
-		request_id: Optional[int] = None
-	) -> int:
-		"""
-		Subscribe to WebSocket channels with optional market filtering.
-		
-		Bug Fix #14: Added market_tickers parameter for server-side filtering.
-		
-		Args:
-			channels: List of channel names (e.g., ["orderbook_delta", "trade"])
-			market_tickers: Optional list of market tickers to filter (e.g., ["KXNFLGAME-..."])
-			params: Additional parameters to merge into subscription
-			request_id: Optional request ID for tracking
-		
-		Returns:
-			Request ID used for this subscription
-		"""
-		req_id = request_id or self._next_id()
-		
-		# Bug Fix #14: Build params with market_tickers support
-		subscribe_params = {"channels": channels}
-		if market_tickers:
-			subscribe_params["market_tickers"] = market_tickers
-		if params:
-			subscribe_params.update(params)
-		
-		payload = {
-			"id": req_id,
-			"cmd": "subscribe",
-			"params": subscribe_params
-		}
-		self.send(payload)
-		return req_id
+        signed_headers = self._sign_headers()
+        header_list = [f"{k}: {v}" for k, v in signed_headers.items()]
+        self._ws_app = websocket.WebSocketApp(
+            self._resolved_url,
+            header=header_list,
+            on_message=self._handle_message,
+            on_error=self._handle_error,
+            on_close=self._handle_close,
+            on_open=self._handle_open,
+        )
 
-	def unsubscribe(self, subscription_ids: list[int], *, request_id: Optional[int] = None) -> int:
-		req_id = request_id or self._next_id()
-		payload = {
-			"id": req_id,
-			"cmd": "unsubscribe",
-			"params": {"sids": subscription_ids},
-		}
-		self.send(payload)
-		return req_id
+        sslopt = self.sslopt or {}
+        self._thread = threading.Thread(
+            target=self._ws_app.run_forever,
+            kwargs={
+                "sslopt": sslopt,
+                "ping_interval": self.ping_interval,
+                "ping_timeout": self.ping_timeout,
+            },
+            daemon=True,
+        )
+        self._thread.start()
+        if block:
+            connected = self._ready.wait(self._connect_timeout)
+            if not connected:
+                raise TimeoutError("Timed out waiting for Kalshi websocket to open")
 
-	def update_subscription(self, subscription_id: int, *, action: str, market_tickers: list[str] | None = None, events: list[str] | None = None, request_id: Optional[int] = None) -> int:
-		req_id = request_id or self._next_id()
-		params: Dict[str, Any] = {"sid": subscription_id, "action": action}
-		if market_tickers:
-			params["market_tickers"] = market_tickers
-		if events:
-			params["event_tickers"] = events
-		payload = {"id": req_id, "cmd": "update_subscription", "params": params}
-		self.send(payload)
-		return req_id
+    def close(self) -> None:
+        self._closing.set()
+        if self._ws_app is not None:
+            self._ws_app.close()
+        self._ws_app = None
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2)
+        self._thread = None
+        self._ready.clear()
+        self._closing.clear()
 
-	def send_command(self, cmd: str, params: Optional[Dict[str, Any]] = None, *, request_id: Optional[int] = None) -> int:
-		req_id = request_id or self._next_id()
-		payload = {"id": req_id, "cmd": cmd}
-		if params:
-			payload["params"] = params
-		self.send(payload)
-		return req_id
+    def send(self, payload: dict[str, Any]) -> None:
+        if not self._ws_app or not self._ready.is_set():
+            raise RuntimeError("WebSocket connection is not ready")
+        self._ws_app.send(json.dumps(payload))
 
-	def __enter__(self) -> "KalshiWebSocketClient":
-		self.connect()
-		return self
+    def _next_id(self) -> int:
+        request_id = self._request_id
+        self._request_id += 1
+        return request_id
 
-	def __exit__(self, exc_type, exc, tb) -> None:
-		self.close()
+    def subscribe(
+        self,
+        channels: list[str],
+        *,
+        market_tickers: list[str] | None = None,
+        params: dict[str, Any] | None = None,
+        request_id: int | None = None,
+    ) -> int:
+        """
+        Subscribe to WebSocket channels with optional market filtering.
+
+        Bug Fix #14: Added market_tickers parameter for server-side filtering.
+
+        Args:
+                channels: List of channel names (e.g., ["orderbook_delta", "trade"])
+                market_tickers: Optional list of market tickers to filter (e.g., ["KXNFLGAME-..."])
+                params: Additional parameters to merge into subscription
+                request_id: Optional request ID for tracking
+
+        Returns:
+                Request ID used for this subscription
+        """
+        req_id = request_id or self._next_id()
+
+        # Bug Fix #14: Build params with market_tickers support
+        subscribe_params = {"channels": channels}
+        if market_tickers:
+            subscribe_params["market_tickers"] = market_tickers
+        if params:
+            subscribe_params.update(params)
+
+        payload = {"id": req_id, "cmd": "subscribe", "params": subscribe_params}
+        self.send(payload)
+        return req_id
+
+    def unsubscribe(self, subscription_ids: list[int], *, request_id: int | None = None) -> int:
+        req_id = request_id or self._next_id()
+        payload = {
+            "id": req_id,
+            "cmd": "unsubscribe",
+            "params": {"sids": subscription_ids},
+        }
+        self.send(payload)
+        return req_id
+
+    def update_subscription(
+        self,
+        subscription_id: int,
+        *,
+        action: str,
+        market_tickers: list[str] | None = None,
+        events: list[str] | None = None,
+        request_id: int | None = None,
+    ) -> int:
+        req_id = request_id or self._next_id()
+        params: dict[str, Any] = {"sid": subscription_id, "action": action}
+        if market_tickers:
+            params["market_tickers"] = market_tickers
+        if events:
+            params["event_tickers"] = events
+        payload = {"id": req_id, "cmd": "update_subscription", "params": params}
+        self.send(payload)
+        return req_id
+
+    def send_command(
+        self, cmd: str, params: dict[str, Any] | None = None, *, request_id: int | None = None
+    ) -> int:
+        req_id = request_id or self._next_id()
+        payload = {"id": req_id, "cmd": cmd}
+        if params:
+            payload["params"] = params
+        self.send(payload)
+        return req_id
+
+    def __enter__(self) -> KalshiWebSocketClient:
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()

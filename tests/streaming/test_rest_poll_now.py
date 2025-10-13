@@ -5,7 +5,9 @@ Poll REST API for 15 seconds and return pricing data
 
 import asyncio
 from datetime import datetime
-from neural.trading.rest_streaming import RESTStreamingClient, stream_via_rest
+
+from neural.trading.rest_streaming import stream_via_rest
+
 
 async def poll_seahawks_cardinals():
     """Poll market data for 15 seconds"""
@@ -15,13 +17,13 @@ async def poll_seahawks_cardinals():
     ari_ticker = "KXNFLGAME-25SEP25SEAARI-ARI"
 
     print("🏈 Polling Seahawks vs Cardinals Markets")
-    print("="*60)
-    print(f"Duration: 15 seconds")
-    print(f"Poll interval: 1 second")
-    print(f"\nMarkets:")
+    print("=" * 60)
+    print("Duration: 15 seconds")
+    print("Poll interval: 1 second")
+    print("\nMarkets:")
     print(f"  • {sea_ticker}")
     print(f"  • {ari_ticker}")
-    print("\n" + "-"*60)
+    print("\n" + "-" * 60)
 
     # Collect data
     df = await stream_via_rest(
@@ -33,48 +35,57 @@ async def poll_seahawks_cardinals():
             f"{'SEA' if 'SEA' in snapshot.ticker else 'ARI'}: "
             f"${snapshot.yes_mid:.3f} ({snapshot.implied_probability:.1f}%) "
             f"Spread: ${snapshot.yes_spread:.3f}"
-        )
+        ),
     )
 
     return df
+
 
 # Run the polling
 print("\n🚀 Starting REST API polling...\n")
 df = asyncio.run(poll_seahawks_cardinals())
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("📊 PRICING DATA SUMMARY")
-print("="*60)
+print("=" * 60)
 
 if not df.empty:
     # Analyze Seattle data
-    sea_data = df[df['ticker'].str.contains('SEA')]
+    sea_data = df[df["ticker"].str.contains("SEA")]
     if not sea_data.empty:
         print("\n🏈 Seattle Seahawks:")
         print(f"  Data points: {len(sea_data)}")
-        print(f"  Starting price: ${sea_data.iloc[0]['yes_mid']:.3f} ({sea_data.iloc[0]['implied_prob']:.1f}%)")
-        print(f"  Ending price: ${sea_data.iloc[-1]['yes_mid']:.3f} ({sea_data.iloc[-1]['implied_prob']:.1f}%)")
+        print(
+            f"  Starting price: ${sea_data.iloc[0]['yes_mid']:.3f} ({sea_data.iloc[0]['implied_prob']:.1f}%)"
+        )
+        print(
+            f"  Ending price: ${sea_data.iloc[-1]['yes_mid']:.3f} ({sea_data.iloc[-1]['implied_prob']:.1f}%)"
+        )
         print(f"  Min price: ${sea_data['yes_mid'].min():.3f}")
         print(f"  Max price: ${sea_data['yes_mid'].max():.3f}")
         print(f"  Avg spread: ${sea_data['yes_spread'].mean():.3f}")
 
-        price_change = sea_data.iloc[-1]['yes_mid'] - sea_data.iloc[0]['yes_mid']
+        price_change = sea_data.iloc[-1]["yes_mid"] - sea_data.iloc[0]["yes_mid"]
         if abs(price_change) > 0.001:
             direction = "📈" if price_change > 0 else "📉"
             print(f"  Movement: {direction} ${abs(price_change):.3f} ({price_change*100:+.1f}¢)")
 
     # Analyze Arizona data
-    ari_data = df[df['ticker'].str.contains('ARI')]
+    ari_data = df[df["ticker"].str.contains("ARI")]
     if not ari_data.empty:
         print("\n🏈 Arizona Cardinals:")
         print(f"  Data points: {len(ari_data)}")
-        print(f"  Starting price: ${ari_data.iloc[0]['yes_mid']:.3f} ({ari_data.iloc[0]['implied_prob']:.1f}%)")
-        print(f"  Ending price: ${ari_data.iloc[-1]['yes_mid']:.3f} ({ari_data.iloc[-1]['implied_prob']:.1f}%)")
+        print(
+            f"  Starting price: ${ari_data.iloc[0]['yes_mid']:.3f} ({ari_data.iloc[0]['implied_prob']:.1f}%)"
+        )
+        print(
+            f"  Ending price: ${ari_data.iloc[-1]['yes_mid']:.3f} ({ari_data.iloc[-1]['implied_prob']:.1f}%)"
+        )
         print(f"  Min price: ${ari_data['yes_mid'].min():.3f}")
         print(f"  Max price: ${ari_data['yes_mid'].max():.3f}")
         print(f"  Avg spread: ${ari_data['yes_spread'].mean():.3f}")
 
-        price_change = ari_data.iloc[-1]['yes_mid'] - ari_data.iloc[0]['yes_mid']
+        price_change = ari_data.iloc[-1]["yes_mid"] - ari_data.iloc[0]["yes_mid"]
         if abs(price_change) > 0.001:
             direction = "📈" if price_change > 0 else "📉"
             print(f"  Movement: {direction} ${abs(price_change):.3f} ({price_change*100:+.1f}¢)")
@@ -82,8 +93,8 @@ if not df.empty:
     # Combined analysis
     if not sea_data.empty and not ari_data.empty:
         print("\n📊 Combined Analysis:")
-        sea_prob = sea_data.iloc[-1]['implied_prob']
-        ari_prob = ari_data.iloc[-1]['implied_prob']
+        sea_prob = sea_data.iloc[-1]["implied_prob"]
+        ari_prob = ari_data.iloc[-1]["implied_prob"]
         total = sea_prob + ari_prob
 
         print(f"  Total probability: {total:.1f}%")
@@ -93,9 +104,9 @@ if not df.empty:
             print(f"  ⚠️ OVERPRICED: Total exceeds 100% by {total-100:.1f}%")
 
         # Volume comparison
-        sea_vol = sea_data.iloc[-1]['volume']
-        ari_vol = ari_data.iloc[-1]['volume']
-        print(f"\n📈 Volume:")
+        sea_vol = sea_data.iloc[-1]["volume"]
+        ari_vol = ari_data.iloc[-1]["volume"]
+        print("\n📈 Volume:")
         print(f"  Seattle: {sea_vol:,} contracts")
         print(f"  Arizona: {ari_vol:,} contracts")
         print(f"  Total: {sea_vol + ari_vol:,} contracts")
@@ -107,16 +118,18 @@ if not df.empty:
 
     # Show raw data sample
     print("\n📋 Raw Data Sample (last 3 updates per team):")
-    print("-"*60)
-    for ticker in df['ticker'].unique():
-        ticker_data = df[df['ticker'] == ticker].tail(3)
+    print("-" * 60)
+    for ticker in df["ticker"].unique():
+        ticker_data = df[df["ticker"] == ticker].tail(3)
         team = "Seattle" if "SEA" in ticker else "Arizona"
         print(f"\n{team}:")
         for _, row in ticker_data.iterrows():
-            print(f"  [{row['timestamp']}] ${row['yes_mid']:.3f} "
-                  f"(Bid: ${row['yes_bid']:.3f}, Ask: ${row['yes_ask']:.3f})")
+            print(
+                f"  [{row['timestamp']}] ${row['yes_mid']:.3f} "
+                f"(Bid: ${row['yes_bid']:.3f}, Ask: ${row['yes_ask']:.3f})"
+            )
 
 else:
     print("❌ No data collected")
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)

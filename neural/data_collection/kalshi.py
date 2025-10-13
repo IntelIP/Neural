@@ -1,12 +1,11 @@
 from __future__ import annotations
-import re
-from typing import Optional
-
-import pandas as pd
 
 import asyncio
-from typing import Any, Dict, Iterable, List
+import re
+from collections.abc import Iterable
+from typing import Any
 
+import pandas as pd
 import requests
 
 from neural.auth.http_client import KalshiHTTPClient
@@ -22,6 +21,7 @@ _SPORT_SERIES_MAP = {
     "NCAA": "KXNCAAFGAME",
 }
 
+
 def _normalize_series(identifier: str | None) -> str | None:
     if identifier is None:
         return None
@@ -29,19 +29,21 @@ def _normalize_series(identifier: str | None) -> str | None:
         return identifier
     return _SPORT_SERIES_MAP.get(identifier.upper(), identifier)
 
-def _resolve_series_list(series: Iterable[str] | None) -> List[str]:
+
+def _resolve_series_list(series: Iterable[str] | None) -> list[str]:
     if not series:
-        return list({v for v in _SPORT_SERIES_MAP.values()})
+        return list(set(_SPORT_SERIES_MAP.values()))
     return [s for s in (_normalize_series(item) for item in series) if s]
 
+
 async def _fetch_markets(
-    params: Dict[str, Any],
+    params: dict[str, Any],
     *,
     use_authenticated: bool,
-    api_key_id: Optional[str],
-    private_key_pem: Optional[bytes],
+    api_key_id: str | None,
+    private_key_pem: bytes | None,
 ) -> pd.DataFrame:
-    def _request() -> Dict[str, Any]:
+    def _request() -> dict[str, Any]:
         if use_authenticated:
             client = KalshiHTTPClient(api_key_id=api_key_id, private_key_pem=private_key_pem)
             try:
@@ -51,10 +53,11 @@ async def _fetch_markets(
         url = f"{_BASE_URL}/markets"
         resp = requests.get(url, params=params, timeout=15)
         resp.raise_for_status()
-        return resp.json()
+        return dict(resp.json())
 
     payload = await asyncio.to_thread(_request)
     return pd.DataFrame(payload.get("markets", []))
+
 
 class KalshiMarketsSource:
     """Fetch markets for a given Kalshi series ticker."""
@@ -62,12 +65,12 @@ class KalshiMarketsSource:
     def __init__(
         self,
         *,
-        series_ticker: Optional[str] = None,
-        status: Optional[str] = "open",
+        series_ticker: str | None = None,
+        status: str | None = "open",
         limit: int = 200,
         use_authenticated: bool = True,
-        api_key_id: Optional[str] = None,
-        private_key_pem: Optional[bytes] = None,
+        api_key_id: str | None = None,
+        private_key_pem: bytes | None = None,
     ) -> None:
         self.series_ticker = _normalize_series(series_ticker)
         self.status = status
@@ -77,7 +80,7 @@ class KalshiMarketsSource:
         self.private_key_pem = private_key_pem
 
     async def fetch(self) -> pd.DataFrame:
-        params: Dict[str, Any] = {"limit": self.limit}
+        params: dict[str, Any] = {"limit": self.limit}
         if self.series_ticker:
             params["series_ticker"] = self.series_ticker
         if self.status is not None:
@@ -89,17 +92,18 @@ class KalshiMarketsSource:
             private_key_pem=self.private_key_pem,
         )
 
+
 async def get_sports_series(
     leagues: Iterable[str] | None = None,
     *,
-    status: Optional[str] = "open",
+    status: str | None = "open",
     limit: int = 200,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
-) -> Dict[str, List[Dict[str, Any]]]:
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
+) -> dict[str, list[dict[str, Any]]]:
     series_ids = _resolve_series_list(leagues)
-    results: Dict[str, List[Dict[str, Any]]] = {}
+    results: dict[str, list[dict[str, Any]]] = {}
     for series_id in series_ids:
         df = await get_markets_by_sport(
             series_id,
@@ -110,20 +114,22 @@ async def get_sports_series(
             private_key_pem=private_key_pem,
         )
         if not df.empty:
-            results[series_id] = df.to_dict(orient="records")
+            records = df.to_dict(orient="records")
+            results[series_id] = [{str(k): v for k, v in record.items()} for record in records]
     return results
+
 
 async def get_markets_by_sport(
     sport: str,
     *,
-    status: Optional[str] = "open",
+    status: str | None = "open",
     limit: int = 200,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
     series = _normalize_series(sport)
-    params: Dict[str, Any] = {"limit": limit}
+    params: dict[str, Any] = {"limit": limit}
     if series:
         params["series_ticker"] = series
     if status is not None:
@@ -135,16 +141,17 @@ async def get_markets_by_sport(
         private_key_pem=private_key_pem,
     )
 
+
 async def get_all_sports_markets(
     sports: Iterable[str] | None = None,
     *,
-    status: Optional[str] = "open",
+    status: str | None = "open",
     limit: int = 200,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
-    frames: List[pd.DataFrame] = []
+    frames: list[pd.DataFrame] = []
     for series in _resolve_series_list(sports):
         df = await get_markets_by_sport(
             series,
@@ -160,16 +167,17 @@ async def get_all_sports_markets(
         return pd.concat(frames, ignore_index=True)
     return pd.DataFrame()
 
+
 async def search_markets(
     query: str,
     *,
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = 200,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
-    params: Dict[str, Any] = {"search": query, "limit": limit}
+    params: dict[str, Any] = {"search": query, "limit": limit}
     if status is not None:
         params["status"] = status
     return await _fetch_markets(
@@ -179,15 +187,16 @@ async def search_markets(
         private_key_pem=private_key_pem,
     )
 
+
 async def get_game_markets(
     event_ticker: str,
     *,
-    status: Optional[str] = None,
+    status: str | None = None,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
-    params: Dict[str, Any] = {"event_ticker": event_ticker}
+    params: dict[str, Any] = {"event_ticker": event_ticker}
     if status is not None:
         params["status"] = status
     return await _fetch_markets(
@@ -196,13 +205,14 @@ async def get_game_markets(
         api_key_id=api_key_id,
         private_key_pem=private_key_pem,
     )
+
 
 async def get_live_sports(
     *,
     limit: int = 200,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
     return await _fetch_markets(
         {"status": "live", "limit": limit},
@@ -216,8 +226,8 @@ async def get_nfl_games(
     status: str = "open",
     limit: int = 50,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
     """
     Get NFL games markets from Kalshi.
@@ -295,17 +305,17 @@ async def get_nfl_games(
                     month = month_map.get(date_str[2:5])
                     day = int(date_str[0:2])
                     return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
-                except:
+                except Exception:
                     pass
-            return row.get("open_time", pd.NaT)
+            return pd.NaT
 
         df["game_date"] = df["ticker"].apply(parse_game_date)
 
         # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
         # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
-        nfl_mask = df["ticker"].str.contains("KXNFLGAME", na=False) | df[
-            "title"
-        ].str.contains("NFL", case=False, na=False)
+        nfl_mask = df["ticker"].str.contains("KXNFLGAME", na=False) | df["title"].str.contains(
+            "NFL", case=False, na=False
+        )
         df = df[nfl_mask]
 
     return df
@@ -315,8 +325,8 @@ async def get_cfb_games(
     status: str = "open",
     limit: int = 50,
     use_authenticated: bool = True,
-    api_key_id: Optional[str] = None,
-    private_key_pem: Optional[bytes] = None,
+    api_key_id: str | None = None,
+    private_key_pem: bytes | None = None,
 ) -> pd.DataFrame:
     """
     Get College Football (CFB) games markets from Kalshi.
@@ -392,17 +402,17 @@ async def get_cfb_games(
                     month = month_map.get(date_str[2:5])
                     day = int(date_str[0:2])
                     return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
-                except:
+                except Exception:
                     pass
-            return row.get("open_time", pd.NaT)
+            return pd.NaT
 
         df["game_date"] = df["ticker"].apply(parse_game_date)
 
         # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
         # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
-        cfb_mask = df["ticker"].str.contains("KXNCAAFGAME", na=False) | df[
-            "title"
-        ].str.contains("NCAA|College Football", case=False, na=False)
+        cfb_mask = df["ticker"].str.contains("KXNCAAFGAME", na=False) | df["title"].str.contains(
+            "NCAA|College Football", case=False, na=False
+        )
         df = df[cfb_mask]
 
     return df

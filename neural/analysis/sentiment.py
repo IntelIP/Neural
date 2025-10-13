@@ -7,15 +7,16 @@ and game momentum shifts.
 """
 
 import re
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any, Union
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
-import asyncio
+from typing import Any
+
+import numpy as np
 
 try:
     from textblob import TextBlob
+
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     TEXTBLOB_AVAILABLE = False
@@ -23,6 +24,7 @@ except ImportError:
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
     VADER_AVAILABLE = True
 except ImportError:
     VADER_AVAILABLE = False
@@ -31,6 +33,7 @@ except ImportError:
 
 class SentimentEngine(Enum):
     """Available sentiment analysis engines."""
+
     VADER = "vader"
     TEXTBLOB = "textblob"
     COMBINED = "combined"
@@ -39,6 +42,7 @@ class SentimentEngine(Enum):
 
 class SentimentStrength(Enum):
     """Sentiment strength categories."""
+
     VERY_POSITIVE = "very_positive"
     POSITIVE = "positive"
     NEUTRAL = "neutral"
@@ -49,6 +53,7 @@ class SentimentStrength(Enum):
 @dataclass
 class SentimentScore:
     """Comprehensive sentiment score with metadata."""
+
     overall_score: float  # -1.0 to 1.0
     confidence: float  # 0.0 to 1.0
     strength: SentimentStrength
@@ -59,14 +64,15 @@ class SentimentScore:
     subjectivity: float  # 0.0 (objective) to 1.0 (subjective)
     magnitude: float  # Overall intensity
     engine_used: SentimentEngine
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class TimeSeries:
     """Time series data for sentiment tracking."""
-    timestamps: List[datetime]
-    values: List[float]
+
+    timestamps: list[datetime]
+    values: list[float]
     window_size: int = 50
 
     def add_value(self, timestamp: datetime, value: float):
@@ -76,8 +82,8 @@ class TimeSeries:
 
         # Keep only recent values
         if len(self.values) > self.window_size:
-            self.timestamps = self.timestamps[-self.window_size:]
-            self.values = self.values[-self.window_size:]
+            self.timestamps = self.timestamps[-self.window_size :]
+            self.values = self.values[-self.window_size :]
 
     def get_trend(self, minutes: int = 5) -> float:
         """Calculate sentiment trend over last N minutes."""
@@ -85,10 +91,7 @@ class TimeSeries:
             return 0.0
 
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
-        recent_indices = [
-            i for i, ts in enumerate(self.timestamps)
-            if ts >= cutoff_time
-        ]
+        recent_indices = [i for i, ts in enumerate(self.timestamps) if ts >= cutoff_time]
 
         if len(recent_indices) < 2:
             return 0.0
@@ -102,8 +105,7 @@ class TimeSeries:
         """Calculate sentiment volatility over last N minutes."""
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
         recent_values = [
-            self.values[i] for i, ts in enumerate(self.timestamps)
-            if ts >= cutoff_time
+            self.values[i] for i, ts in enumerate(self.timestamps) if ts >= cutoff_time
         ]
 
         if len(recent_values) < 2:
@@ -123,7 +125,7 @@ class SentimentAnalyzer:
     def __init__(
         self,
         engine: SentimentEngine = SentimentEngine.COMBINED,
-        custom_lexicon: Optional[Dict[str, float]] = None
+        custom_lexicon: dict[str, float] | None = None,
     ):
         self.engine = engine
         self.custom_lexicon = custom_lexicon or {}
@@ -136,24 +138,57 @@ class SentimentAnalyzer:
         # Sports-specific sentiment lexicon
         self.sports_lexicon = {
             # Positive sports terms
-            'touchdown': 0.8, 'score': 0.6, 'win': 0.7, 'victory': 0.8,
-            'champion': 0.9, 'excellent': 0.7, 'amazing': 0.8, 'incredible': 0.8,
-            'fantastic': 0.7, 'perfect': 0.8, 'clutch': 0.8, 'dominant': 0.7,
-            'brilliant': 0.7, 'spectacular': 0.8, 'outstanding': 0.7,
-
+            "touchdown": 0.8,
+            "score": 0.6,
+            "win": 0.7,
+            "victory": 0.8,
+            "champion": 0.9,
+            "excellent": 0.7,
+            "amazing": 0.8,
+            "incredible": 0.8,
+            "fantastic": 0.7,
+            "perfect": 0.8,
+            "clutch": 0.8,
+            "dominant": 0.7,
+            "brilliant": 0.7,
+            "spectacular": 0.8,
+            "outstanding": 0.7,
             # Negative sports terms
-            'fumble': -0.6, 'interception': -0.7, 'penalty': -0.4, 'foul': -0.4,
-            'miss': -0.5, 'fail': -0.6, 'lose': -0.6, 'defeat': -0.7,
-            'terrible': -0.7, 'awful': -0.8, 'disaster': -0.8, 'mistake': -0.5,
-            'error': -0.5, 'bad': -0.4, 'poor': -0.4, 'worst': -0.8,
-
+            "fumble": -0.6,
+            "interception": -0.7,
+            "penalty": -0.4,
+            "foul": -0.4,
+            "miss": -0.5,
+            "fail": -0.6,
+            "lose": -0.6,
+            "defeat": -0.7,
+            "terrible": -0.7,
+            "awful": -0.8,
+            "disaster": -0.8,
+            "mistake": -0.5,
+            "error": -0.5,
+            "bad": -0.4,
+            "poor": -0.4,
+            "worst": -0.8,
             # Intensity modifiers
-            'very': 1.3, 'extremely': 1.5, 'incredibly': 1.4, 'absolutely': 1.3,
-            'totally': 1.2, 'completely': 1.2, 'really': 1.1, 'so': 1.1,
-
+            "very": 1.3,
+            "extremely": 1.5,
+            "incredibly": 1.4,
+            "absolutely": 1.3,
+            "totally": 1.2,
+            "completely": 1.2,
+            "really": 1.1,
+            "so": 1.1,
             # Excitement indicators
-            'wow': 0.6, 'omg': 0.5, 'holy': 0.4, 'insane': 0.7, 'crazy': 0.4,
-            'unreal': 0.6, 'sick': 0.5, 'fire': 0.6, 'beast': 0.5
+            "wow": 0.6,
+            "omg": 0.5,
+            "holy": 0.4,
+            "insane": 0.7,
+            "crazy": 0.4,
+            "unreal": 0.6,
+            "sick": 0.5,
+            "fire": 0.6,
+            "beast": 0.5,
         }
 
         # Combine lexicons
@@ -165,17 +200,17 @@ class SentimentAnalyzer:
         text = text.lower()
 
         # Remove URLs
-        text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+        text = re.sub(r"http\S+|www\S+|https\S+", "", text, flags=re.MULTILINE)
 
         # Remove mentions and hashtags (but keep the text)
-        text = re.sub(r'[@#]\w+', '', text)
+        text = re.sub(r"[@#]\w+", "", text)
 
         # Remove extra whitespace
-        text = ' '.join(text.split())
+        text = " ".join(text.split())
 
         return text
 
-    def _analyze_with_vader(self, text: str) -> Optional[Dict[str, float]]:
+    def _analyze_with_vader(self, text: str) -> dict[str, float] | None:
         """Analyze sentiment using VADER."""
         if not self.vader_analyzer:
             return None
@@ -183,26 +218,23 @@ class SentimentAnalyzer:
         scores = self.vader_analyzer.polarity_scores(text)
         return scores
 
-    def _analyze_with_textblob(self, text: str) -> Optional[Dict[str, float]]:
+    def _analyze_with_textblob(self, text: str) -> dict[str, float] | None:
         """Analyze sentiment using TextBlob."""
         if not TEXTBLOB_AVAILABLE:
             return None
 
         blob = TextBlob(text)
-        return {
-            'polarity': blob.sentiment.polarity,
-            'subjectivity': blob.sentiment.subjectivity
-        }
+        return {"polarity": blob.sentiment.polarity, "subjectivity": blob.sentiment.subjectivity}
 
-    def _analyze_with_custom(self, text: str) -> Dict[str, float]:
+    def _analyze_with_custom(self, text: str) -> dict[str, float]:
         """Analyze sentiment using custom sports lexicon."""
         words = text.lower().split()
         scores = []
         intensity_modifier = 1.0
 
-        for i, word in enumerate(words):
+        for _i, word in enumerate(words):
             # Check for intensity modifiers
-            if word in ['very', 'extremely', 'incredibly', 'absolutely']:
+            if word in ["very", "extremely", "incredibly", "absolutely"]:
                 intensity_modifier = self.combined_lexicon.get(word, 1.0)
                 continue
 
@@ -213,19 +245,14 @@ class SentimentAnalyzer:
                 intensity_modifier = 1.0  # Reset after use
 
         if not scores:
-            return {'compound': 0.0, 'pos': 0.0, 'neu': 1.0, 'neg': 0.0}
+            return {"compound": 0.0, "pos": 0.0, "neu": 1.0, "neg": 0.0}
 
         compound = np.mean(scores)
         positive = np.mean([s for s in scores if s > 0]) if any(s > 0 for s in scores) else 0.0
         negative = abs(np.mean([s for s in scores if s < 0])) if any(s < 0 for s in scores) else 0.0
         neutral = 1.0 - (positive + negative)
 
-        return {
-            'compound': compound,
-            'pos': positive,
-            'neu': max(0.0, neutral),
-            'neg': negative
-        }
+        return {"compound": compound, "pos": positive, "neu": max(0.0, neutral), "neg": negative}
 
     def analyze_text(self, text: str) -> SentimentScore:
         """
@@ -249,7 +276,7 @@ class SentimentAnalyzer:
                 subjectivity=0.0,
                 magnitude=0.0,
                 engine_used=self.engine,
-                metadata={'text_length': 0, 'word_count': 0}
+                metadata={"text_length": 0, "word_count": 0},
             )
 
         preprocessed_text = self._preprocess_text(text)
@@ -262,17 +289,17 @@ class SentimentAnalyzer:
 
         # Combine scores based on engine choice
         if self.engine == SentimentEngine.VADER and vader_scores:
-            compound = vader_scores['compound']
-            positive = vader_scores['pos']
-            negative = vader_scores['neg']
-            neutral = vader_scores['neu']
+            compound = vader_scores["compound"]
+            positive = vader_scores["pos"]
+            negative = vader_scores["neg"]
+            neutral = vader_scores["neu"]
             subjectivity = 0.5  # VADER doesn't provide subjectivity
         elif self.engine == SentimentEngine.TEXTBLOB and textblob_scores:
-            compound = textblob_scores['polarity']
+            compound = textblob_scores["polarity"]
             positive = max(0, compound)
             negative = max(0, -compound)
             neutral = 1 - (positive + negative)
-            subjectivity = textblob_scores['subjectivity']
+            subjectivity = textblob_scores["subjectivity"]
         elif self.engine == SentimentEngine.COMBINED:
             # Weighted combination of available engines
             weights = []
@@ -280,13 +307,13 @@ class SentimentAnalyzer:
 
             if vader_scores:
                 weights.append(0.4)
-                compounds.append(vader_scores['compound'])
+                compounds.append(vader_scores["compound"])
             if textblob_scores:
                 weights.append(0.3)
-                compounds.append(textblob_scores['polarity'])
+                compounds.append(textblob_scores["polarity"])
             if custom_scores:
                 weights.append(0.3)
-                compounds.append(custom_scores['compound'])
+                compounds.append(custom_scores["compound"])
 
             if compounds:
                 compound = np.average(compounds, weights=weights)
@@ -295,21 +322,21 @@ class SentimentAnalyzer:
 
             # Use VADER scores if available, otherwise estimate
             if vader_scores:
-                positive = vader_scores['pos']
-                negative = vader_scores['neg']
-                neutral = vader_scores['neu']
+                positive = vader_scores["pos"]
+                negative = vader_scores["neg"]
+                neutral = vader_scores["neu"]
             else:
                 positive = max(0, compound)
                 negative = max(0, -compound)
                 neutral = 1 - (positive + negative)
 
-            subjectivity = textblob_scores['subjectivity'] if textblob_scores else 0.5
+            subjectivity = textblob_scores["subjectivity"] if textblob_scores else 0.5
         else:
             # Use custom engine
-            compound = custom_scores['compound']
-            positive = custom_scores['pos']
-            negative = custom_scores['neg']
-            neutral = custom_scores['neu']
+            compound = custom_scores["compound"]
+            positive = custom_scores["pos"]
+            negative = custom_scores["neg"]
+            neutral = custom_scores["neu"]
             subjectivity = 0.5
 
         # Calculate overall score and confidence
@@ -317,7 +344,9 @@ class SentimentAnalyzer:
         magnitude = abs(compound)
 
         # Confidence based on magnitude, text length, and subjectivity
-        confidence = min(1.0, magnitude * (1 + min(word_count / 20, 1.0)) * (1 - subjectivity * 0.5))
+        confidence = min(
+            1.0, magnitude * (1 + min(word_count / 20, 1.0)) * (1 - subjectivity * 0.5)
+        )
 
         # Determine sentiment strength
         if compound >= 0.5:
@@ -343,25 +372,23 @@ class SentimentAnalyzer:
             magnitude=magnitude,
             engine_used=self.engine,
             metadata={
-                'text_length': len(text),
-                'word_count': word_count,
-                'preprocessed_length': len(preprocessed_text),
-                'engines_used': [
-                    'vader' if vader_scores else None,
-                    'textblob' if textblob_scores else None,
-                    'custom'
-                ]
-            }
+                "text_length": len(text),
+                "word_count": word_count,
+                "preprocessed_length": len(preprocessed_text),
+                "engines_used": [
+                    "vader" if vader_scores else None,
+                    "textblob" if textblob_scores else None,
+                    "custom",
+                ],
+            },
         )
 
-    def analyze_batch(self, texts: List[str]) -> List[SentimentScore]:
+    def analyze_batch(self, texts: list[str]) -> list[SentimentScore]:
         """Analyze sentiment for a batch of texts."""
         return [self.analyze_text(text) for text in texts]
 
     def get_aggregate_sentiment(
-        self,
-        texts: List[str],
-        weights: Optional[List[float]] = None
+        self, texts: list[str], weights: list[float] | None = None
     ) -> SentimentScore:
         """
         Get aggregate sentiment from multiple texts.
@@ -411,10 +438,10 @@ class SentimentAnalyzer:
             magnitude=magnitude,
             engine_used=self.engine,
             metadata={
-                'text_count': len(texts),
-                'total_length': sum(s.metadata['text_length'] for s in scores),
-                'individual_scores': [s.overall_score for s in scores]
-            }
+                "text_count": len(texts),
+                "total_length": sum(s.metadata["text_length"] for s in scores),
+                "individual_scores": [s.overall_score for s in scores],
+            },
         )
 
 
@@ -429,9 +456,9 @@ class GameSentimentTracker:
     def __init__(
         self,
         game_id: str,
-        teams: List[str],
-        sentiment_analyzer: Optional[SentimentAnalyzer] = None,
-        window_minutes: int = 10
+        teams: list[str],
+        sentiment_analyzer: SentimentAnalyzer | None = None,
+        window_minutes: int = 10,
     ):
         self.game_id = game_id
         self.teams = teams
@@ -446,17 +473,14 @@ class GameSentimentTracker:
         # Team-specific tracking
         self.team_sentiment = {team: TimeSeries([], [], window_size=50) for team in teams}
 
-    def add_twitter_data(self, tweets: List[Dict[str, Any]]) -> None:
+    def add_twitter_data(self, tweets: list[dict[str, Any]]) -> None:
         """Process and add Twitter sentiment data."""
         if not tweets:
             return
 
         # Extract text and metadata
-        texts = [tweet['text'] for tweet in tweets]
-        weights = [
-            1.0 + (tweet.get('metrics', {}).get('like_count', 0) / 100)
-            for tweet in tweets
-        ]
+        texts = [tweet["text"] for tweet in tweets]
+        weights = [1.0 + (tweet.get("metrics", {}).get("like_count", 0) / 100) for tweet in tweets]
 
         # Analyze aggregate sentiment
         aggregate_score = self.analyzer.get_aggregate_sentiment(texts, weights)
@@ -467,21 +491,20 @@ class GameSentimentTracker:
         # Team-specific sentiment
         for team in self.teams:
             team_tweets = [
-                tweet['text'] for tweet in tweets
-                if team.lower() in tweet['text'].lower()
+                tweet["text"] for tweet in tweets if team.lower() in tweet["text"].lower()
             ]
 
             if team_tweets:
                 team_score = self.analyzer.get_aggregate_sentiment(team_tweets)
                 self.team_sentiment[team].add_value(timestamp, team_score.overall_score)
 
-    def add_espn_data(self, espn_data: Dict[str, Any]) -> None:
+    def add_espn_data(self, espn_data: dict[str, Any]) -> None:
         """Process and add ESPN momentum data."""
         timestamp = datetime.now()
 
         # Extract momentum from ESPN data
-        momentum_home = espn_data.get('momentum_home', 0.0)
-        momentum_away = espn_data.get('momentum_away', 0.0)
+        momentum_home = espn_data.get("momentum_home", 0.0)
+        momentum_away = espn_data.get("momentum_away", 0.0)
 
         # Use overall momentum as ESPN sentiment
         overall_momentum = (momentum_home + momentum_away) / 2
@@ -492,7 +515,7 @@ class GameSentimentTracker:
             self.team_sentiment[self.teams[0]].add_value(timestamp, momentum_home)
             self.team_sentiment[self.teams[1]].add_value(timestamp, momentum_away)
 
-    def get_current_sentiment(self) -> Dict[str, Any]:
+    def get_current_sentiment(self) -> dict[str, Any]:
         """Get current comprehensive sentiment metrics."""
         now = datetime.now()
 
@@ -500,30 +523,32 @@ class GameSentimentTracker:
         twitter_weight = 0.6
         espn_weight = 0.4
 
-        twitter_current = self.twitter_sentiment.values[-1] if self.twitter_sentiment.values else 0.0
+        twitter_current = (
+            self.twitter_sentiment.values[-1] if self.twitter_sentiment.values else 0.0
+        )
         espn_current = self.espn_momentum.values[-1] if self.espn_momentum.values else 0.0
 
-        combined_score = (twitter_current * twitter_weight + espn_current * espn_weight)
+        combined_score = twitter_current * twitter_weight + espn_current * espn_weight
         self.combined_sentiment.add_value(now, combined_score)
 
         return {
-            'timestamp': now,
-            'twitter_sentiment': twitter_current,
-            'espn_momentum': espn_current,
-            'combined_sentiment': combined_score,
-            'twitter_trend': self.twitter_sentiment.get_trend(5),
-            'espn_trend': self.espn_momentum.get_trend(5),
-            'combined_trend': self.combined_sentiment.get_trend(5),
-            'twitter_volatility': self.twitter_sentiment.get_volatility(5),
-            'sentiment_strength': self._classify_sentiment(combined_score),
-            'team_sentiment': {
+            "timestamp": now,
+            "twitter_sentiment": twitter_current,
+            "espn_momentum": espn_current,
+            "combined_sentiment": combined_score,
+            "twitter_trend": self.twitter_sentiment.get_trend(5),
+            "espn_trend": self.espn_momentum.get_trend(5),
+            "combined_trend": self.combined_sentiment.get_trend(5),
+            "twitter_volatility": self.twitter_sentiment.get_volatility(5),
+            "sentiment_strength": self._classify_sentiment(combined_score),
+            "team_sentiment": {
                 team: {
-                    'current': ts.values[-1] if ts.values else 0.0,
-                    'trend': ts.get_trend(5),
-                    'volatility': ts.get_volatility(5)
+                    "current": ts.values[-1] if ts.values else 0.0,
+                    "trend": ts.get_trend(5),
+                    "volatility": ts.get_volatility(5),
                 }
                 for team, ts in self.team_sentiment.items()
-            }
+            },
         }
 
     def _classify_sentiment(self, score: float) -> str:
@@ -549,15 +574,15 @@ class GameSentimentTracker:
         current = self.get_current_sentiment()
 
         # Factors that increase signal strength
-        magnitude = abs(current['combined_sentiment'])
-        trend_strength = abs(current['combined_trend'])
-        volatility = current['twitter_volatility']
+        magnitude = abs(current["combined_sentiment"])
+        trend_strength = abs(current["combined_trend"])
+        volatility = current["twitter_volatility"]
 
         # Strong sentiment with strong trend and low volatility = high signal
         signal_strength = (
-            magnitude * 0.5 +
-            trend_strength * 0.3 +
-            max(0, 0.5 - volatility) * 0.2  # Lower volatility = higher confidence
+            magnitude * 0.5
+            + trend_strength * 0.3
+            + max(0, 0.5 - volatility) * 0.2  # Lower volatility = higher confidence
         )
 
         return min(1.0, signal_strength)
@@ -565,8 +590,7 @@ class GameSentimentTracker:
 
 # Factory function for easy setup
 def create_sentiment_analyzer(
-    engine: str = "combined",
-    custom_words: Optional[Dict[str, float]] = None
+    engine: str = "combined", custom_words: dict[str, float] | None = None
 ) -> SentimentAnalyzer:
     """
     Create sentiment analyzer with specified configuration.
@@ -592,7 +616,7 @@ if __name__ == "__main__":
         "What an amazing touchdown! Best play of the game!",
         "Terrible fumble, this team is playing awful",
         "Great defensive play, they're dominating the field",
-        "Missed field goal, another disappointing performance"
+        "Missed field goal, another disappointing performance",
     ]
 
     for text in test_texts:

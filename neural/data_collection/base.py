@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Dict, Any, Optional, List
 from dataclasses import dataclass
-import asyncio
+from typing import Any
 
 
 @dataclass
 class DataSourceConfig:
     """Configuration for data sources."""
+
     name: str
-    config: Optional[Dict[str, Any]] = None
+    config: dict[str, Any] | None = None
 
 
 class BaseDataSource(ABC):
@@ -30,7 +30,7 @@ class BaseDataSource(ABC):
         pass
 
     @abstractmethod
-    async def _subscribe_impl(self, channels: List[str]) -> bool:
+    async def _subscribe_impl(self, channels: list[str]) -> bool:
         """Implementation-specific subscription logic."""
         pass
 
@@ -50,7 +50,7 @@ class BaseDataSource(ABC):
 class DataSource(ABC):
     """Base class for all data sources in the neural SDK."""
 
-    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, config: dict[str, Any] | None = None):
         self.name = name
         self.config = config or {}
         self._connected = False

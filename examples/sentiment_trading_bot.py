@@ -14,39 +14,44 @@ Usage:
     python examples/sentiment_trading_bot.py --game-id 401547439 --teams "Baltimore Ravens,Detroit Lions"
 """
 
-import asyncio
 import argparse
-import logging
+import asyncio
 import json
+import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 import signal
 
 # Add the neural package to the path
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
-from neural.trading.client import TradingClient
-from neural.data_collection.aggregator import create_aggregator, AggregatedData
-from neural.analysis.strategies.sentiment_strategy import create_sentiment_strategy, SentimentTradingConfig
-from neural.analysis.sentiment import create_sentiment_analyzer
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 import pandas as pd
+
+from neural.analysis.strategies.sentiment_strategy import (
+    SentimentTradingConfig,
+    create_sentiment_strategy,
+)
+from neural.data_collection.aggregator import AggregatedData, create_aggregator
+from neural.trading.client import TradingClient
 
 
 @dataclass
 class TradingBotConfig:
     """Configuration for the sentiment trading bot."""
+
     # Game/Market Configuration
     game_id: str
-    teams: List[str]
-    market_tickers: Dict[str, str]
+    teams: list[str]
+    market_tickers: dict[str, str]
 
     # API Keys and Credentials
     twitter_api_key: str
-    kalshi_api_key: Optional[str] = None
-    kalshi_private_key: Optional[str] = None
+    kalshi_api_key: str | None = None
+    kalshi_private_key: str | None = None
 
     # Trading Configuration
     initial_capital: float = 1000.0
@@ -86,16 +91,16 @@ class SentimentTradingBot:
         self.logger = logging.getLogger("SentimentTradingBot")
 
         # Initialize components
-        self.trading_client: Optional[TradingClient] = None
+        self.trading_client: TradingClient | None = None
         self.data_aggregator = None
         self.sentiment_strategy = None
 
         # State tracking
         self.running = False
-        self.start_time: Optional[datetime] = None
-        self.positions: List[Dict[str, Any]] = []
-        self.trade_history: List[Dict[str, Any]] = []
-        self.performance_metrics: Dict[str, Any] = {}
+        self.start_time: datetime | None = None
+        self.positions: list[dict[str, Any]] = []
+        self.trade_history: list[dict[str, Any]] = []
+        self.performance_metrics: dict[str, Any] = {}
 
         # Setup logging
         self._setup_logging()
@@ -104,11 +109,13 @@ class SentimentTradingBot:
         """Configure logging for the bot."""
         logging.basicConfig(
             level=getattr(logging, self.config.log_level.upper()),
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
-                logging.FileHandler(f'sentiment_bot_{self.config.game_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
-                logging.StreamHandler()
-            ]
+                logging.FileHandler(
+                    f'sentiment_bot_{self.config.game_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+                ),
+                logging.StreamHandler(),
+            ],
         )
 
     async def initialize(self):
@@ -120,7 +127,11 @@ class SentimentTradingBot:
             if not self.config.dry_run and self.config.kalshi_api_key:
                 self.trading_client = TradingClient(
                     api_key_id=self.config.kalshi_api_key,
-                    private_key_pem=self.config.kalshi_private_key.encode() if self.config.kalshi_private_key else None
+                    private_key_pem=(
+                        self.config.kalshi_private_key.encode()
+                        if self.config.kalshi_private_key
+                        else None
+                    ),
                 )
                 self.logger.info("Trading client initialized for live trading")
             else:
@@ -135,7 +146,7 @@ class SentimentTradingBot:
                 kalshi_enabled=True,
                 twitter_interval=self.config.twitter_poll_interval,
                 espn_interval=self.config.espn_poll_interval,
-                kalshi_interval=self.config.kalshi_poll_interval
+                kalshi_interval=self.config.kalshi_poll_interval,
             )
 
             # Initialize sentiment trading strategy
@@ -144,13 +155,13 @@ class SentimentTradingBot:
                 min_edge=0.03,
                 min_sentiment_strength=self.config.min_sentiment_strength,
                 sentiment_divergence_threshold=self.config.sentiment_divergence_threshold,
-                min_confidence_threshold=self.config.min_confidence_threshold
+                min_confidence_threshold=self.config.min_confidence_threshold,
             )
 
             self.sentiment_strategy = create_sentiment_strategy(
                 teams=self.config.teams,
                 market_tickers=self.config.market_tickers,
-                **strategy_config.__dict__
+                **strategy_config.__dict__,
             )
 
             # Register data handler
@@ -181,10 +192,14 @@ class SentimentTradingBot:
             # Start data aggregation
             await self.data_aggregator.start(
                 twitter_api_key=self.config.twitter_api_key,
-                kalshi_config={
-                    "api_key": self.config.kalshi_api_key,
-                    "private_key": self.config.kalshi_private_key
-                } if self.config.kalshi_api_key else None
+                kalshi_config=(
+                    {
+                        "api_key": self.config.kalshi_api_key,
+                        "private_key": self.config.kalshi_private_key,
+                    }
+                    if self.config.kalshi_api_key
+                    else None
+                ),
             )
 
             # Main trading loop
@@ -203,15 +218,23 @@ class SentimentTradingBot:
         while self.running:
             try:
                 # Check runtime limit
-                if self.start_time and (datetime.now() - self.start_time).total_seconds() / 3600 > self.config.max_runtime_hours:
+                if (
+                    self.start_time
+                    and (datetime.now() - self.start_time).total_seconds() / 3600
+                    > self.config.max_runtime_hours
+                ):
                     self.logger.info("Maximum runtime reached, stopping bot")
                     break
 
                 # Get current aggregator state
                 current_state = await self.data_aggregator.get_current_state()
 
-                if current_state['signal_strength'] > 0.3:  # Only process if we have reasonable signal strength
-                    self.logger.info(f"Processing trading signals (signal strength: {current_state['signal_strength']:.3f})")
+                if (
+                    current_state["signal_strength"] > 0.3
+                ):  # Only process if we have reasonable signal strength
+                    self.logger.info(
+                        f"Processing trading signals (signal strength: {current_state['signal_strength']:.3f})"
+                    )
 
                 # Sleep between iterations
                 await asyncio.sleep(15)  # Process every 15 seconds
@@ -234,8 +257,10 @@ class SentimentTradingBot:
             # Run strategy analysis
             signal = asyncio.run(self.sentiment_strategy.analyze(market_data, data))
 
-            if signal and signal.signal_type.value != 'hold':
-                self.logger.info(f"Generated signal: {signal.signal_type.value} for {signal.market_id}")
+            if signal and signal.signal_type.value != "hold":
+                self.logger.info(
+                    f"Generated signal: {signal.signal_type.value} for {signal.market_id}"
+                )
                 self.logger.info(f"  Confidence: {signal.confidence:.3f}")
                 self.logger.info(f"  Position Size: {signal.recommended_size:.3f}")
                 self.logger.info(f"  Strategy: {signal.metadata.get('strategy_type', 'unknown')}")
@@ -258,19 +283,23 @@ class SentimentTradingBot:
         # In practice, you'd extract actual market prices from Kalshi data
 
         market_data = {
-            'timestamp': [data.timestamp],
+            "timestamp": [data.timestamp],
             f'{data.teams[0].lower().replace(" ", "_")}_price': [0.5],  # Mock price
             f'{data.teams[1].lower().replace(" ", "_")}_price': [0.5],  # Mock price
-            'volume': [1000],
-            'spread': [0.02]
+            "volume": [1000],
+            "spread": [0.02],
         }
 
         # Add sentiment-derived pricing if available
         if data.sentiment_metrics:
-            sentiment = data.sentiment_metrics.get('combined_sentiment', 0.0)
+            sentiment = data.sentiment_metrics.get("combined_sentiment", 0.0)
             # Adjust prices based on sentiment
-            market_data[f'{data.teams[0].lower().replace(" ", "_")}_price'][0] = max(0.01, min(0.99, 0.5 + sentiment * 0.3))
-            market_data[f'{data.teams[1].lower().replace(" ", "_")}_price'][0] = max(0.01, min(0.99, 0.5 - sentiment * 0.3))
+            market_data[f'{data.teams[0].lower().replace(" ", "_")}_price'][0] = max(
+                0.01, min(0.99, 0.5 + sentiment * 0.3)
+            )
+            market_data[f'{data.teams[1].lower().replace(" ", "_")}_price'][0] = max(
+                0.01, min(0.99, 0.5 - sentiment * 0.3)
+            )
 
         return pd.DataFrame(market_data)
 
@@ -290,15 +319,15 @@ class SentimentTradingBot:
             # For now, just log the intended trade
 
             trade_record = {
-                'timestamp': datetime.now(),
-                'signal_type': signal.signal_type.value,
-                'market_id': signal.market_id,
-                'position_size': signal.recommended_size,
-                'position_value': position_value,
-                'confidence': signal.confidence,
-                'strategy_type': signal.metadata.get('strategy_type'),
-                'sentiment_score': data.sentiment_metrics.get('combined_sentiment', 0.0),
-                'executed': True
+                "timestamp": datetime.now(),
+                "signal_type": signal.signal_type.value,
+                "market_id": signal.market_id,
+                "position_size": signal.recommended_size,
+                "position_value": position_value,
+                "confidence": signal.confidence,
+                "strategy_type": signal.metadata.get("strategy_type"),
+                "sentiment_score": data.sentiment_metrics.get("combined_sentiment", 0.0),
+                "executed": True,
             }
 
             self.trade_history.append(trade_record)
@@ -317,9 +346,11 @@ class SentimentTradingBot:
         self.logger.info(f"Position Size: {signal.recommended_size:.1%} (${position_value:.2f})")
         self.logger.info(f"Confidence: {signal.confidence:.1%}")
         self.logger.info(f"Strategy: {signal.metadata.get('strategy_type', 'unknown')}")
-        self.logger.info(f"Sentiment Score: {data.sentiment_metrics.get('combined_sentiment', 0.0):.3f}")
+        self.logger.info(
+            f"Sentiment Score: {data.sentiment_metrics.get('combined_sentiment', 0.0):.3f}"
+        )
 
-        if signal.metadata.get('sentiment_score'):
+        if signal.metadata.get("sentiment_score"):
             self.logger.info(f"Sentiment Details: {signal.metadata}")
 
         self.logger.info("=====================================")
@@ -327,14 +358,14 @@ class SentimentTradingBot:
     def _record_signal(self, signal, data: AggregatedData):
         """Record signal for analysis."""
         signal_record = {
-            'timestamp': datetime.now(),
-            'signal_type': signal.signal_type.value,
-            'market_id': signal.market_id,
-            'confidence': signal.confidence,
-            'recommended_size': signal.recommended_size,
-            'strategy_type': signal.metadata.get('strategy_type'),
-            'sentiment_score': data.sentiment_metrics.get('combined_sentiment', 0.0),
-            'signal_strength': data.metadata.get('signal_strength', 0.0)
+            "timestamp": datetime.now(),
+            "signal_type": signal.signal_type.value,
+            "market_id": signal.market_id,
+            "confidence": signal.confidence,
+            "recommended_size": signal.recommended_size,
+            "strategy_type": signal.metadata.get("strategy_type"),
+            "sentiment_score": data.sentiment_metrics.get("combined_sentiment", 0.0),
+            "signal_strength": data.metadata.get("signal_strength", 0.0),
         }
 
         # Add to strategy's signal history
@@ -359,19 +390,23 @@ class SentimentTradingBot:
 
     async def _generate_final_report(self):
         """Generate a final performance report."""
-        runtime = (datetime.now() - self.start_time).total_seconds() / 3600 if self.start_time else 0
+        runtime = (
+            (datetime.now() - self.start_time).total_seconds() / 3600 if self.start_time else 0
+        )
 
         report = {
-            'runtime_hours': runtime,
-            'total_signals': len(self.sentiment_strategy.signal_history),
-            'total_trades': len(self.trade_history),
-            'strategy_metrics': self.sentiment_strategy.get_strategy_metrics(),
+            "runtime_hours": runtime,
+            "total_signals": len(self.sentiment_strategy.signal_history),
+            "total_trades": len(self.trade_history),
+            "strategy_metrics": self.sentiment_strategy.get_strategy_metrics(),
         }
 
         # Signal type breakdown
         if self.sentiment_strategy.signal_history:
-            signal_types = [s.get('strategy_type', 'unknown') for s in self.sentiment_strategy.signal_history]
-            report['signal_breakdown'] = {
+            signal_types = [
+                s.get("strategy_type", "unknown") for s in self.sentiment_strategy.signal_history
+            ]
+            report["signal_breakdown"] = {
                 stype: signal_types.count(stype) for stype in set(signal_types)
             }
 
@@ -380,29 +415,37 @@ class SentimentTradingBot:
         self.logger.info(f"Signals Generated: {report['total_signals']}")
         self.logger.info(f"Trades Executed: {report['total_trades']}")
 
-        if report.get('signal_breakdown'):
+        if report.get("signal_breakdown"):
             self.logger.info("Signal Type Breakdown:")
-            for stype, count in report['signal_breakdown'].items():
+            for stype, count in report["signal_breakdown"].items():
                 self.logger.info(f"  {stype}: {count}")
 
         # Save detailed report to file
         report_file = f"sentiment_bot_report_{self.config.game_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(report, f, indent=2, default=str)
 
         self.logger.info(f"Detailed report saved to: {report_file}")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current bot status."""
-        runtime = (datetime.now() - self.start_time).total_seconds() / 3600 if self.start_time else 0
+        runtime = (
+            (datetime.now() - self.start_time).total_seconds() / 3600 if self.start_time else 0
+        )
 
         return {
-            'running': self.running,
-            'runtime_hours': runtime,
-            'signals_generated': len(self.sentiment_strategy.signal_history) if self.sentiment_strategy else 0,
-            'trades_executed': len(self.trade_history),
-            'current_positions': len(self.positions),
-            'aggregator_state': asyncio.run(self.data_aggregator.get_current_state()) if self.data_aggregator else None
+            "running": self.running,
+            "runtime_hours": runtime,
+            "signals_generated": (
+                len(self.sentiment_strategy.signal_history) if self.sentiment_strategy else 0
+            ),
+            "trades_executed": len(self.trade_history),
+            "current_positions": len(self.positions),
+            "aggregator_state": (
+                asyncio.run(self.data_aggregator.get_current_state())
+                if self.data_aggregator
+                else None
+            ),
         }
 
 
@@ -422,16 +465,26 @@ def parse_args():
     # Trading configuration
     parser.add_argument("--initial-capital", type=float, default=1000.0, help="Initial capital")
     parser.add_argument("--max-position-size", type=float, default=0.1, help="Max position size")
-    parser.add_argument("--dry-run", action="store_true", default=True, help="Run without executing trades")
-    parser.add_argument("--live", action="store_true", help="Run with live trading (overrides dry-run)")
+    parser.add_argument(
+        "--dry-run", action="store_true", default=True, help="Run without executing trades"
+    )
+    parser.add_argument(
+        "--live", action="store_true", help="Run with live trading (overrides dry-run)"
+    )
 
     # Strategy configuration
-    parser.add_argument("--min-sentiment-strength", type=float, default=0.3, help="Min sentiment strength")
-    parser.add_argument("--min-confidence", type=float, default=0.6, help="Min confidence threshold")
+    parser.add_argument(
+        "--min-sentiment-strength", type=float, default=0.3, help="Min sentiment strength"
+    )
+    parser.add_argument(
+        "--min-confidence", type=float, default=0.6, help="Min confidence threshold"
+    )
 
     # Operational
     parser.add_argument("--max-runtime-hours", type=float, default=4.0, help="Max runtime in hours")
-    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument(
+        "--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"]
+    )
 
     return parser.parse_args()
 
@@ -441,7 +494,7 @@ async def main():
     args = parse_args()
 
     # Parse teams
-    teams = [team.strip() for team in args.teams.split(',')]
+    teams = [team.strip() for team in args.teams.split(",")]
 
     # Create market tickers mapping (this would be configured based on actual markets)
     market_tickers = {
@@ -452,7 +505,7 @@ async def main():
     # Load private key if provided
     kalshi_private_key = None
     if args.kalshi_private_key:
-        with open(args.kalshi_private_key, 'r') as f:
+        with open(args.kalshi_private_key) as f:
             kalshi_private_key = f.read()
 
     # Create configuration
@@ -469,7 +522,7 @@ async def main():
         min_confidence_threshold=args.min_confidence,
         max_runtime_hours=args.max_runtime_hours,
         log_level=args.log_level,
-        dry_run=args.dry_run and not args.live  # Live overrides dry-run
+        dry_run=args.dry_run and not args.live,  # Live overrides dry-run
     )
 
     # Create and run bot

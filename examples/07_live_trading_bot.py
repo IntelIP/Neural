@@ -6,17 +6,14 @@ Complete automated trading bot using the Neural SDK analysis stack.
 """
 
 import asyncio
+from datetime import datetime
+
 import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, Optional
-from neural.data_collection import KalshiMarketsSource, get_game_markets
-from neural.analysis.strategies import (
-    MeanReversionStrategy,
-    ArbitrageStrategy,
-    create_strategy
-)
+
 from neural.analysis.execution import OrderManager
 from neural.analysis.risk import PositionSizer
+from neural.analysis.strategies import ArbitrageStrategy, MeanReversionStrategy
+from neural.data_collection import KalshiMarketsSource, get_game_markets
 from neural.trading import TradingClient
 
 
@@ -31,7 +28,7 @@ class TradingBot:
         initial_capital: float = 1000,
         max_positions: int = 10,
         risk_per_trade: float = 0.02,
-        dry_run: bool = True
+        dry_run: bool = True,
     ):
         """
         Initialize trading bot.
@@ -51,31 +48,26 @@ class TradingBot:
 
         # Initialize strategies
         self.strategies = {
-            'mean_reversion': MeanReversionStrategy(
+            "mean_reversion": MeanReversionStrategy(
                 initial_capital=initial_capital,
                 max_position_size=risk_per_trade * 2,
                 divergence_threshold=0.05,
-                stop_loss=0.2
+                stop_loss=0.2,
             ),
-            'arbitrage': ArbitrageStrategy(
-                initial_capital=initial_capital,
-                min_arbitrage_profit=0.01,
-                speed_priority=True
-            )
+            "arbitrage": ArbitrageStrategy(
+                initial_capital=initial_capital, min_arbitrage_profit=0.01, speed_priority=True
+            ),
         }
 
         # Initialize order manager
         self.order_manager = OrderManager(
             trading_client=trading_client if not dry_run else None,
             dry_run=dry_run,
-            require_confirmation=False
+            require_confirmation=False,
         )
 
         # Position sizer
-        self.position_sizer = PositionSizer(
-            initial_capital=initial_capital,
-            default_method="kelly"
-        )
+        self.position_sizer = PositionSizer(initial_capital=initial_capital, default_method="kelly")
 
         # Performance tracking
         self.start_time = datetime.now()
@@ -87,11 +79,7 @@ class TradingBot:
         """Scan for tradeable markets"""
         print("🔍 Scanning markets...")
 
-        source = KalshiMarketsSource(
-            series_ticker="KXNFLGAME",
-            status=None,
-            use_authenticated=True
-        )
+        source = KalshiMarketsSource(series_ticker="KXNFLGAME", status=None, use_authenticated=True)
 
         markets_df = await source.fetch()
 
@@ -102,11 +90,7 @@ class TradingBot:
 
         return markets_df
 
-    async def analyze_market(
-        self,
-        event_ticker: str,
-        strategy_name: str
-    ) -> Optional[Dict]:
+    async def analyze_market(self, event_ticker: str, strategy_name: str) -> dict | None:
         """
         Analyze a single market with specified strategy.
 
@@ -125,12 +109,14 @@ class TradingBot:
                 return None
 
             # Prepare data
-            market_df = pd.DataFrame({
-                'ticker': market_data['ticker'],
-                'yes_ask': market_data['yes_ask'] / 100,
-                'no_ask': market_data['no_ask'] / 100,
-                'volume': market_data['volume']
-            })
+            market_df = pd.DataFrame(
+                {
+                    "ticker": market_data["ticker"],
+                    "yes_ask": market_data["yes_ask"] / 100,
+                    "no_ask": market_data["no_ask"] / 100,
+                    "volume": market_data["volume"],
+                }
+            )
 
             # Get strategy
             strategy = self.strategies.get(strategy_name)
@@ -138,17 +124,17 @@ class TradingBot:
                 return None
 
             # Check for arbitrage first (special case)
-            if strategy_name == 'arbitrage':
+            if strategy_name == "arbitrage":
                 # Quick YES+NO check
                 latest = market_df.iloc[-1]
-                total_cost = latest['yes_ask'] + latest['no_ask']
+                total_cost = latest["yes_ask"] + latest["no_ask"]
                 if total_cost < 0.99:  # Arbitrage opportunity
                     signal = strategy.analyze(market_df)
                     return {
-                        'event': event_ticker,
-                        'strategy': strategy_name,
-                        'signal': signal,
-                        'arbitrage_profit': 1.0 - total_cost
+                        "event": event_ticker,
+                        "strategy": strategy_name,
+                        "signal": signal,
+                        "arbitrage_profit": 1.0 - total_cost,
                     }
 
             # Regular strategy analysis
@@ -156,10 +142,10 @@ class TradingBot:
 
             if signal.type.value != "hold":
                 return {
-                    'event': event_ticker,
-                    'strategy': strategy_name,
-                    'signal': signal,
-                    'market_data': market_df.iloc[-1].to_dict()
+                    "event": event_ticker,
+                    "strategy": strategy_name,
+                    "signal": signal,
+                    "market_data": market_df.iloc[-1].to_dict(),
                 }
 
         except Exception as e:
@@ -167,9 +153,9 @@ class TradingBot:
 
         return None
 
-    async def execute_trades(self, analysis: Dict) -> bool:
+    async def execute_trades(self, analysis: dict) -> bool:
         """Execute trade from analysis"""
-        signal = analysis['signal']
+        signal = analysis["signal"]
 
         # Risk checks
         if len(self.order_manager.active_positions) >= self.max_positions:
@@ -180,9 +166,9 @@ class TradingBot:
         original_size = signal.size
         adjusted_size = self.position_sizer.calculate_size(
             method="kelly",
-            edge=signal.metadata.get('edge', 0.03) if signal.metadata else 0.03,
+            edge=signal.metadata.get("edge", 0.03) if signal.metadata else 0.03,
             odds=1.0,
-            kelly_fraction=0.25
+            kelly_fraction=0.25,
         )
 
         # Apply risk limit
@@ -192,7 +178,7 @@ class TradingBot:
 
         signal.size = adjusted_size
 
-        print(f"\n💰 Executing Trade:")
+        print("\n💰 Executing Trade:")
         print(f"  Strategy: {analysis['strategy']}")
         print(f"  Market: {signal.ticker}")
         print(f"  Action: {signal.type.value}")
@@ -202,12 +188,12 @@ class TradingBot:
         # Execute order
         result = await self.order_manager.execute_signal(signal)
 
-        if result and result.get('status') != 'failed':
+        if result and result.get("status") != "failed":
             self.total_trades += 1
-            print(f"  ✅ Order executed")
+            print("  ✅ Order executed")
             return True
         else:
-            print(f"  ❌ Order failed")
+            print("  ❌ Order failed")
             return False
 
     async def monitor_positions(self):
@@ -223,11 +209,9 @@ class TradingBot:
                 if strategy.should_close_position(position):
                     print(f"  Closing {ticker}: Hit stop/target")
                     from neural.analysis.strategies.base import Signal, SignalType
+
                     close_signal = Signal(
-                        type=SignalType.CLOSE,
-                        ticker=ticker,
-                        size=0,
-                        confidence=1.0
+                        type=SignalType.CLOSE, ticker=ticker, size=0, confidence=1.0
                     )
                     await self.order_manager.execute_signal(close_signal)
 
@@ -250,7 +234,7 @@ class TradingBot:
             return
 
         # Get unique events
-        events = markets_df['event_ticker'].unique()
+        events = markets_df["event_ticker"].unique()
 
         # Analyze each event with each strategy
         opportunities = []
@@ -271,9 +255,7 @@ class TradingBot:
 
             # Sort by confidence or arbitrage profit
             opportunities.sort(
-                key=lambda x: x.get('arbitrage_profit', 0) or
-                             x['signal'].confidence,
-                reverse=True
+                key=lambda x: x.get("arbitrage_profit", 0) or x["signal"].confidence, reverse=True
             )
 
             # Execute top opportunities
@@ -306,12 +288,14 @@ class TradingBot:
         print(f"  Total P&L: ${self.total_pnl:.2f}")
         print(f"  Portfolio Value: ${portfolio['total_value']:.2f}")
 
-        if portfolio['active_positions']:
+        if portfolio["active_positions"]:
             print("\n  Active Positions:")
-            for ticker, pos in portfolio['active_positions'].items():
-                print(f"    {ticker}: {pos['side']} x{pos['size']} "
-                      f"@ ${pos['entry_price']:.2f} "
-                      f"(P&L: ${pos['pnl']:.2f})")
+            for ticker, pos in portfolio["active_positions"].items():
+                print(
+                    f"    {ticker}: {pos['side']} x{pos['size']} "
+                    f"@ ${pos['entry_price']:.2f} "
+                    f"(P&L: ${pos['pnl']:.2f})"
+                )
 
     async def run(self, cycles: int = None, interval: int = 60):
         """
@@ -329,7 +313,7 @@ class TradingBot:
 
         if not self.dry_run:
             confirm = input("\n⚠️ LIVE TRADING MODE - Continue? (y/n): ")
-            if confirm.lower() != 'y':
+            if confirm.lower() != "y":
                 print("Cancelled.")
                 return
 
@@ -349,7 +333,7 @@ class TradingBot:
 
         finally:
             # Final summary
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("📊 Final Summary:")
             self.display_status()
 
@@ -375,7 +359,7 @@ async def main():
         initial_capital=1000,
         max_positions=5,
         risk_per_trade=0.02,
-        dry_run=True  # Set to False for live trading
+        dry_run=True,  # Set to False for live trading
     )
 
     # Run bot for 3 cycles with 30 second intervals (demo)

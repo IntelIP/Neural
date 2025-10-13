@@ -5,14 +5,15 @@ Provides an authenticated HTTP client for making requests to the Kalshi API
 using the KalshiSigner for request signing.
 """
 
-import requests
-from typing import Optional, Dict, Any
 import logging
 from time import sleep
+from typing import Any
 from urllib.parse import urljoin
 
+import requests
+
+from neural.auth.env import get_api_key_id, get_base_url, get_private_key_material
 from neural.auth.signers.kalshi import KalshiSigner
-from neural.auth.env import get_api_key_id, get_private_key_material, get_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ class KalshiHTTPClient:
 
     def __init__(
         self,
-        api_key_id: Optional[str] = None,
-        private_key_pem: Optional[bytes] = None,
-        base_url: Optional[str] = None,
+        api_key_id: str | None = None,
+        private_key_pem: bytes | None = None,
+        base_url: str | None = None,
         timeout: int = 30,
-        max_retries: int = 3
+        max_retries: int = 3,
     ):
         """
         Initialize the Kalshi HTTP client.
@@ -64,10 +65,10 @@ class KalshiHTTPClient:
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        retry_count: int = 0
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        retry_count: int = 0,
+    ) -> dict[str, Any]:
         """
         Make an authenticated HTTP request to Kalshi API.
 
@@ -82,8 +83,8 @@ class KalshiHTTPClient:
             Response data as dictionary
         """
         # Ensure path starts with /
-        if not path.startswith('/'):
-            path = f'/{path}'
+        if not path.startswith("/"):
+            path = f"/{path}"
 
         # Build full URL
         url = urljoin(self.base_url, f"/trade-api/v2{path}")
@@ -92,10 +93,7 @@ class KalshiHTTPClient:
         auth_headers = self.signer.headers(method, f"/trade-api/v2{path}")
 
         # Prepare headers
-        headers = {
-            **auth_headers,
-            'Content-Type': 'application/json'
-        }
+        headers = {**auth_headers, "Content-Type": "application/json"}
 
         try:
             # Make request
@@ -106,19 +104,17 @@ class KalshiHTTPClient:
                 headers=headers,
                 params=params,
                 json=json_data,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
 
             # Handle rate limiting
             if response.status_code == 429:
                 if retry_count < self.max_retries:
                     # Get retry-after header if available
-                    retry_after = int(response.headers.get('Retry-After', 2))
+                    retry_after = int(response.headers.get("Retry-After", 2))
                     logger.warning(f"Rate limited, retrying after {retry_after} seconds...")
                     sleep(retry_after)
-                    return self._make_request(
-                        method, path, params, json_data, retry_count + 1
-                    )
+                    return self._make_request(method, path, params, json_data, retry_count + 1)
                 else:
                     logger.error(f"Max retries exceeded for {method} {path}")
                     response.raise_for_status()
@@ -134,10 +130,8 @@ class KalshiHTTPClient:
         except requests.exceptions.Timeout:
             if retry_count < self.max_retries:
                 logger.warning(f"Request timeout, retry {retry_count + 1}/{self.max_retries}")
-                sleep(2 ** retry_count)  # Exponential backoff
-                return self._make_request(
-                    method, path, params, json_data, retry_count + 1
-                )
+                sleep(2**retry_count)  # Exponential backoff
+                return self._make_request(method, path, params, json_data, retry_count + 1)
             else:
                 logger.error(f"Request timeout after {self.max_retries} retries")
                 raise
@@ -146,7 +140,7 @@ class KalshiHTTPClient:
             logger.error(f"Request failed: {e}")
             raise
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Make a GET request to the Kalshi API.
 
@@ -157,14 +151,14 @@ class KalshiHTTPClient:
         Returns:
             Response data as dictionary
         """
-        return self._make_request('GET', path, params=params)
+        return self._make_request("GET", path, params=params)
 
     def post(
         self,
         path: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        json_data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Make a POST request to the Kalshi API.
 
@@ -176,16 +170,16 @@ class KalshiHTTPClient:
         Returns:
             Response data as dictionary
         """
-        return self._make_request('POST', path, params=params, json_data=json_data)
+        return self._make_request("POST", path, params=params, json_data=json_data)
 
     def get_trades(
         self,
         ticker: str,
-        min_ts: Optional[int] = None,
-        max_ts: Optional[int] = None,
+        min_ts: int | None = None,
+        max_ts: int | None = None,
         limit: int = 1000,
-        cursor: Optional[str] = None
-    ) -> Dict[str, Any]:
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
         """
         Get historical trades for a market.
 
@@ -199,28 +193,20 @@ class KalshiHTTPClient:
         Returns:
             API response with trades data
         """
-        params = {
-            'ticker': ticker,
-            'limit': min(limit, 1000)
-        }
+        params = {"ticker": ticker, "limit": min(limit, 1000)}
 
         if min_ts is not None:
-            params['min_ts'] = min_ts
+            params["min_ts"] = min_ts
         if max_ts is not None:
-            params['max_ts'] = max_ts
+            params["max_ts"] = max_ts
         if cursor is not None:
-            params['cursor'] = cursor
+            params["cursor"] = cursor
 
-        return self.get('/markets/trades', params=params)
+        return self.get("/markets/trades", params=params)
 
     def get_market_candlesticks(
-        self,
-        series_ticker: str,
-        ticker: str,
-        start_ts: int,
-        end_ts: int,
-        period_interval: int
-    ) -> Dict[str, Any]:
+        self, series_ticker: str, ticker: str, start_ts: int, end_ts: int, period_interval: int
+    ) -> dict[str, Any]:
         """
         Get candlestick data for a specific market.
 
@@ -234,22 +220,14 @@ class KalshiHTTPClient:
         Returns:
             API response with candlestick data
         """
-        path = f'/series/{series_ticker}/markets/{ticker}/candlesticks'
-        params = {
-            'start_ts': start_ts,
-            'end_ts': end_ts,
-            'period_interval': period_interval
-        }
+        path = f"/series/{series_ticker}/markets/{ticker}/candlesticks"
+        params = {"start_ts": start_ts, "end_ts": end_ts, "period_interval": period_interval}
 
         return self.get(path, params=params)
 
     def get_event_candlesticks(
-        self,
-        ticker: str,
-        start_ts: int,
-        end_ts: int,
-        period_interval: int
-    ) -> Dict[str, Any]:
+        self, ticker: str, start_ts: int, end_ts: int, period_interval: int
+    ) -> dict[str, Any]:
         """
         Get aggregated candlestick data for an event.
 
@@ -262,12 +240,8 @@ class KalshiHTTPClient:
         Returns:
             API response with event candlestick data
         """
-        path = f'/events/{ticker}/candlesticks'
-        params = {
-            'start_ts': start_ts,
-            'end_ts': end_ts,
-            'period_interval': period_interval
-        }
+        path = f"/events/{ticker}/candlesticks"
+        params = {"start_ts": start_ts, "end_ts": end_ts, "period_interval": period_interval}
 
         return self.get(path, params=params)
 

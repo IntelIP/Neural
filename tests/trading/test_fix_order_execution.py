@@ -5,11 +5,13 @@ Test FIX API Order Execution for Seahawks vs Cardinals
 
 import asyncio
 from datetime import datetime
-from typing import Dict, Any
-from dotenv import load_dotenv
+from typing import Any
+
 import simplefix
-from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
+from dotenv import load_dotenv
+
 from neural.auth.env import get_api_key_id, get_private_key_material
+from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
 
 load_dotenv()
 
@@ -29,30 +31,30 @@ class OrderExecutionTester:
 
         msg_dict = KalshiFIXClient.to_dict(message)
         msg_type = msg_dict.get(35)
-        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
-        if msg_type == 'A':  # Logon
+        if msg_type == "A":  # Logon
             self.connected = True
             print(f"[{timestamp}] ✅ FIX LOGON successful - Ready for trading")
 
-        elif msg_type == '8':  # Execution Report
+        elif msg_type == "8":  # Execution Report
             self._handle_execution_report(timestamp, msg_dict)
 
-        elif msg_type == '9':  # Order Cancel Reject
+        elif msg_type == "9":  # Order Cancel Reject
             self._handle_cancel_reject(timestamp, msg_dict)
 
-        elif msg_type == '3':  # Reject
+        elif msg_type == "3":  # Reject
             reason = msg_dict.get(58, "Unknown reason")
             print(f"[{timestamp}] ❌ REJECT: {reason}")
 
-        elif msg_type == '5':  # Logout
+        elif msg_type == "5":  # Logout
             self.connected = False
             print(f"[{timestamp}] 👋 Logout acknowledged")
 
-        elif msg_type == '0':  # Heartbeat
+        elif msg_type == "0":  # Heartbeat
             print(f"[{timestamp}] 💓 Heartbeat")
 
-    def _handle_execution_report(self, timestamp: str, msg: Dict[int, Any]) -> None:
+    def _handle_execution_report(self, timestamp: str, msg: dict[int, Any]) -> None:
         """Handle execution reports (order updates)"""
         cl_order_id = msg.get(11)  # ClOrdID
         order_id = msg.get(37)  # OrderID
@@ -68,27 +70,27 @@ class OrderExecutionTester:
 
         # Map status codes to readable strings
         status_map = {
-            '0': 'NEW',
-            '1': 'PARTIALLY_FILLED',
-            '2': 'FILLED',
-            '4': 'CANCELLED',
-            '6': 'PENDING_CANCEL',
-            '8': 'REJECTED',
-            'C': 'EXPIRED'
+            "0": "NEW",
+            "1": "PARTIALLY_FILLED",
+            "2": "FILLED",
+            "4": "CANCELLED",
+            "6": "PENDING_CANCEL",
+            "8": "REJECTED",
+            "C": "EXPIRED",
         }
 
         exec_type_map = {
-            '0': 'NEW',
-            '4': 'CANCELLED',
-            '8': 'REJECTED',
-            'C': 'EXPIRED',
-            'F': 'TRADE',
-            'I': 'ORDER_STATUS'
+            "0": "NEW",
+            "4": "CANCELLED",
+            "8": "REJECTED",
+            "C": "EXPIRED",
+            "F": "TRADE",
+            "I": "ORDER_STATUS",
         }
 
         status_text = status_map.get(status, status)
         exec_type_text = exec_type_map.get(exec_type, exec_type)
-        side_text = "BUY" if side == '1' else "SELL"
+        side_text = "BUY" if side == "1" else "SELL"
 
         # Convert price from cents to dollars
         price_dollars = float(price) / 100 if price else 0
@@ -111,45 +113,47 @@ class OrderExecutionTester:
             print(f"  Remaining: {leaves_qty}")
 
         # Store execution report
-        self.execution_reports.append({
-            'timestamp': datetime.now(),
-            'cl_order_id': cl_order_id,
-            'order_id': order_id,
-            'symbol': symbol,
-            'side': side_text,
-            'price': price_dollars,
-            'quantity': qty,
-            'status': status_text,
-            'exec_type': exec_type_text
-        })
+        self.execution_reports.append(
+            {
+                "timestamp": datetime.now(),
+                "cl_order_id": cl_order_id,
+                "order_id": order_id,
+                "symbol": symbol,
+                "side": side_text,
+                "price": price_dollars,
+                "quantity": qty,
+                "status": status_text,
+                "exec_type": exec_type_text,
+            }
+        )
 
         # Update order tracking
         self.orders[cl_order_id] = {
-            'status': status_text,
-            'order_id': order_id,
-            'filled': cum_qty or 0
+            "status": status_text,
+            "order_id": order_id,
+            "filled": cum_qty or 0,
         }
 
         # Alert on fills
-        if exec_type == 'F':
-            print(f"  ✅ FILL CONFIRMED!")
+        if exec_type == "F":
+            print("  ✅ FILL CONFIRMED!")
 
         # Alert on rejects
-        if status == '8':
+        if status == "8":
             reject_reason = msg.get(103)  # OrdRejReason
             print(f"  ❌ ORDER REJECTED: {reject_reason}")
 
-    def _handle_cancel_reject(self, timestamp: str, msg: Dict[int, Any]) -> None:
+    def _handle_cancel_reject(self, timestamp: str, msg: dict[int, Any]) -> None:
         """Handle order cancel rejection"""
         cl_order_id = msg.get(11)
         reason = msg.get(102)  # CxlRejReason
-        response_to = msg.get(434)  # CxlRejResponseTo
+        msg.get(434)  # CxlRejResponseTo
 
         reason_map = {
-            '1': 'Unknown order',
-            '2': 'Broker Option',
-            '3': 'Order already pending cancel',
-            '6': 'Duplicate ClOrdID'
+            "1": "Unknown order",
+            "2": "Broker Option",
+            "3": "Order already pending cancel",
+            "6": "Duplicate ClOrdID",
         }
 
         reason_text = reason_map.get(reason, reason)
@@ -162,11 +166,11 @@ class OrderExecutionTester:
 async def test_order_placement():
     """Test placing orders via FIX API"""
     print("🎯 FIX Order Execution Test")
-    print("="*60)
+    print("=" * 60)
 
     # Get credentials
     api_key = get_api_key_id()
-    private_key_pem = get_private_key_material()
+    get_private_key_material()
 
     print(f"📔 Using API Key: {api_key[:10]}...")
 
@@ -177,14 +181,11 @@ async def test_order_placement():
     config = FIXConnectionConfig(
         heartbeat_interval=30,
         reset_seq_num=True,
-        cancel_on_disconnect=False  # Keep orders alive for testing
+        cancel_on_disconnect=False,  # Keep orders alive for testing
     )
 
     # Create FIX client
-    client = KalshiFIXClient(
-        config=config,
-        on_message=tester.handle_message
-    )
+    client = KalshiFIXClient(config=config, on_message=tester.handle_message)
 
     try:
         # Connect to FIX gateway
@@ -198,21 +199,21 @@ async def test_order_placement():
             print("❌ Failed to establish FIX session")
             return
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔧 TESTING ORDER EXECUTION")
-        print("="*60)
+        print("=" * 60)
 
         # Markets for Seahawks vs Cardinals
         sea_symbol = "KXNFLGAME-25SEP25SEAARI-SEA"
         ari_symbol = "KXNFLGAME-25SEP25SEAARI-ARI"
 
         # Test 1: Place a small limit order (IOC to avoid leaving orders)
-        print(f"\n📝 TEST 1: Placing limit order for Seattle...")
+        print("\n📝 TEST 1: Placing limit order for Seattle...")
         print(f"  Symbol: {sea_symbol}")
-        print(f"  Side: BUY")
-        print(f"  Price: $0.45 (45% probability)")
-        print(f"  Quantity: 1 contract")
-        print(f"  Time in Force: IOC (Immediate or Cancel)")
+        print("  Side: BUY")
+        print("  Price: $0.45 (45% probability)")
+        print("  Quantity: 1 contract")
+        print("  Time in Force: IOC (Immediate or Cancel)")
 
         test_order_id = f"TEST_SEA_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
@@ -223,19 +224,19 @@ async def test_order_placement():
             quantity=1,
             price=45,  # 45 cents = $0.45
             order_type="limit",
-            time_in_force="ioc"  # Immediate or cancel - won't leave order open
+            time_in_force="ioc",  # Immediate or cancel - won't leave order open
         )
 
         # Wait for execution report
         await asyncio.sleep(3)
 
         # Test 2: Place a sell order
-        print(f"\n📝 TEST 2: Placing sell order for Arizona...")
+        print("\n📝 TEST 2: Placing sell order for Arizona...")
         print(f"  Symbol: {ari_symbol}")
-        print(f"  Side: SELL")
-        print(f"  Price: $0.55 (55% probability)")
-        print(f"  Quantity: 1 contract")
-        print(f"  Time in Force: IOC")
+        print("  Side: SELL")
+        print("  Price: $0.55 (55% probability)")
+        print("  Quantity: 1 contract")
+        print("  Time in Force: IOC")
 
         test_order_id_2 = f"TEST_ARI_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
@@ -246,15 +247,15 @@ async def test_order_placement():
             quantity=1,
             price=55,  # 55 cents = $0.55
             order_type="limit",
-            time_in_force="ioc"
+            time_in_force="ioc",
         )
 
         # Wait for execution report
         await asyncio.sleep(3)
 
         # Test 3: Test order cancellation (if we have a GTC order)
-        print(f"\n📝 TEST 3: Testing order cancellation...")
-        print(f"  Placing GTC order to test cancellation...")
+        print("\n📝 TEST 3: Testing order cancellation...")
+        print("  Placing GTC order to test cancellation...")
 
         test_order_id_3 = f"TEST_CANCEL_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
@@ -265,7 +266,7 @@ async def test_order_placement():
             quantity=1,
             price=40,  # Low price unlikely to fill
             order_type="limit",
-            time_in_force="gtc"  # Good till cancelled
+            time_in_force="gtc",  # Good till cancelled
         )
 
         # Wait for order confirmation
@@ -277,16 +278,16 @@ async def test_order_placement():
             cl_order_id=f"CANCEL_{test_order_id_3}",
             orig_cl_order_id=test_order_id_3,
             symbol=sea_symbol,
-            side="buy"
+            side="buy",
         )
 
         # Wait for cancel confirmation
         await asyncio.sleep(2)
 
         # Print summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📊 ORDER EXECUTION TEST SUMMARY")
-        print("="*60)
+        print("=" * 60)
         print(f"Total messages received: {tester.message_count}")
         print(f"Orders placed: {len(tester.orders)}")
         print(f"Execution reports: {len(tester.execution_reports)}")
@@ -306,6 +307,7 @@ async def test_order_placement():
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         await client.close()
@@ -314,7 +316,7 @@ async def test_order_placement():
 async def test_order_status():
     """Test querying order status"""
     print("\n📋 Testing Order Status Query")
-    print("="*60)
+    print("=" * 60)
 
     config = FIXConnectionConfig(reset_seq_num=True)
     tester = OrderExecutionTester()
@@ -330,7 +332,7 @@ async def test_order_status():
             await client.order_status_request(
                 cl_order_id=f"STATUS_REQ_{datetime.now().strftime('%Y%m%d%H%M%S')}",
                 symbol="*",  # All symbols
-                side="buy"
+                side="buy",
             )
 
             await asyncio.sleep(3)

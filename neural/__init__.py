@@ -17,12 +17,13 @@ __author__ = "Neural Contributors"
 __license__ = "MIT"
 
 import warnings
-from typing import Set
+from typing import Set  # noqa: UP035
 
 # Track which experimental features have been used
-_experimental_features_used: Set[str] = set()
+_experimental_features_used: set[str] = set()
 
-def _warn_experimental(feature: str, module: str = None) -> None:
+
+def _warn_experimental(feature: str, module: str | None = None) -> None:
     """Issue a warning for experimental features."""
     if feature not in _experimental_features_used:
         _experimental_features_used.add(feature)
@@ -32,28 +33,27 @@ def _warn_experimental(feature: str, module: str = None) -> None:
             "Use with caution in production environments. "
             "See https://github.com/IntelIP/Neural#module-status for details.",
             UserWarning,
-            stacklevel=3
+            stacklevel=3,
         )
+
 
 def _warn_beta() -> None:
     """Issue a one-time beta warning."""
-    if not hasattr(_warn_beta, '_warned'):
+    if not hasattr(_warn_beta, "_warned"):
         warnings.warn(
             f"⚠️  Neural SDK Beta v{__version__} is in BETA. "
             "Core features are stable, but advanced modules are experimental. "
             "See https://github.com/IntelIP/Neural#module-status for details.",
             UserWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         _warn_beta._warned = True
+
 
 # Issue beta warning on import
 _warn_beta()
 
-from neural import auth
-from neural import data_collection
-from neural import analysis
-from neural import trading
+from neural import analysis, auth, data_collection, trading
 
 __all__ = [
     "__version__",

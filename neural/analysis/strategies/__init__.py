@@ -4,11 +4,11 @@ Neural Analysis Strategies
 Pre-built trading strategies for Kalshi sports markets.
 """
 
-from .base import Strategy, Signal, SignalType, Position
-from .mean_reversion import MeanReversionStrategy, SportsbookArbitrageStrategy
-from .momentum import MomentumStrategy, GameMomentumStrategy
 from .arbitrage import ArbitrageStrategy, HighSpeedArbitrageStrategy
-from .news_based import NewsBasedStrategy, BreakingNewsStrategy
+from .base import Position, Signal, SignalType, Strategy
+from .mean_reversion import MeanReversionStrategy, SportsbookArbitrageStrategy
+from .momentum import GameMomentumStrategy, MomentumStrategy
+from .news_based import BreakingNewsStrategy, NewsBasedStrategy
 
 __all__ = [
     # Base classes
@@ -16,19 +16,15 @@ __all__ = [
     "Signal",
     "SignalType",
     "Position",
-
     # Mean Reversion
     "MeanReversionStrategy",
     "SportsbookArbitrageStrategy",
-
     # Momentum
     "MomentumStrategy",
     "GameMomentumStrategy",
-
     # Arbitrage
     "ArbitrageStrategy",
     "HighSpeedArbitrageStrategy",
-
     # News Based
     "NewsBasedStrategy",
     "BreakingNewsStrategy",
@@ -42,8 +38,8 @@ STRATEGY_PRESETS = {
             "divergence_threshold": 0.08,
             "max_position_size": 0.05,
             "stop_loss": 0.2,
-            "min_edge": 0.05
-        }
+            "min_edge": 0.05,
+        },
     },
     "momentum": {
         "class": MomentumStrategy,
@@ -51,24 +47,20 @@ STRATEGY_PRESETS = {
             "lookback_periods": 10,
             "momentum_threshold": 0.1,
             "use_rsi": True,
-            "max_position_size": 0.1
-        }
+            "max_position_size": 0.1,
+        },
     },
     "arbitrage": {
         "class": ArbitrageStrategy,
         "params": {
             "min_arbitrage_profit": 0.01,
             "max_exposure_per_arb": 0.3,
-            "speed_priority": True
-        }
+            "speed_priority": True,
+        },
     },
     "news": {
         "class": NewsBasedStrategy,
-        "params": {
-            "sentiment_threshold": 0.65,
-            "news_decay_minutes": 30,
-            "min_social_volume": 100
-        }
+        "params": {"sentiment_threshold": 0.65, "news_decay_minutes": 30, "min_social_volume": 100},
     },
     "aggressive": {
         "class": GameMomentumStrategy,
@@ -76,17 +68,13 @@ STRATEGY_PRESETS = {
             "event_window": 5,
             "fade_blowouts": True,
             "max_position_size": 0.2,
-            "min_edge": 0.02
-        }
+            "min_edge": 0.02,
+        },
     },
     "high_frequency": {
         "class": HighSpeedArbitrageStrategy,
-        "params": {
-            "fixed_size": 100,
-            "pre_calculate_size": True,
-            "latency_threshold_ms": 50
-        }
-    }
+        "params": {"fixed_size": 100, "pre_calculate_size": True, "latency_threshold_ms": 50},
+    },
 }
 
 

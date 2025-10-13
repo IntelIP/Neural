@@ -11,10 +11,10 @@ Realistic portfolio simulation for paper trading with:
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class Position:
     current_price: float = 0.0
     side: str = "long"  # "long" or "short"
     timestamp: datetime = field(default_factory=datetime.now)
-    market_name: Optional[str] = None
+    market_name: str | None = None
 
     @property
     def market_value(self) -> float:
@@ -67,7 +67,7 @@ class Position:
             self.avg_cost = price
             self.quantity = quantity
         else:
-            total_cost = (self.cost_basis + abs(quantity) * price)
+            total_cost = self.cost_basis + abs(quantity) * price
             total_quantity = abs(self.quantity) + abs(quantity)
             self.avg_cost = total_cost / total_quantity
             self.quantity += quantity
@@ -96,16 +96,16 @@ class Trade:
     symbol: str
     market_name: str
     action: str  # "BUY", "SELL"
-    side: str   # "yes", "no"
+    side: str  # "yes", "no"
     quantity: int
     price: float
     commission: float = 0.0
     slippage: float = 0.0
     value: float = field(init=False)
-    realized_pnl: Optional[float] = None
-    sentiment_score: Optional[float] = None
-    confidence: Optional[float] = None
-    strategy: Optional[str] = None
+    realized_pnl: float | None = None
+    sentiment_score: float | None = None
+    confidence: float | None = None
+    strategy: str | None = None
 
     def __post_init__(self):
         """Calculate trade value."""
@@ -134,7 +134,7 @@ class PaperPortfolio:
         self,
         initial_capital: float,
         commission_per_trade: float = 0.50,
-        default_slippage_pct: float = 0.002
+        default_slippage_pct: float = 0.002,
     ):
         """
         Initialize paper trading portfolio.
@@ -149,9 +149,9 @@ class PaperPortfolio:
         self.commission_per_trade = commission_per_trade
         self.default_slippage_pct = default_slippage_pct
 
-        self.positions: Dict[str, Position] = {}
-        self.trade_history: List[Trade] = []
-        self.daily_portfolio_values: List[Tuple[datetime, float]] = []
+        self.positions: dict[str, Position] = {}
+        self.trade_history: list[Trade] = []
+        self.daily_portfolio_values: list[tuple[datetime, float]] = []
 
         # Performance tracking
         self.total_commission_paid = 0.0
@@ -205,12 +205,12 @@ class PaperPortfolio:
             self.positions[symbol].update_price(new_price)
             self._update_max_drawdown()
 
-    def update_all_position_prices(self, price_updates: Dict[str, float]) -> None:
+    def update_all_position_prices(self, price_updates: dict[str, float]) -> None:
         """Update prices for multiple positions."""
         for symbol, price in price_updates.items():
             self.update_position_price(symbol, price)
 
-    def get_position(self, symbol: str) -> Optional[Position]:
+    def get_position(self, symbol: str) -> Position | None:
         """Get position for a specific symbol."""
         return self.positions.get(symbol)
 
@@ -219,7 +219,9 @@ class PaperPortfolio:
         position = self.positions.get(symbol)
         return position is not None and position.quantity != 0
 
-    def can_afford_trade(self, quantity: int, price: float, commission: float = None) -> bool:
+    def can_afford_trade(
+        self, quantity: int, price: float, commission: float | None = None
+    ) -> bool:
         """Check if portfolio has enough cash for a trade."""
         if commission is None:
             commission = self.commission_per_trade
@@ -239,10 +241,10 @@ class PaperPortfolio:
         side: str,
         quantity: int,
         price: float,
-        sentiment_score: Optional[float] = None,
-        confidence: Optional[float] = None,
-        strategy: Optional[str] = None
-    ) -> Tuple[bool, str, Optional[Trade]]:
+        sentiment_score: float | None = None,
+        confidence: float | None = None,
+        strategy: str | None = None,
+    ) -> tuple[bool, str, Trade | None]:
         """
         Execute a paper trade.
 
@@ -285,7 +287,7 @@ class PaperPortfolio:
                         avg_cost=0.0,
                         current_price=price,
                         side="long",
-                        market_name=market_name
+                        market_name=market_name,
                     )
 
                 self.positions[symbol].add_quantity(quantity, price)
@@ -323,7 +325,7 @@ class PaperPortfolio:
                 realized_pnl=realized_pnl,
                 sentiment_score=sentiment_score,
                 confidence=confidence,
-                strategy=strategy
+                strategy=strategy,
             )
 
             self.trade_history.append(trade)
@@ -350,7 +352,7 @@ class PaperPortfolio:
         if current_drawdown > self.max_drawdown:
             self.max_drawdown = current_drawdown
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Calculate comprehensive performance metrics."""
         total_trades = len(self.trade_history)
         winning_trades = len([t for t in self.trade_history if (t.realized_pnl or 0) > 0])
@@ -362,49 +364,53 @@ class PaperPortfolio:
         wins = [t.realized_pnl for t in self.trade_history if (t.realized_pnl or 0) > 0]
         losses = [t.realized_pnl for t in self.trade_history if (t.realized_pnl or 0) < 0]
 
-        avg_win = sum(wins) / len(wins) if wins else 0
-        avg_loss = sum(losses) / len(losses) if losses else 0
+        # Filter out None values and convert to float
+        wins_clean = [float(w) for w in wins if w is not None]
+        losses_clean = [float(loss) for loss in losses if loss is not None]
+
+        avg_win = sum(wins_clean) / len(wins_clean) if wins_clean else 0
+        avg_loss = sum(losses_clean) / len(losses_clean) if losses_clean else 0
 
         # Profit factor
-        total_wins = sum(wins) if wins else 0
-        total_losses = abs(sum(losses)) if losses else 0
-        profit_factor = total_wins / total_losses if total_losses > 0 else float('inf')
+        total_wins = sum(wins_clean) if wins_clean else 0
+        total_losses = abs(sum(losses_clean)) if losses_clean else 0
+        profit_factor = total_wins / total_losses if total_losses > 0 else float("inf")
 
         return {
-            'total_portfolio_value': self.total_portfolio_value,
-            'cash': self.cash,
-            'position_value': self.total_position_value,
-            'total_pnl': self.total_pnl,
-            'realized_pnl': self.realized_pnl,
-            'unrealized_pnl': self.unrealized_pnl,
-            'total_return_pct': self.total_return_pct,
-            'max_drawdown': self.max_drawdown * 100,
-            'total_trades': total_trades,
-            'winning_trades': winning_trades,
-            'losing_trades': losing_trades,
-            'win_rate': win_rate,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'profit_factor': profit_factor,
-            'total_commission_paid': self.total_commission_paid,
-            'total_slippage_paid': self.total_slippage_paid,
-            'position_count': self.position_count,
-            'max_portfolio_value': self.max_portfolio_value
+            "total_portfolio_value": self.total_portfolio_value,
+            "cash": self.cash,
+            "position_value": self.total_position_value,
+            "total_pnl": self.total_pnl,
+            "realized_pnl": self.realized_pnl,
+            "unrealized_pnl": self.unrealized_pnl,
+            "total_return_pct": self.total_return_pct,
+            "max_drawdown": self.max_drawdown * 100,
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
+            "win_rate": win_rate,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "profit_factor": profit_factor,
+            "total_commission_paid": self.total_commission_paid,
+            "total_slippage_paid": self.total_slippage_paid,
+            "position_count": self.position_count,
+            "max_portfolio_value": self.max_portfolio_value,
         }
 
-    def get_positions_summary(self) -> List[Dict[str, Any]]:
+    def get_positions_summary(self) -> list[dict[str, Any]]:
         """Get summary of all positions."""
         return [
             {
-                'symbol': pos.symbol,
-                'market_name': pos.market_name,
-                'quantity': pos.quantity,
-                'avg_cost': pos.avg_cost,
-                'current_price': pos.current_price,
-                'market_value': pos.market_value,
-                'unrealized_pnl': pos.unrealized_pnl,
-                'unrealized_pnl_pct': pos.unrealized_pnl_pct,
-                'side': pos.side
+                "symbol": pos.symbol,
+                "market_name": pos.market_name,
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": pos.current_price,
+                "market_value": pos.market_value,
+                "unrealized_pnl": pos.unrealized_pnl,
+                "unrealized_pnl_pct": pos.unrealized_pnl_pct,
+                "side": pos.side,
             }
             for pos in self.positions.values()
             if pos.quantity != 0
@@ -414,17 +420,17 @@ class PaperPortfolio:
         """Save portfolio state to JSON file."""
         try:
             data = {
-                'timestamp': datetime.now().isoformat(),
-                'initial_capital': self.initial_capital,
-                'current_cash': self.cash,
-                'performance_metrics': self.get_performance_metrics(),
-                'positions': [asdict(pos) for pos in self.positions.values()],
-                'trade_history': [asdict(trade) for trade in self.trade_history],
-                'daily_values': [(dt.isoformat(), val) for dt, val in self.daily_portfolio_values]
+                "timestamp": datetime.now().isoformat(),
+                "initial_capital": self.initial_capital,
+                "current_cash": self.cash,
+                "performance_metrics": self.get_performance_metrics(),
+                "positions": [asdict(pos) for pos in self.positions.values()],
+                "trade_history": [asdict(trade) for trade in self.trade_history],
+                "daily_values": [(dt.isoformat(), val) for dt, val in self.daily_portfolio_values],
             }
 
             Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
             logger.info(f"Portfolio saved to {file_path}")
@@ -435,30 +441,29 @@ class PaperPortfolio:
     def load_from_file(self, file_path: str) -> bool:
         """Load portfolio state from JSON file."""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 data = json.load(f)
 
-            self.initial_capital = data['initial_capital']
-            self.cash = data['current_cash']
+            self.initial_capital = data["initial_capital"]
+            self.cash = data["current_cash"]
 
             # Restore positions
             self.positions = {}
-            for pos_data in data['positions']:
-                pos_data['timestamp'] = datetime.fromisoformat(pos_data['timestamp'])
+            for pos_data in data["positions"]:
+                pos_data["timestamp"] = datetime.fromisoformat(pos_data["timestamp"])
                 pos = Position(**pos_data)
                 self.positions[pos.symbol] = pos
 
             # Restore trade history
             self.trade_history = []
-            for trade_data in data['trade_history']:
-                trade_data['timestamp'] = datetime.fromisoformat(trade_data['timestamp'])
+            for trade_data in data["trade_history"]:
+                trade_data["timestamp"] = datetime.fromisoformat(trade_data["timestamp"])
                 trade = Trade(**trade_data)
                 self.trade_history.append(trade)
 
             # Restore daily values
             self.daily_portfolio_values = [
-                (datetime.fromisoformat(dt), val)
-                for dt, val in data['daily_values']
+                (datetime.fromisoformat(dt), val) for dt, val in data["daily_values"]
             ]
 
             logger.info(f"Portfolio loaded from {file_path}")
@@ -486,6 +491,15 @@ class PaperPortfolio:
             f"  Win Rate: {metrics['win_rate']:.1f}%\n"
             f"  Max Drawdown: {metrics['max_drawdown']:.2f}%"
         )
-    def get_portfolio_metrics(self) -> Dict[str, float]:
+
+    def get_portfolio_metrics(self) -> dict[str, float]:
         """Return high-level portfolio metrics for quick inspection."""
-        return {"cash": self.cash, "total_value": self.total_portfolio_value, "unrealized_pnl": self.unrealized_pnl, "realized_pnl": self.realized_pnl, "total_pnl": self.total_pnl, "total_return_pct": self.total_return_pct, "open_positions": self.position_count}
+        return {
+            "cash": self.cash,
+            "total_value": self.total_portfolio_value,
+            "unrealized_pnl": self.unrealized_pnl,
+            "realized_pnl": self.realized_pnl,
+            "total_pnl": self.total_pnl,
+            "total_return_pct": self.total_return_pct,
+            "open_positions": self.position_count,
+        }

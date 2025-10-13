@@ -8,18 +8,19 @@ Provides comprehensive backtesting capabilities with support for:
 - Detailed performance metrics
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Union, Tuple, Any
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 
 @dataclass
 class BacktestResult:
     """Results from a backtest run"""
+
     strategy_name: str
     start_date: datetime
     end_date: datetime
@@ -38,10 +39,10 @@ class BacktestResult:
     avg_loss: float
     profit_factor: float
     total_fees: float
-    trades: List[Dict] = field(default_factory=list)
+    trades: list[dict] = field(default_factory=list)
     equity_curve: pd.Series = field(default_factory=pd.Series)
     daily_returns: pd.Series = field(default_factory=pd.Series)
-    metrics: Dict[str, float] = field(default_factory=dict)
+    metrics: dict[str, float] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return f"""
@@ -77,13 +78,13 @@ class Backtester:
 
     def __init__(
         self,
-        data_source: Optional[Any] = None,
-        espn_source: Optional[Any] = None,
+        data_source: Any | None = None,
+        espn_source: Any | None = None,
         fee_model: str = "kalshi",
         slippage: float = 0.01,  # 1 cent slippage
         commission: float = 0.0,  # Additional commission if any
         initial_capital: float = 1000.0,
-        max_workers: int = 4
+        max_workers: int = 4,
     ):
         """
         Initialize backtesting engine.
@@ -109,11 +110,11 @@ class Backtester:
     def backtest(
         self,
         strategy,
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        markets: Optional[List[str]] = None,
+        start_date: str | datetime,
+        end_date: str | datetime,
+        markets: list[str] | None = None,
         use_espn: bool = False,
-        parallel: bool = False
+        parallel: bool = False,
     ) -> BacktestResult:
         """
         Run backtest for a strategy.
@@ -151,19 +152,16 @@ class Backtester:
         return self._calculate_results(strategy, results, start_date, end_date)
 
     def _run_sequential_backtest(
-        self,
-        strategy,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict]
-    ) -> List[Dict]:
+        self, strategy, market_data: pd.DataFrame, espn_data: dict | None
+    ) -> list[dict]:
         """Run backtest sequentially"""
         trades = []
         positions = {}
         equity_curve = [self.initial_capital]
 
         # Group by timestamp for synchronized processing
-        for timestamp in market_data['timestamp'].unique():
-            current_data = market_data[market_data['timestamp'] == timestamp]
+        for timestamp in market_data["timestamp"].unique():
+            current_data = market_data[market_data["timestamp"] == timestamp]
 
             # Get ESPN data for this timestamp if available
             current_espn = None
@@ -172,62 +170,54 @@ class Backtester:
 
             # Process each market at this timestamp
             for _, market in current_data.iterrows():
-                ticker = market['ticker']
+                ticker = market["ticker"]
 
                 # Update existing positions
                 if ticker in positions:
                     position = positions[ticker]
-                    position.current_price = market['yes_ask'] if position.side == 'yes' else market['no_ask']
+                    position.current_price = (
+                        market["yes_ask"] if position.side == "yes" else market["no_ask"]
+                    )
 
                     # Check exit conditions
                     if strategy.should_close_position(position):
                         # Close position
-                        exit_price = self._apply_slippage(
-                            position.current_price,
-                            'sell'
-                        )
-                        pnl = self._calculate_pnl(
-                            position,
-                            exit_price
-                        )
-                        fees = self._calculate_fees(
-                            exit_price,
-                            position.size
-                        )
+                        exit_price = self._apply_slippage(position.current_price, "sell")
+                        pnl = self._calculate_pnl(position, exit_price)
+                        fees = self._calculate_fees(exit_price, position.size)
                         net_pnl = pnl - fees
 
-                        trades.append({
-                            'timestamp': timestamp,
-                            'ticker': ticker,
-                            'action': 'close',
-                            'side': position.side,
-                            'size': position.size,
-                            'entry_price': position.entry_price,
-                            'exit_price': exit_price,
-                            'pnl': net_pnl,
-                            'fees': fees
-                        })
+                        trades.append(
+                            {
+                                "timestamp": timestamp,
+                                "ticker": ticker,
+                                "action": "close",
+                                "side": position.side,
+                                "size": position.size,
+                                "entry_price": position.entry_price,
+                                "exit_price": exit_price,
+                                "pnl": net_pnl,
+                                "fees": fees,
+                            }
+                        )
 
                         strategy.update_capital(net_pnl)
                         del positions[ticker]
 
                 # Generate new signal
-                signal = strategy.analyze(
-                    current_data,
-                    espn_data=current_espn
-                )
+                signal = strategy.analyze(current_data, espn_data=current_espn)
 
                 # Process signal
-                if signal.type.value in ['buy_yes', 'buy_no'] and strategy.can_open_position():
+                if signal.type.value in ["buy_yes", "buy_no"] and strategy.can_open_position():
                     # Open new position
-                    side = 'yes' if signal.type.value == 'buy_yes' else 'no'
+                    side = "yes" if signal.type.value == "buy_yes" else "no"
                     entry_price = self._apply_slippage(
-                        market['yes_ask'] if side == 'yes' else market['no_ask'],
-                        'buy'
+                        market["yes_ask"] if side == "yes" else market["no_ask"], "buy"
                     )
                     fees = self._calculate_fees(entry_price, signal.size)
 
                     from ..strategies.base import Position
+
                     position = Position(
                         ticker=ticker,
                         side=side,
@@ -235,24 +225,26 @@ class Backtester:
                         entry_price=entry_price,
                         current_price=entry_price,
                         entry_time=timestamp,
-                        metadata=signal.metadata
+                        metadata=signal.metadata,
                     )
 
                     positions[ticker] = position
                     strategy.positions.append(position)
 
-                    trades.append({
-                        'timestamp': timestamp,
-                        'ticker': ticker,
-                        'action': 'open',
-                        'side': side,
-                        'size': signal.size,
-                        'entry_price': entry_price,
-                        'exit_price': None,
-                        'pnl': -fees,  # Initial cost is fees
-                        'fees': fees,
-                        'confidence': signal.confidence
-                    })
+                    trades.append(
+                        {
+                            "timestamp": timestamp,
+                            "ticker": ticker,
+                            "action": "open",
+                            "side": side,
+                            "size": signal.size,
+                            "entry_price": entry_price,
+                            "exit_price": None,
+                            "pnl": -fees,  # Initial cost is fees
+                            "fees": fees,
+                            "confidence": signal.confidence,
+                        }
+                    )
 
                     strategy.update_capital(-entry_price * signal.size - fees)
 
@@ -269,29 +261,28 @@ class Backtester:
             fees = self._calculate_fees(exit_price, position.size)
             net_pnl = pnl - fees
 
-            trades.append({
-                'timestamp': market_data['timestamp'].iloc[-1],
-                'ticker': ticker,
-                'action': 'close',
-                'side': position.side,
-                'size': position.size,
-                'entry_price': position.entry_price,
-                'exit_price': exit_price,
-                'pnl': net_pnl,
-                'fees': fees,
-                'forced_close': True
-            })
+            trades.append(
+                {
+                    "timestamp": market_data["timestamp"].iloc[-1],
+                    "ticker": ticker,
+                    "action": "close",
+                    "side": position.side,
+                    "size": position.size,
+                    "entry_price": position.entry_price,
+                    "exit_price": exit_price,
+                    "pnl": net_pnl,
+                    "fees": fees,
+                    "forced_close": True,
+                }
+            )
 
             strategy.update_capital(net_pnl)
 
         return trades
 
     def _run_parallel_backtest(
-        self,
-        strategy,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict]
-    ) -> List[Dict]:
+        self, strategy, market_data: pd.DataFrame, espn_data: dict | None
+    ) -> list[dict]:
         """Run backtest in parallel (for large datasets)"""
         # Split data into chunks
         chunks = np.array_split(market_data, self.max_workers)
@@ -299,12 +290,7 @@ class Backtester:
         # Process chunks in parallel
         futures = []
         for chunk in chunks:
-            future = self.executor.submit(
-                self._run_sequential_backtest,
-                strategy,
-                chunk,
-                espn_data
-            )
+            future = self.executor.submit(self._run_sequential_backtest, strategy, chunk, espn_data)
             futures.append(future)
 
         # Combine results
@@ -316,10 +302,7 @@ class Backtester:
         return all_trades
 
     def _load_market_data(
-        self,
-        start_date: datetime,
-        end_date: datetime,
-        markets: Optional[List[str]]
+        self, start_date: datetime, end_date: datetime, markets: list[str] | None
     ) -> pd.DataFrame:
         """Load historical market data"""
         if self.data_source:
@@ -330,27 +313,21 @@ class Backtester:
             return self._generate_synthetic_data(start_date, end_date, markets)
 
     def _load_espn_data(
-        self,
-        start_date: datetime,
-        end_date: datetime,
-        markets: Optional[List[str]]
-    ) -> Optional[Dict]:
+        self, start_date: datetime, end_date: datetime, markets: list[str] | None
+    ) -> dict | None:
         """Load ESPN play-by-play data"""
         if self.espn_source:
             return self.espn_source.load(start_date, end_date, markets)
         return None
 
     def _generate_synthetic_data(
-        self,
-        start_date: datetime,
-        end_date: datetime,
-        markets: Optional[List[str]]
+        self, start_date: datetime, end_date: datetime, markets: list[str] | None
     ) -> pd.DataFrame:
         """Generate synthetic market data for testing"""
         if markets is None:
-            markets = ['KXNFLGAME-TEST1', 'KXNFLGAME-TEST2']
+            markets = ["KXNFLGAME-TEST1", "KXNFLGAME-TEST2"]
 
-        dates = pd.date_range(start_date, end_date, freq='5min')
+        dates = pd.date_range(start_date, end_date, freq="5min")
         data = []
 
         for date in dates:
@@ -359,22 +336,24 @@ class Backtester:
                 yes_price = np.random.uniform(0.3, 0.7)
                 spread = np.random.uniform(0.01, 0.05)
 
-                data.append({
-                    'timestamp': date,
-                    'ticker': market,
-                    'yes_bid': yes_price - spread/2,
-                    'yes_ask': yes_price + spread/2,
-                    'no_bid': (1 - yes_price) - spread/2,
-                    'no_ask': (1 - yes_price) + spread/2,
-                    'volume': np.random.randint(100, 10000),
-                    'open_interest': np.random.randint(1000, 50000)
-                })
+                data.append(
+                    {
+                        "timestamp": date,
+                        "ticker": market,
+                        "yes_bid": yes_price - spread / 2,
+                        "yes_ask": yes_price + spread / 2,
+                        "no_bid": (1 - yes_price) - spread / 2,
+                        "no_ask": (1 - yes_price) + spread / 2,
+                        "volume": np.random.randint(100, 10000),
+                        "open_interest": np.random.randint(1000, 50000),
+                    }
+                )
 
         return pd.DataFrame(data)
 
     def _apply_slippage(self, price: float, direction: str) -> float:
         """Apply slippage to execution price"""
-        if direction == 'buy':
+        if direction == "buy":
             return min(price + self.slippage, 0.99)
         else:
             return max(price - self.slippage, 0.01)
@@ -392,17 +371,13 @@ class Backtester:
 
     def _calculate_pnl(self, position, exit_price: float) -> float:
         """Calculate P&L for a position"""
-        if position.side == 'yes':
+        if position.side == "yes":
             return (exit_price - position.entry_price) * position.size
         else:
             return (position.entry_price - exit_price) * position.size
 
     def _calculate_results(
-        self,
-        strategy,
-        trades: List[Dict],
-        start_date: datetime,
-        end_date: datetime
+        self, strategy, trades: list[dict], start_date: datetime, end_date: datetime
     ) -> BacktestResult:
         """Calculate comprehensive backtest results"""
         if not trades:
@@ -424,25 +399,29 @@ class Backtester:
                 avg_win=0,
                 avg_loss=0,
                 profit_factor=0,
-                total_fees=0
+                total_fees=0,
             )
 
         trades_df = pd.DataFrame(trades)
 
         # Calculate metrics
-        total_pnl = trades_df['pnl'].sum()
-        total_fees = trades_df['fees'].sum()
+        total_pnl = trades_df["pnl"].sum()
+        total_fees = trades_df["fees"].sum()
         final_capital = self.initial_capital + total_pnl
 
         # Win/loss statistics
-        completed_trades = trades_df[trades_df['action'] == 'close']
+        completed_trades = trades_df[trades_df["action"] == "close"]
         if len(completed_trades) > 0:
-            wins = completed_trades[completed_trades['pnl'] > 0]
-            losses = completed_trades[completed_trades['pnl'] <= 0]
+            wins = completed_trades[completed_trades["pnl"] > 0]
+            losses = completed_trades[completed_trades["pnl"] <= 0]
             win_rate = len(wins) / len(completed_trades)
-            avg_win = wins['pnl'].mean() if len(wins) > 0 else 0
-            avg_loss = losses['pnl'].mean() if len(losses) > 0 else 0
-            profit_factor = abs(wins['pnl'].sum() / losses['pnl'].sum()) if len(losses) > 0 and losses['pnl'].sum() != 0 else 0
+            avg_win = wins["pnl"].mean() if len(wins) > 0 else 0
+            avg_loss = losses["pnl"].mean() if len(losses) > 0 else 0
+            profit_factor = (
+                abs(wins["pnl"].sum() / losses["pnl"].sum())
+                if len(losses) > 0 and losses["pnl"].sum() != 0
+                else 0
+            )
         else:
             win_rate = 0
             avg_win = 0
@@ -479,45 +458,41 @@ class Backtester:
             max_drawdown_pct=max_drawdown_pct,
             win_rate=win_rate,
             total_trades=len(completed_trades),
-            winning_trades=len(wins) if 'wins' in locals() else 0,
-            losing_trades=len(losses) if 'losses' in locals() else 0,
+            winning_trades=len(wins) if "wins" in locals() else 0,
+            losing_trades=len(losses) if "losses" in locals() else 0,
             avg_win=avg_win,
             avg_loss=avg_loss,
             profit_factor=profit_factor,
             total_fees=total_fees,
             trades=trades,
             equity_curve=equity_curve,
-            daily_returns=daily_returns
+            daily_returns=daily_returns,
         )
 
-    def _build_equity_curve(
-        self,
-        trades_df: pd.DataFrame,
-        initial_capital: float
-    ) -> pd.Series:
+    def _build_equity_curve(self, trades_df: pd.DataFrame, initial_capital: float) -> pd.Series:
         """Build equity curve from trades"""
         if trades_df.empty:
             return pd.Series([initial_capital])
 
         # Sort by timestamp
-        trades_df = trades_df.sort_values('timestamp')
+        trades_df = trades_df.sort_values("timestamp")
 
         # Calculate cumulative P&L
         equity = [initial_capital]
         current = initial_capital
 
         for _, trade in trades_df.iterrows():
-            current += trade['pnl']
+            current += trade["pnl"]
             equity.append(current)
 
         return pd.Series(equity, index=range(len(equity)))
 
     def compare_strategies(
         self,
-        strategies: List,
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        markets: Optional[List[str]] = None
+        strategies: list,
+        start_date: str | datetime,
+        end_date: str | datetime,
+        markets: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Compare multiple strategies on the same data.
@@ -535,14 +510,16 @@ class Backtester:
 
         for strategy in strategies:
             result = self.backtest(strategy, start_date, end_date, markets)
-            results.append({
-                'Strategy': strategy.name,
-                'Total Return (%)': result.total_return_pct,
-                'Sharpe Ratio': result.sharpe_ratio,
-                'Max Drawdown (%)': result.max_drawdown_pct,
-                'Win Rate (%)': result.win_rate * 100,
-                'Total Trades': result.total_trades,
-                'Profit Factor': result.profit_factor
-            })
+            results.append(
+                {
+                    "Strategy": strategy.name,
+                    "Total Return (%)": result.total_return_pct,
+                    "Sharpe Ratio": result.sharpe_ratio,
+                    "Max Drawdown (%)": result.max_drawdown_pct,
+                    "Win Rate (%)": result.win_rate * 100,
+                    "Total Trades": result.total_trades,
+                    "Profit Factor": result.profit_factor,
+                }
+            )
 
-        return pd.DataFrame(results).sort_values('Sharpe Ratio', ascending=False)
+        return pd.DataFrame(results).sort_values("Sharpe Ratio", ascending=False)

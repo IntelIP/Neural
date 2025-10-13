@@ -10,10 +10,10 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+from typing import Any
 
-from .paper_portfolio import PaperPortfolio, Position, Trade
+from .paper_portfolio import PaperPortfolio, Trade
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,11 @@ class PaperOrder:
     action: str  # "buy" or "sell"
     quantity: int
     order_type: str  # "market", "limit"
-    price: Optional[float] = None  # For limit orders
+    price: float | None = None  # For limit orders
     status: str = "pending"  # "pending", "filled", "cancelled"
     created_at: datetime = field(default_factory=datetime.now)
-    filled_at: Optional[datetime] = None
-    filled_price: Optional[float] = None
+    filled_at: datetime | None = None
+    filled_price: float | None = None
     filled_quantity: int = 0
 
 
@@ -52,7 +52,7 @@ class PaperTradingClient:
         commission_per_trade: float = 0.50,
         slippage_pct: float = 0.002,
         save_trades: bool = True,
-        data_dir: str = "paper_trading_data"
+        data_dir: str = "paper_trading_data",
     ):
         """
         Initialize paper trading client.
@@ -67,13 +67,13 @@ class PaperTradingClient:
         self.portfolio = PaperPortfolio(
             initial_capital=initial_capital,
             commission_per_trade=commission_per_trade,
-            default_slippage_pct=slippage_pct
+            default_slippage_pct=slippage_pct,
         )
 
         self.save_trades = save_trades
         self.data_dir = Path(data_dir)
-        self.market_prices: Dict[str, float] = {}  # Cache for market prices
-        self.pending_orders: Dict[str, PaperOrder] = {}
+        self.market_prices: dict[str, float] = {}  # Cache for market prices
+        self.pending_orders: dict[str, PaperOrder] = {}
         self.order_counter = 0
 
         # Create data directory if saving trades
@@ -87,7 +87,7 @@ class PaperTradingClient:
         self.order_counter += 1
         return f"PAPER_{datetime.now().strftime('%Y%m%d')}_{self.order_counter:06d}"
 
-    def _get_market_price(self, market_id: str, side: str) -> Optional[float]:
+    def _get_market_price(self, market_id: str, side: str) -> float | None:
         """
         Get current market price for a market/side.
 
@@ -114,7 +114,7 @@ class PaperTradingClient:
         symbol = f"{market_id}_{side}"
         self.portfolio.update_position_price(symbol, price)
 
-    def update_market_prices(self, price_updates: Dict[str, Dict[str, float]]) -> None:
+    def update_market_prices(self, price_updates: dict[str, dict[str, float]]) -> None:
         """
         Update multiple market prices.
 
@@ -131,12 +131,12 @@ class PaperTradingClient:
         side: str,
         quantity: int,
         order_type: str = "market",
-        price: Optional[float] = None,
-        market_name: Optional[str] = None,
-        sentiment_score: Optional[float] = None,
-        confidence: Optional[float] = None,
-        strategy: Optional[str] = None
-    ) -> Dict[str, Any]:
+        price: float | None = None,
+        market_name: str | None = None,
+        sentiment_score: float | None = None,
+        confidence: float | None = None,
+        strategy: str | None = None,
+    ) -> dict[str, Any]:
         """
         Place a paper trading order.
 
@@ -171,7 +171,7 @@ class PaperTradingClient:
                 action="buy",  # For now, all orders are buys
                 quantity=quantity,
                 order_type=order_type,
-                price=price
+                price=price,
             )
 
             # For market orders, execute immediately
@@ -181,7 +181,7 @@ class PaperTradingClient:
                     return {
                         "success": False,
                         "message": f"No market price available for {market_id} {side}",
-                        "order_id": order_id
+                        "order_id": order_id,
                     }
 
                 # Apply slippage for market orders
@@ -202,7 +202,7 @@ class PaperTradingClient:
                     price=fill_price,
                     sentiment_score=sentiment_score,
                     confidence=confidence,
-                    strategy=strategy
+                    strategy=strategy,
                 )
 
                 if success:
@@ -221,15 +221,11 @@ class PaperTradingClient:
                         "order_id": order_id,
                         "filled_price": fill_price,
                         "filled_quantity": abs(quantity),
-                        "trade": trade
+                        "trade": trade,
                     }
                 else:
                     order.status = "cancelled"
-                    return {
-                        "success": False,
-                        "message": message,
-                        "order_id": order_id
-                    }
+                    return {"success": False, "message": message, "order_id": order_id}
 
             else:  # Limit order
                 self.pending_orders[order_id] = order
@@ -237,23 +233,16 @@ class PaperTradingClient:
                     "success": True,
                     "message": f"Limit order placed: {quantity} {symbol} @ ${price:.3f}",
                     "order_id": order_id,
-                    "status": "pending"
+                    "status": "pending",
                 }
 
         except Exception as e:
             logger.error(f"Error placing order: {e}")
-            return {
-                "success": False,
-                "message": f"Order failed: {str(e)}",
-                "order_id": None
-            }
+            return {"success": False, "message": f"Order failed: {str(e)}", "order_id": None}
 
     def close_position(
-        self,
-        market_id: str,
-        side: str,
-        quantity: Optional[int] = None
-    ) -> Dict[str, Any]:
+        self, market_id: str, side: str, quantity: int | None = None
+    ) -> dict[str, Any]:
         """
         Close a position (sell all or partial).
 
@@ -269,25 +258,19 @@ class PaperTradingClient:
         position = self.portfolio.get_position(symbol)
 
         if not position or position.quantity == 0:
-            return {
-                "success": False,
-                "message": f"No position to close for {symbol}"
-            }
+            return {"success": False, "message": f"No position to close for {symbol}"}
 
         close_quantity = quantity if quantity is not None else position.quantity
         if close_quantity > position.quantity:
             return {
                 "success": False,
-                "message": f"Cannot close {close_quantity}, only have {position.quantity}"
+                "message": f"Cannot close {close_quantity}, only have {position.quantity}",
             }
 
         # Get current market price
         current_price = self._get_market_price(market_id, side)
         if current_price is None:
-            return {
-                "success": False,
-                "message": f"No market price available for {symbol}"
-            }
+            return {"success": False, "message": f"No market price available for {symbol}"}
 
         # Execute the closing trade
         success, message, trade = self.portfolio.execute_trade(
@@ -298,7 +281,7 @@ class PaperTradingClient:
             side=side,
             quantity=close_quantity,
             price=current_price,
-            strategy="position_close"
+            strategy="position_close",
         )
 
         if success and self.save_trades and trade:
@@ -307,38 +290,38 @@ class PaperTradingClient:
         return {
             "success": success,
             "message": message,
-            "realized_pnl": trade.realized_pnl if trade else None
+            "realized_pnl": trade.realized_pnl if trade else None,
         }
 
-    def get_portfolio(self) -> Dict[str, Any]:
+    def get_portfolio(self) -> dict[str, Any]:
         """Get current portfolio status."""
         return self.portfolio.get_performance_metrics()
 
-    def get_positions(self) -> List[Dict[str, Any]]:
+    def get_positions(self) -> list[dict[str, Any]]:
         """Get all current positions."""
         return self.portfolio.get_positions_summary()
 
-    def get_position(self, market_id: str, side: str) -> Optional[Dict[str, Any]]:
+    def get_position(self, market_id: str, side: str) -> dict[str, Any] | None:
         """Get specific position."""
         symbol = f"{market_id}_{side}"
         position = self.portfolio.get_position(symbol)
 
         if position and position.quantity != 0:
             return {
-                'symbol': position.symbol,
-                'market_id': market_id,
-                'side': side,
-                'market_name': position.market_name,
-                'quantity': position.quantity,
-                'avg_cost': position.avg_cost,
-                'current_price': position.current_price,
-                'market_value': position.market_value,
-                'unrealized_pnl': position.unrealized_pnl,
-                'unrealized_pnl_pct': position.unrealized_pnl_pct
+                "symbol": position.symbol,
+                "market_id": market_id,
+                "side": side,
+                "market_name": position.market_name,
+                "quantity": position.quantity,
+                "avg_cost": position.avg_cost,
+                "current_price": position.current_price,
+                "market_value": position.market_value,
+                "unrealized_pnl": position.unrealized_pnl,
+                "unrealized_pnl_pct": position.unrealized_pnl_pct,
             }
         return None
 
-    def get_trade_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_trade_history(self, limit: int | None = None) -> list[dict[str, Any]]:
         """Get trade history."""
         trades = self.portfolio.trade_history
         if limit:
@@ -346,38 +329,38 @@ class PaperTradingClient:
 
         return [
             {
-                'timestamp': trade.timestamp.isoformat(),
-                'market_id': trade.market_id,
-                'symbol': trade.symbol,
-                'market_name': trade.market_name,
-                'action': trade.action,
-                'side': trade.side,
-                'quantity': trade.quantity,
-                'price': trade.price,
-                'value': trade.value,
-                'commission': trade.commission,
-                'slippage': trade.slippage,
-                'realized_pnl': trade.realized_pnl,
-                'sentiment_score': trade.sentiment_score,
-                'confidence': trade.confidence,
-                'strategy': trade.strategy
+                "timestamp": trade.timestamp.isoformat(),
+                "market_id": trade.market_id,
+                "symbol": trade.symbol,
+                "market_name": trade.market_name,
+                "action": trade.action,
+                "side": trade.side,
+                "quantity": trade.quantity,
+                "price": trade.price,
+                "value": trade.value,
+                "commission": trade.commission,
+                "slippage": trade.slippage,
+                "realized_pnl": trade.realized_pnl,
+                "sentiment_score": trade.sentiment_score,
+                "confidence": trade.confidence,
+                "strategy": trade.strategy,
             }
             for trade in trades
         ]
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """Generate comprehensive performance report."""
         metrics = self.portfolio.get_performance_metrics()
         positions = self.portfolio.get_positions_summary()
         recent_trades = self.get_trade_history(limit=10)
 
         return {
-            'timestamp': datetime.now().isoformat(),
-            'portfolio_metrics': metrics,
-            'current_positions': positions,
-            'recent_trades': recent_trades,
-            'pending_orders': len(self.pending_orders),
-            'data_directory': str(self.data_dir) if self.save_trades else None
+            "timestamp": datetime.now().isoformat(),
+            "portfolio_metrics": metrics,
+            "current_positions": positions,
+            "recent_trades": recent_trades,
+            "pending_orders": len(self.pending_orders),
+            "data_directory": str(self.data_dir) if self.save_trades else None,
         }
 
     def _save_trade_data(self, trade: Trade) -> None:
@@ -387,30 +370,30 @@ class PaperTradingClient:
 
         try:
             # Create daily trade file
-            date_str = trade.timestamp.strftime('%Y%m%d')
+            date_str = trade.timestamp.strftime("%Y%m%d")
             trade_file = self.data_dir / f"trades_{date_str}.jsonl"
 
             # Append trade to daily file (JSON Lines format)
             trade_data = {
-                'timestamp': trade.timestamp.isoformat(),
-                'market_id': trade.market_id,
-                'symbol': trade.symbol,
-                'market_name': trade.market_name,
-                'action': trade.action,
-                'side': trade.side,
-                'quantity': trade.quantity,
-                'price': trade.price,
-                'value': trade.value,
-                'commission': trade.commission,
-                'slippage': trade.slippage,
-                'realized_pnl': trade.realized_pnl,
-                'sentiment_score': trade.sentiment_score,
-                'confidence': trade.confidence,
-                'strategy': trade.strategy
+                "timestamp": trade.timestamp.isoformat(),
+                "market_id": trade.market_id,
+                "symbol": trade.symbol,
+                "market_name": trade.market_name,
+                "action": trade.action,
+                "side": trade.side,
+                "quantity": trade.quantity,
+                "price": trade.price,
+                "value": trade.value,
+                "commission": trade.commission,
+                "slippage": trade.slippage,
+                "realized_pnl": trade.realized_pnl,
+                "sentiment_score": trade.sentiment_score,
+                "confidence": trade.confidence,
+                "strategy": trade.strategy,
             }
 
-            with open(trade_file, 'a') as f:
-                f.write(json.dumps(trade_data, default=str) + '\n')
+            with open(trade_file, "a") as f:
+                f.write(json.dumps(trade_data, default=str) + "\n")
 
         except Exception as e:
             logger.error(f"Error saving trade data: {e}")
@@ -421,14 +404,14 @@ class PaperTradingClient:
             return
 
         try:
-            date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             portfolio_file = self.data_dir / f"portfolio_snapshot_{date_str}.json"
             self.portfolio.save_to_file(str(portfolio_file))
 
         except Exception as e:
             logger.error(f"Error saving portfolio snapshot: {e}")
 
-    def reset_portfolio(self, new_initial_capital: Optional[float] = None) -> None:
+    def reset_portfolio(self, new_initial_capital: float | None = None) -> None:
         """Reset portfolio to initial state."""
         initial_capital = new_initial_capital or self.portfolio.initial_capital
 
@@ -437,7 +420,7 @@ class PaperTradingClient:
         self.portfolio = PaperPortfolio(
             initial_capital=initial_capital,
             commission_per_trade=self.portfolio.commission_per_trade,
-            default_slippage_pct=self.portfolio.default_slippage_pct
+            default_slippage_pct=self.portfolio.default_slippage_pct,
         )
 
         self.pending_orders.clear()
@@ -469,7 +452,7 @@ def create_paper_trading_client(
     commission: float = 0.50,
     slippage_pct: float = 0.002,
     save_data: bool = True,
-    data_dir: str = "paper_trading_data"
+    data_dir: str = "paper_trading_data",
 ) -> PaperTradingClient:
     """Create a paper trading client with default settings."""
     return PaperTradingClient(
@@ -477,5 +460,5 @@ def create_paper_trading_client(
         commission_per_trade=commission,
         slippage_pct=slippage_pct,
         save_trades=save_data,
-        data_dir=data_dir
+        data_dir=data_dir,
     )

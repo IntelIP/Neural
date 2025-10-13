@@ -3,6 +3,7 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neural.auth.http_client import KalshiHTTPClient
@@ -16,13 +17,13 @@ print("=" * 60)
 
 try:
     # Get current market data
-    response = client.get(f'/markets/{ticker}')
+    response = client.get(f"/markets/{ticker}")
 
-    print(f"\n✅ Market exists and is accessible")
-    print(f"\nMarket details:")
+    print("\n✅ Market exists and is accessible")
+    print("\nMarket details:")
 
-    if 'market' in response:
-        market = response['market']
+    if "market" in response:
+        market = response["market"]
         print(f"  Ticker: {market.get('ticker')}")
         print(f"  Title: {market.get('title', 'N/A')}")
         print(f"  Status: {market.get('status', 'N/A')}")
@@ -31,8 +32,8 @@ try:
         print(f"  Volume: {market.get('volume', 'N/A'):,}")
         print(f"  Open Interest: {market.get('open_interest', 'N/A'):,}")
 
-        print(f"\n📊 This is REAL live data from Kalshi's production API")
-        print(f"   The historical trades are from the same real market")
+        print("\n📊 This is REAL live data from Kalshi's production API")
+        print("   The historical trades are from the same real market")
     else:
         print(f"  Response: {response}")
 

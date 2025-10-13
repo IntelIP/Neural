@@ -1,16 +1,22 @@
-import asyncio
-import websockets
-from typing import Dict, Any, Optional, AsyncGenerator
 import json
+from collections.abc import AsyncGenerator
+from typing import Any
+
+import websockets
+
 from .base import DataSource
 
 
 class WebSocketSource(DataSource):
     """Data source for WebSocket streams."""
 
-    def __init__(self, name: str, uri: str,
-                 headers: Optional[Dict[str, str]] = None,
-                 config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        name: str,
+        uri: str,
+        headers: dict[str, str] | None = None,
+        config: dict[str, Any] | None = None,
+    ):
         super().__init__(name, config)
         self.uri = uri
         self.headers = headers or {}
@@ -22,7 +28,7 @@ class WebSocketSource(DataSource):
             self.websocket = await websockets.connect(self.uri, extra_headers=self.headers)
             self._connected = True
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to {self.uri}: {e}")
+            raise ConnectionError(f"Failed to connect to {self.uri}: {e}") from e
 
     async def disconnect(self) -> None:
         """Close the WebSocket connection."""
@@ -30,11 +36,11 @@ class WebSocketSource(DataSource):
             await self.websocket.close()
         self._connected = False
 
-    async def collect(self) -> AsyncGenerator[Dict[str, Any], None]:
+    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
         """Listen for messages from the WebSocket."""
         if not self.websocket:
             raise RuntimeError("WebSocket not connected")
-        
+
         async for message in self.websocket:
             try:
                 # Assume JSON messages

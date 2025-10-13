@@ -7,28 +7,31 @@ backtesting support, and seamless integration with the trading stack.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime
-import pandas as pd
-import numpy as np
 from enum import Enum
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 
 @dataclass
 class StrategyConfig:
     """Configuration for strategy parameters"""
+
     max_position_size: float = 0.1  # 10% of capital default
     min_edge: float = 0.03  # 3% minimum edge
     use_kelly: bool = False
     kelly_fraction: float = 0.25
-    stop_loss: Optional[float] = None
-    take_profit: Optional[float] = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
     max_positions: int = 10
     fee_rate: float = 0.0
 
 
 class SignalType(Enum):
     """Trading signal types"""
+
     BUY_YES = "buy_yes"
     BUY_NO = "buy_no"
     SELL_YES = "sell_yes"
@@ -40,17 +43,18 @@ class SignalType(Enum):
 @dataclass
 class Signal:
     """Trading signal with metadata"""
+
     signal_type: SignalType  # Changed from 'type' for clarity
     market_id: str  # Market identifier (ticker)
     recommended_size: float  # Position size as a fraction
     confidence: float
-    edge: Optional[float] = None
-    expected_value: Optional[float] = None
-    max_contracts: Optional[int] = None
-    stop_loss_price: Optional[float] = None
-    take_profit_price: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
-    timestamp: datetime = None
+    edge: float | None = None
+    expected_value: float | None = None
+    max_contracts: int | None = None
+    stop_loss_price: float | None = None
+    take_profit_price: float | None = None
+    metadata: dict[str, Any] | None = None
+    timestamp: datetime | None = None
 
     # Backward compatibility properties
     @property
@@ -80,16 +84,16 @@ class Strategy(ABC):
 
     def __init__(
         self,
-        name: str = None,
+        name: str | None = None,
         initial_capital: float = 1000.0,
         max_position_size: float = 0.1,  # 10% of capital
         min_edge: float = 0.03,  # 3% minimum edge
         use_kelly: bool = False,
         kelly_fraction: float = 0.25,  # Conservative Kelly
-        stop_loss: Optional[float] = None,
-        take_profit: Optional[float] = None,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
         max_positions: int = 10,
-        fee_rate: float = 0.0
+        fee_rate: float = 0.0,
     ):
         """
         Initialize strategy with risk parameters.
@@ -120,25 +124,20 @@ class Strategy(ABC):
         self.fee_rate = fee_rate
 
         # State tracking
-        self.positions: List["Position"] = []
-        self.closed_positions: List["Position"] = []
-        self.signals: List[Signal] = []
-        self.trade_history: List[Dict[str, Any]] = []
+        self.positions: list[Position] = []
+        self.closed_positions: list[Position] = []
+        self.signals: list[Signal] = []
+        self.trade_history: list[dict[str, Any]] = []
 
         # ESPN data integration
-        self.espn_data = None
+        self.espn_data: dict | None = None
         self.use_espn = False
 
         # Sportsbook consensus
-        self.sportsbook_data = None
+        self.sportsbook_data: dict | None = None
 
     @abstractmethod
-    def analyze(
-        self,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        **kwargs
-    ) -> Signal:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Analyze market and generate trading signal.
 
@@ -152,12 +151,7 @@ class Strategy(ABC):
         """
         pass
 
-    def calculate_position_size(
-        self,
-        edge: float,
-        odds: float,
-        confidence: float = 1.0
-    ) -> int:
+    def calculate_position_size(self, edge: float, odds: float, confidence: float = 1.0) -> int:
         """
         Calculate optimal position size based on edge and risk parameters.
 
@@ -182,7 +176,9 @@ class Strategy(ABC):
         else:
             # Fixed percentage based on edge strength
             edge_multiplier = min(edge / self.min_edge, 3.0)  # Cap at 3x
-            position_value = available_capital * self.max_position_size * confidence * edge_multiplier
+            position_value = (
+                available_capital * self.max_position_size * confidence * edge_multiplier
+            )
 
         # Convert to number of contracts (assuming $1 per contract)
         contracts = int(position_value)
@@ -192,10 +188,7 @@ class Strategy(ABC):
         return min(contracts, max_contracts)
 
     def calculate_edge(
-        self,
-        true_probability: float,
-        market_price: float,
-        confidence: float = 1.0
+        self, true_probability: float, market_price: float, confidence: float = 1.0
     ) -> float:
         """
         Calculate trading edge.
@@ -262,9 +255,7 @@ class Strategy(ABC):
         if not self.positions:
             return 0.0
 
-        total_exposure = sum(
-            pos.size * pos.entry_price for pos in self.positions
-        )
+        total_exposure = sum(pos.size * pos.entry_price for pos in self.positions)
         return total_exposure / self.current_capital
 
     def can_open_position(self) -> bool:
@@ -285,11 +276,7 @@ class Strategy(ABC):
         return True
 
     def buy_yes(
-        self,
-        ticker: str,
-        size: Optional[int] = None,
-        confidence: float = 1.0,
-        **kwargs
+        self, ticker: str, size: int | None = None, confidence: float = 1.0, **kwargs
     ) -> Signal:
         """Generate BUY_YES signal"""
         return Signal(
@@ -297,15 +284,11 @@ class Strategy(ABC):
             market_id=ticker,
             recommended_size=(size or 100) / 1000.0,  # Convert to fraction
             confidence=confidence,
-            metadata=kwargs
+            metadata=kwargs,
         )
 
     def buy_no(
-        self,
-        ticker: str,
-        size: Optional[int] = None,
-        confidence: float = 1.0,
-        **kwargs
+        self, ticker: str, size: int | None = None, confidence: float = 1.0, **kwargs
     ) -> Signal:
         """Generate BUY_NO signal"""
         return Signal(
@@ -313,16 +296,13 @@ class Strategy(ABC):
             market_id=ticker,
             recommended_size=(size or 100) / 1000.0,  # Convert to fraction
             confidence=confidence,
-            metadata=kwargs
+            metadata=kwargs,
         )
 
     def hold(self, ticker: str = "") -> Signal:
         """Generate HOLD signal"""
         return Signal(
-            signal_type=SignalType.HOLD,
-            market_id=ticker,
-            recommended_size=0,
-            confidence=0.0
+            signal_type=SignalType.HOLD, market_id=ticker, recommended_size=0, confidence=0.0
         )
 
     def close(self, ticker: str, **kwargs) -> Signal:
@@ -332,22 +312,24 @@ class Strategy(ABC):
             market_id=ticker,
             recommended_size=0,
             confidence=1.0,
-            metadata=kwargs
+            metadata=kwargs,
         )
 
-    def set_espn_data(self, data: Dict):
+    def set_espn_data(self, data: dict):
         """Set ESPN play-by-play data"""
         self.espn_data = data
         self.use_espn = True
 
-    def set_sportsbook_consensus(self, data: Dict):
+    def set_sportsbook_consensus(self, data: dict):
         """Set sportsbook consensus data"""
         self.sportsbook_data = data
 
-    def get_sportsbook_consensus(self, event: str) -> Optional[float]:
+    def get_sportsbook_consensus(self, event: str) -> float | None:
         """Get consensus probability from sportsbooks"""
         if self.sportsbook_data and event in self.sportsbook_data:
-            return self.sportsbook_data[event]
+            value = self.sportsbook_data[event]
+            if isinstance(value, (int, float)):
+                return float(value)
         return None
 
     def kelly_size(self, edge: float, odds: float) -> int:
@@ -365,7 +347,7 @@ class Strategy(ABC):
         """Update current capital after trade"""
         self.current_capital += pnl
 
-    def get_performance_metrics(self) -> Dict[str, float]:
+    def get_performance_metrics(self) -> dict[str, float]:
         """
         Calculate performance metrics.
 
@@ -376,18 +358,22 @@ class Strategy(ABC):
             return {}
 
         trades = pd.DataFrame(self.trade_history)
-        returns = trades['pnl'].values
+        returns = np.array(trades["pnl"].values)
 
         metrics = {
-            'total_trades': len(trades),
-            'win_rate': len(trades[trades['pnl'] > 0]) / len(trades) if len(trades) > 0 else 0,
-            'total_pnl': returns.sum(),
-            'avg_pnl': returns.mean(),
-            'total_return': (self.current_capital / self.initial_capital - 1) * 100,
-            'max_win': returns.max(),
-            'max_loss': returns.min(),
-            'sharpe_ratio': returns.mean() / returns.std() if len(returns) > 1 and returns.std() > 0 else 0,
-            'max_drawdown': self._calculate_max_drawdown(returns)
+            "total_trades": len(trades),
+            "win_rate": len(trades[trades["pnl"] > 0]) / len(trades) if len(trades) > 0 else 0,
+            "total_pnl": float(returns.sum()),
+            "avg_pnl": float(returns.mean()),
+            "total_return": (self.current_capital / self.initial_capital - 1) * 100,
+            "max_win": float(returns.max()),
+            "max_loss": float(returns.min()),
+            "sharpe_ratio": (
+                float(returns.mean() / returns.std())
+                if len(returns) > 1 and returns.std() > 0
+                else 0
+            ),
+            "max_drawdown": self._calculate_max_drawdown(returns),
         }
 
         return metrics
@@ -408,19 +394,22 @@ class Strategy(ABC):
         self.trade_history = []
 
     def __str__(self) -> str:
-        return f"{self.name} (Capital: ${self.current_capital:.2f}, Positions: {len(self.positions)})"
+        return (
+            f"{self.name} (Capital: ${self.current_capital:.2f}, Positions: {len(self.positions)})"
+        )
 
 
 @dataclass
 class Position:
     """Represents a trading position"""
+
     ticker: str
     side: str  # "yes" or "no"
     size: int
     entry_price: float
     current_price: float
     entry_time: datetime
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
     @property
     def pnl(self) -> float:
@@ -442,7 +431,7 @@ class BaseStrategy(Strategy):
     This is an alias/wrapper for compatibility.
     """
 
-    def __init__(self, name: str = None, config: StrategyConfig = None):
+    def __init__(self, name: str | None = None, config: StrategyConfig | None = None):
         """Initialize with StrategyConfig"""
         if config is None:
             config = StrategyConfig()
@@ -457,6 +446,6 @@ class BaseStrategy(Strategy):
             stop_loss=config.stop_loss,
             take_profit=config.take_profit,
             max_positions=config.max_positions,
-            fee_rate=config.fee_rate
+            fee_rate=config.fee_rate,
         )
         self.config = config

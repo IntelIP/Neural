@@ -6,54 +6,57 @@ provides synchronized, real-time data streams for sentiment analysis and trading
 """
 
 import asyncio
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, AsyncGenerator, Any, Set, Callable
-from dataclasses import dataclass, field
-from collections import defaultdict, deque
 import logging
+from collections import deque
+from collections.abc import AsyncGenerator, Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any
 
-from .base import DataSource
-from .twitter_source import TwitterAPISource, create_twitter_source
+from ..analysis.sentiment import GameSentimentTracker, SentimentAnalyzer, create_sentiment_analyzer
 from .espn_enhanced import ESPNGameCastSource, create_gamecast_source
+
 # Bug Fix #2: Corrected import - class name is KalshiApiSource (lowercase 'pi'), not KalshiAPISource
 from .kalshi_api_source import KalshiApiSource
-from ..analysis.sentiment import SentimentAnalyzer, GameSentimentTracker, create_sentiment_analyzer
+from .twitter_source import TwitterAPISource, create_twitter_source
 
 
 @dataclass
 class DataPoint:
     """Unified data point from any source."""
+
     source: str
     timestamp: datetime
-    data: Dict[str, Any]
-    game_id: Optional[str] = None
-    teams: Optional[List[str]] = None
+    data: dict[str, Any]
+    game_id: str | None = None
+    teams: list[str] | None = None
 
 
 @dataclass
 class AggregatedData:
     """Aggregated data from multiple sources."""
+
     timestamp: datetime
     game_id: str
-    teams: List[str]
-    twitter_data: Optional[Dict[str, Any]] = None
-    espn_data: Optional[Dict[str, Any]] = None
-    kalshi_data: Optional[Dict[str, Any]] = None
-    sentiment_metrics: Optional[Dict[str, Any]] = None
-    trading_signals: Optional[Dict[str, Any]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    teams: list[str]
+    twitter_data: dict[str, Any] | None = None
+    espn_data: dict[str, Any] | None = None
+    kalshi_data: dict[str, Any] | None = None
+    sentiment_metrics: dict[str, Any] | None = None
+    trading_signals: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SourceConfig:
     """Configuration for a data source."""
+
     enabled: bool = True
     poll_interval: float = 30.0
     buffer_size: int = 100
     timeout: float = 10.0
     retry_attempts: int = 3
-    config: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
 
 
 class DataBuffer:
@@ -70,17 +73,14 @@ class DataBuffer:
         async with self._lock:
             self.buffer.append(data_point)
 
-    async def get_recent(self, minutes: int = 5) -> List[DataPoint]:
+    async def get_recent(self, minutes: int = 5) -> list[DataPoint]:
         """Get data points from the last N minutes."""
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
 
         async with self._lock:
-            return [
-                dp for dp in self.buffer
-                if dp.timestamp >= cutoff_time
-            ]
+            return [dp for dp in self.buffer if dp.timestamp >= cutoff_time]
 
-    async def get_by_source(self, source: str, minutes: int = 5) -> List[DataPoint]:
+    async def get_by_source(self, source: str, minutes: int = 5) -> list[DataPoint]:
         """Get data points from a specific source."""
         recent_data = await self.get_recent(minutes)
         return [dp for dp in recent_data if dp.source == source]
@@ -110,11 +110,11 @@ class MultiSourceAggregator:
     def __init__(
         self,
         game_id: str,
-        teams: List[str],
-        twitter_config: Optional[SourceConfig] = None,
-        espn_config: Optional[SourceConfig] = None,
-        kalshi_config: Optional[SourceConfig] = None,
-        sentiment_analyzer: Optional[SentimentAnalyzer] = None
+        teams: list[str],
+        twitter_config: SourceConfig | None = None,
+        espn_config: SourceConfig | None = None,
+        kalshi_config: SourceConfig | None = None,
+        sentiment_analyzer: SentimentAnalyzer | None = None,
     ):
         self.game_id = game_id
         self.teams = teams
@@ -125,37 +125,37 @@ class MultiSourceAggregator:
         self.kalshi_config = kalshi_config or SourceConfig(poll_interval=10.0)
 
         # Data sources
-        self.twitter_source: Optional[TwitterAPISource] = None
-        self.espn_source: Optional[ESPNGameCastSource] = None
-        self.kalshi_source: Optional[KalshiApiSource] = None
+        self.twitter_source: TwitterAPISource | None = None
+        self.espn_source: ESPNGameCastSource | None = None
+        self.kalshi_source: KalshiApiSource | None = None
 
         # Data management
         self.data_buffer = DataBuffer(max_size=5000, max_age_minutes=120)
         self.sentiment_tracker = GameSentimentTracker(
             game_id=game_id,
             teams=teams,
-            sentiment_analyzer=sentiment_analyzer or create_sentiment_analyzer()
+            sentiment_analyzer=sentiment_analyzer or create_sentiment_analyzer(),
         )
 
         # State management
         self._running = False
-        self._tasks: List[asyncio.Task] = []
+        self._tasks: list[asyncio.Task] = []
         self.logger = logging.getLogger(f"aggregator_{game_id}")
 
         # Event handlers
-        self.data_handlers: List[Callable[[AggregatedData], None]] = []
+        self.data_handlers: list[Callable[[AggregatedData], None]] = []
 
     async def initialize(self, **source_kwargs):
         """Initialize all data sources."""
         try:
             # Initialize Twitter source
             if self.twitter_config.enabled:
-                twitter_api_key = source_kwargs.get('twitter_api_key')
+                twitter_api_key = source_kwargs.get("twitter_api_key")
                 if twitter_api_key:
                     self.twitter_source = create_twitter_source(
                         api_key=twitter_api_key,
                         teams=self.teams,
-                        poll_interval=self.twitter_config.poll_interval
+                        poll_interval=self.twitter_config.poll_interval,
                     )
                     await self.twitter_source.connect()
                     self.logger.info("Twitter source initialized")
@@ -165,16 +165,20 @@ class MultiSourceAggregator:
                 self.espn_source = create_gamecast_source(
                     game_id=self.game_id,
                     poll_interval=self.espn_config.poll_interval,
-                    enhanced_sentiment=True
+                    enhanced_sentiment=True,
                 )
                 await self.espn_source.connect()
                 self.logger.info("ESPN source initialized")
 
             # Initialize Kalshi source
             if self.kalshi_config.enabled:
-                kalshi_config = source_kwargs.get('kalshi_config', {})
+                kalshi_config = source_kwargs.get("kalshi_config", {})
                 if kalshi_config:
-                    self.kalshi_source = KalshiApiSource(kalshi_config)
+                    self.kalshi_source = KalshiApiSource(
+                        name="kalshi_api",
+                        url="https://api.elections.kalshi.com/trade-api/v2/markets",
+                        config=kalshi_config,
+                    )
                     await self.kalshi_source.connect()
                     self.logger.info("Kalshi source initialized")
 
@@ -238,25 +242,28 @@ class MultiSourceAggregator:
         """Collect Twitter data continuously."""
         while self._running:
             try:
-                async for tweet_batch in self.twitter_source.collect():
-                    if not self._running:
-                        break
+                if self.twitter_source:
+                    async for tweet_batch in self.twitter_source.collect():
+                        if not self._running:
+                            break
 
-                    # Process tweets if they're in the expected format
-                    tweets = tweet_batch if isinstance(tweet_batch, list) else [tweet_batch]
+                        # Process tweets if they're in the expected format
+                        tweets = tweet_batch if isinstance(tweet_batch, list) else [tweet_batch]
 
-                    data_point = DataPoint(
-                        source="twitter",
-                        timestamp=datetime.now(),
-                        data={"tweets": tweets, "count": len(tweets)},
-                        game_id=self.game_id,
-                        teams=self.teams
-                    )
+                        data_point = DataPoint(
+                            source="twitter",
+                            timestamp=datetime.now(),
+                            data={"tweets": tweets, "count": len(tweets)},
+                            game_id=self.game_id,
+                            teams=self.teams,
+                        )
 
-                    await self.data_buffer.add(data_point)
+                        await self.data_buffer.add(data_point)
 
-                    # Update sentiment tracker
-                    self.sentiment_tracker.add_twitter_data(tweets)
+                        # Update sentiment tracker
+                        self.sentiment_tracker.add_twitter_data(tweets)
+                else:
+                    await asyncio.sleep(self.twitter_config.poll_interval)
 
             except Exception as e:
                 self.logger.error(f"Twitter collection error: {e}")
@@ -266,22 +273,25 @@ class MultiSourceAggregator:
         """Collect ESPN data continuously."""
         while self._running:
             try:
-                async for espn_data in self.espn_source.collect():
-                    if not self._running:
-                        break
+                if self.espn_source:
+                    async for espn_data in self.espn_source.collect():
+                        if not self._running:
+                            break
 
-                    data_point = DataPoint(
-                        source="espn",
-                        timestamp=datetime.now(),
-                        data=espn_data,
-                        game_id=self.game_id,
-                        teams=self.teams
-                    )
+                        data_point = DataPoint(
+                            source="espn",
+                            timestamp=datetime.now(),
+                            data=espn_data,
+                            game_id=self.game_id,
+                            teams=self.teams,
+                        )
 
-                    await self.data_buffer.add(data_point)
+                        await self.data_buffer.add(data_point)
 
-                    # Update sentiment tracker
-                    self.sentiment_tracker.add_espn_data(espn_data)
+                        # Update sentiment tracker
+                        self.sentiment_tracker.add_espn_data(espn_data)
+                else:
+                    await asyncio.sleep(self.espn_config.poll_interval)
 
             except Exception as e:
                 self.logger.error(f"ESPN collection error: {e}")
@@ -291,19 +301,22 @@ class MultiSourceAggregator:
         """Collect Kalshi market data continuously."""
         while self._running:
             try:
-                async for market_data in self.kalshi_source.collect():
-                    if not self._running:
-                        break
+                if self.kalshi_source:
+                    async for market_data in self.kalshi_source.collect():
+                        if not self._running:
+                            break
 
-                    data_point = DataPoint(
-                        source="kalshi",
-                        timestamp=datetime.now(),
-                        data=market_data,
-                        game_id=self.game_id,
-                        teams=self.teams
-                    )
+                        data_point = DataPoint(
+                            source="kalshi",
+                            timestamp=datetime.now(),
+                            data=market_data,
+                            game_id=self.game_id,
+                            teams=self.teams,
+                        )
 
-                    await self.data_buffer.add(data_point)
+                        await self.data_buffer.add(data_point)
+                else:
+                    await asyncio.sleep(self.kalshi_config.poll_interval)
 
             except Exception as e:
                 self.logger.error(f"Kalshi collection error: {e}")
@@ -331,11 +344,11 @@ class MultiSourceAggregator:
                     kalshi_data=self._get_latest_kalshi_data(kalshi_data),
                     sentiment_metrics=sentiment_metrics,
                     metadata={
-                        'twitter_points': len(twitter_data),
-                        'espn_points': len(espn_data),
-                        'kalshi_points': len(kalshi_data),
-                        'signal_strength': self.sentiment_tracker.get_trading_signal_strength()
-                    }
+                        "twitter_points": len(twitter_data),
+                        "espn_points": len(espn_data),
+                        "kalshi_points": len(kalshi_data),
+                        "signal_strength": self.sentiment_tracker.get_trading_signal_strength(),
+                    },
                 )
 
                 # Notify handlers
@@ -361,7 +374,7 @@ class MultiSourceAggregator:
                 self.logger.error(f"Cleanup error: {e}")
                 await asyncio.sleep(300)
 
-    def _summarize_twitter_data(self, twitter_points: List[DataPoint]) -> Optional[Dict[str, Any]]:
+    def _summarize_twitter_data(self, twitter_points: list[DataPoint]) -> dict[str, Any] | None:
         """Summarize recent Twitter data."""
         if not twitter_points:
             return None
@@ -375,17 +388,17 @@ class MultiSourceAggregator:
             return None
 
         return {
-            'tweet_count': len(all_tweets),
-            'latest_timestamp': max(point.timestamp for point in twitter_points),
-            'total_engagement': sum(
-                tweet.get('metrics', {}).get('like_count', 0) +
-                tweet.get('metrics', {}).get('retweet_count', 0)
+            "tweet_count": len(all_tweets),
+            "latest_timestamp": max(point.timestamp for point in twitter_points),
+            "total_engagement": sum(
+                tweet.get("metrics", {}).get("like_count", 0)
+                + tweet.get("metrics", {}).get("retweet_count", 0)
                 for tweet in all_tweets
             ),
-            'sample_tweets': all_tweets[:5]  # Store sample for analysis
+            "sample_tweets": all_tweets[:5],  # Store sample for analysis
         }
 
-    def _get_latest_espn_data(self, espn_points: List[DataPoint]) -> Optional[Dict[str, Any]]:
+    def _get_latest_espn_data(self, espn_points: list[DataPoint]) -> dict[str, Any] | None:
         """Get the latest ESPN data."""
         if not espn_points:
             return None
@@ -393,7 +406,7 @@ class MultiSourceAggregator:
         latest_point = max(espn_points, key=lambda p: p.timestamp)
         return latest_point.data
 
-    def _get_latest_kalshi_data(self, kalshi_points: List[DataPoint]) -> Optional[Dict[str, Any]]:
+    def _get_latest_kalshi_data(self, kalshi_points: list[DataPoint]) -> dict[str, Any] | None:
         """Get the latest Kalshi market data."""
         if not kalshi_points:
             return None
@@ -405,24 +418,24 @@ class MultiSourceAggregator:
         """Add a handler for aggregated data."""
         self.data_handlers.append(handler)
 
-    async def get_current_state(self) -> Dict[str, Any]:
+    async def get_current_state(self) -> dict[str, Any]:
         """Get current aggregation state."""
         recent_twitter = await self.data_buffer.get_by_source("twitter", minutes=5)
         recent_espn = await self.data_buffer.get_by_source("espn", minutes=5)
         recent_kalshi = await self.data_buffer.get_by_source("kalshi", minutes=5)
 
         return {
-            'running': self._running,
-            'game_id': self.game_id,
-            'teams': self.teams,
-            'data_points': {
-                'twitter': len(recent_twitter),
-                'espn': len(recent_espn),
-                'kalshi': len(recent_kalshi)
+            "running": self._running,
+            "game_id": self.game_id,
+            "teams": self.teams,
+            "data_points": {
+                "twitter": len(recent_twitter),
+                "espn": len(recent_espn),
+                "kalshi": len(recent_kalshi),
             },
-            'sentiment_metrics': self.sentiment_tracker.get_current_sentiment(),
-            'signal_strength': self.sentiment_tracker.get_trading_signal_strength(),
-            'buffer_size': len(self.data_buffer.buffer)
+            "sentiment_metrics": self.sentiment_tracker.get_current_sentiment(),
+            "signal_strength": self.sentiment_tracker.get_trading_signal_strength(),
+            "buffer_size": len(self.data_buffer.buffer),
         }
 
     async def stream_data(self) -> AsyncGenerator[AggregatedData, None]:
@@ -451,11 +464,11 @@ class MultiSourceAggregator:
                             kalshi_data=self._get_latest_kalshi_data(kalshi_data),
                             sentiment_metrics=sentiment_metrics,
                             metadata={
-                                'twitter_points': len(twitter_data),
-                                'espn_points': len(espn_data),
-                                'kalshi_points': len(kalshi_data),
-                                'signal_strength': self.sentiment_tracker.get_trading_signal_strength()
-                            }
+                                "twitter_points": len(twitter_data),
+                                "espn_points": len(espn_data),
+                                "kalshi_points": len(kalshi_data),
+                                "signal_strength": self.sentiment_tracker.get_trading_signal_strength(),
+                            },
                         )
 
                         yield aggregated
@@ -471,11 +484,11 @@ class MultiSourceAggregator:
 # Factory function for easy setup
 def create_aggregator(
     game_id: str,
-    teams: List[str],
+    teams: list[str],
     twitter_enabled: bool = True,
     espn_enabled: bool = True,
     kalshi_enabled: bool = True,
-    **kwargs
+    **kwargs,
 ) -> MultiSourceAggregator:
     """
     Create a data aggregator with specified configuration.
@@ -492,18 +505,13 @@ def create_aggregator(
         Configured MultiSourceAggregator
     """
     twitter_config = SourceConfig(
-        enabled=twitter_enabled,
-        poll_interval=kwargs.get('twitter_interval', 30.0)
+        enabled=twitter_enabled, poll_interval=kwargs.get("twitter_interval", 30.0)
     )
 
-    espn_config = SourceConfig(
-        enabled=espn_enabled,
-        poll_interval=kwargs.get('espn_interval', 5.0)
-    )
+    espn_config = SourceConfig(enabled=espn_enabled, poll_interval=kwargs.get("espn_interval", 5.0))
 
     kalshi_config = SourceConfig(
-        enabled=kalshi_enabled,
-        poll_interval=kwargs.get('kalshi_interval', 10.0)
+        enabled=kalshi_enabled, poll_interval=kwargs.get("kalshi_interval", 10.0)
     )
 
     return MultiSourceAggregator(
@@ -512,12 +520,13 @@ def create_aggregator(
         twitter_config=twitter_config,
         espn_config=espn_config,
         kalshi_config=kalshi_config,
-        sentiment_analyzer=kwargs.get('sentiment_analyzer')
+        sentiment_analyzer=kwargs.get("sentiment_analyzer"),
     )
 
 
 # Example usage
 if __name__ == "__main__":
+
     async def example():
         # Create aggregator for Ravens vs Lions game
         aggregator = create_aggregator(
@@ -525,7 +534,7 @@ if __name__ == "__main__":
             teams=["Baltimore Ravens", "Detroit Lions"],
             twitter_enabled=True,
             espn_enabled=True,
-            kalshi_enabled=True
+            kalshi_enabled=True,
         )
 
         # Add a data handler
@@ -538,8 +547,7 @@ if __name__ == "__main__":
         # Start aggregation (would need API keys in real usage)
         try:
             await aggregator.start(
-                twitter_api_key="your_twitter_key",
-                kalshi_config={"api_key": "your_kalshi_key"}
+                twitter_api_key="your_twitter_key", kalshi_config={"api_key": "your_kalshi_key"}
             )
 
             # Let it run for a bit

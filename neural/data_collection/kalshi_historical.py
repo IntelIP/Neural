@@ -7,13 +7,14 @@ aggregated data with proper pagination and error handling.
 """
 
 import asyncio
-import pandas as pd
-from typing import Dict, Any, Optional, List
-from datetime import datetime
 import logging
+from datetime import datetime
+
+import pandas as pd
+
+from neural.auth.http_client import KalshiHTTPClient
 
 from .base import BaseDataSource, DataSourceConfig
-from neural.auth.http_client import KalshiHTTPClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,12 @@ class KalshiHistoricalDataSource(BaseDataSource):
     # Supported time intervals for candlestick data (minutes)
     SUPPORTED_INTERVALS = [1, 60, 1440]  # 1min, 1hr, 1day
 
-    def __init__(self, config: DataSourceConfig,
-                 api_key: Optional[str] = None,
-                 private_key_path: Optional[str] = None):
+    def __init__(
+        self,
+        config: DataSourceConfig,
+        api_key: str | None = None,
+        private_key_path: str | None = None,
+    ):
         """
         Initialize Kalshi historical data source.
 
@@ -52,8 +56,7 @@ class KalshiHistoricalDataSource(BaseDataSource):
 
         # Initialize HTTP client for API access
         self.http_client = KalshiHTTPClient(
-            api_key_id=api_key,
-            private_key_pem=None  # Will use env/file defaults
+            api_key_id=api_key, private_key_pem=None  # Will use env/file defaults
         )
 
         logger.info(f"Initialized KalshiHistoricalDataSource: {config.name}")
@@ -73,7 +76,7 @@ class KalshiHistoricalDataSource(BaseDataSource):
         """
         pass
 
-    async def _subscribe_impl(self, channels: List[str]) -> bool:
+    async def _subscribe_impl(self, channels: list[str]) -> bool:
         """
         Subscribe implementation - not applicable for historical data collection.
 
@@ -82,9 +85,9 @@ class KalshiHistoricalDataSource(BaseDataSource):
         """
         return True
 
-    async def collect_trades(self, ticker: str,
-                           start_ts: int, end_ts: int,
-                           limit: int = 1000) -> pd.DataFrame:
+    async def collect_trades(
+        self, ticker: str, start_ts: int, end_ts: int, limit: int = 1000
+    ) -> pd.DataFrame:
         """
         Collect granular trade data for a specific market using GET /markets/trades.
 
@@ -118,13 +121,7 @@ class KalshiHistoricalDataSource(BaseDataSource):
 
                 # Use the HTTP client to get real trades
                 response = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    self.http_client.get_trades,
-                    ticker,
-                    start_ts,
-                    end_ts,
-                    limit,
-                    cursor
+                    None, self.http_client.get_trades, ticker, start_ts, end_ts, limit, cursor
                 )
 
                 # Kalshi API returns trades directly (not nested in "data")
@@ -152,17 +149,22 @@ class KalshiHistoricalDataSource(BaseDataSource):
         # Convert to DataFrame
         if all_trades:
             df = pd.DataFrame(all_trades)
-            df['created_time'] = pd.to_datetime(df['created_time'])
-            df = df.sort_values('created_time').reset_index(drop=True)
+            df["created_time"] = pd.to_datetime(df["created_time"])
+            df = df.sort_values("created_time").reset_index(drop=True)
             logger.info(f"Collected {len(df)} trades for {ticker}")
             return df
         else:
             logger.info(f"No trades found for {ticker}")
             return pd.DataFrame()
 
-    async def collect_market_candlesticks(self, series_ticker: str, market_ticker: str,
-                                        start_ts: int, end_ts: int,
-                                        period_interval: int = 60) -> pd.DataFrame:
+    async def collect_market_candlesticks(
+        self,
+        series_ticker: str,
+        market_ticker: str,
+        start_ts: int,
+        end_ts: int,
+        period_interval: int = 60,
+    ) -> pd.DataFrame:
         """
         Collect candlestick data for a specific market using GET /series/{series_ticker}/markets/{ticker}/candlesticks.
 
@@ -179,7 +181,9 @@ class KalshiHistoricalDataSource(BaseDataSource):
         if period_interval not in self.SUPPORTED_INTERVALS:
             raise ValueError(f"period_interval must be one of {self.SUPPORTED_INTERVALS}")
 
-        logger.info(f"Collecting {period_interval}min candlesticks for {series_ticker}/{market_ticker}")
+        logger.info(
+            f"Collecting {period_interval}min candlesticks for {series_ticker}/{market_ticker}"
+        )
 
         try:
             # Use documented market candlesticks endpoint
@@ -190,7 +194,7 @@ class KalshiHistoricalDataSource(BaseDataSource):
                 market_ticker,
                 start_ts,
                 end_ts,
-                period_interval
+                period_interval,
             )
 
             # Response structure may vary - try both nested and direct
@@ -208,36 +212,35 @@ class KalshiHistoricalDataSource(BaseDataSource):
                     yes_bid = candle.get("yes_bid", {})
                     yes_ask = candle.get("yes_ask", {})
 
-                    processed_data.append({
-                        # Timestamps
-                        "end_period_ts": candle.get("end_period_ts"),
-                        "timestamp": datetime.fromtimestamp(candle.get("end_period_ts", 0)),
-
-                        # Price data (OHLC)
-                        "open": price_data.get("open"),
-                        "high": price_data.get("high"),
-                        "low": price_data.get("low"),
-                        "close": price_data.get("close"),
-                        "mean": price_data.get("mean"),
-
-                        # Bid/ask data
-                        "yes_bid_open": yes_bid.get("open"),
-                        "yes_bid_high": yes_bid.get("high"),
-                        "yes_bid_low": yes_bid.get("low"),
-                        "yes_bid_close": yes_bid.get("close"),
-                        "yes_ask_open": yes_ask.get("open"),
-                        "yes_ask_high": yes_ask.get("high"),
-                        "yes_ask_low": yes_ask.get("low"),
-                        "yes_ask_close": yes_ask.get("close"),
-
-                        # Volume and open interest
-                        "volume": candle.get("volume"),
-                        "open_interest": candle.get("open_interest"),
-                    })
+                    processed_data.append(
+                        {
+                            # Timestamps
+                            "end_period_ts": candle.get("end_period_ts"),
+                            "timestamp": datetime.fromtimestamp(candle.get("end_period_ts", 0)),
+                            # Price data (OHLC)
+                            "open": price_data.get("open"),
+                            "high": price_data.get("high"),
+                            "low": price_data.get("low"),
+                            "close": price_data.get("close"),
+                            "mean": price_data.get("mean"),
+                            # Bid/ask data
+                            "yes_bid_open": yes_bid.get("open"),
+                            "yes_bid_high": yes_bid.get("high"),
+                            "yes_bid_low": yes_bid.get("low"),
+                            "yes_bid_close": yes_bid.get("close"),
+                            "yes_ask_open": yes_ask.get("open"),
+                            "yes_ask_high": yes_ask.get("high"),
+                            "yes_ask_low": yes_ask.get("low"),
+                            "yes_ask_close": yes_ask.get("close"),
+                            # Volume and open interest
+                            "volume": candle.get("volume"),
+                            "open_interest": candle.get("open_interest"),
+                        }
+                    )
 
                 df = pd.DataFrame(processed_data)
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                df = df.sort_values('timestamp').reset_index(drop=True)
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                df = df.sort_values("timestamp").reset_index(drop=True)
                 logger.info(f"Collected {len(df)} candlesticks for {series_ticker}/{market_ticker}")
                 return df
             else:
@@ -248,9 +251,9 @@ class KalshiHistoricalDataSource(BaseDataSource):
             logger.error(f"Error collecting candlesticks for {series_ticker}/{market_ticker}: {e}")
             return pd.DataFrame()
 
-    async def collect_event_candlesticks(self, event_ticker: str,
-                                       start_ts: int, end_ts: int,
-                                       period_interval: int = 60) -> pd.DataFrame:
+    async def collect_event_candlesticks(
+        self, event_ticker: str, start_ts: int, end_ts: int, period_interval: int = 60
+    ) -> pd.DataFrame:
         """
         Collect aggregated candlestick data for an entire event using GET /events/{ticker}/candlesticks.
 
@@ -276,7 +279,7 @@ class KalshiHistoricalDataSource(BaseDataSource):
                 event_ticker,
                 start_ts,
                 end_ts,
-                period_interval
+                period_interval,
             )
 
             # Response structure may vary - try both nested and direct
@@ -296,21 +299,25 @@ class KalshiHistoricalDataSource(BaseDataSource):
                         market_ticker = market_tickers[market_idx]
 
                         for candle in market_candles:
-                            all_data.append({
-                                "market_ticker": market_ticker,
-                                "end_period_ts": candle.get("end_period_ts"),
-                                "timestamp": datetime.fromtimestamp(candle.get("end_period_ts", 0)),
-                                "open": candle.get("open"),
-                                "high": candle.get("high"),
-                                "low": candle.get("low"),
-                                "close": candle.get("close"),
-                                "volume": candle.get("volume"),
-                                "open_interest": candle.get("open_interest"),
-                            })
+                            all_data.append(
+                                {
+                                    "market_ticker": market_ticker,
+                                    "end_period_ts": candle.get("end_period_ts"),
+                                    "timestamp": datetime.fromtimestamp(
+                                        candle.get("end_period_ts", 0)
+                                    ),
+                                    "open": candle.get("open"),
+                                    "high": candle.get("high"),
+                                    "low": candle.get("low"),
+                                    "close": candle.get("close"),
+                                    "volume": candle.get("volume"),
+                                    "open_interest": candle.get("open_interest"),
+                                }
+                            )
 
                 df = pd.DataFrame(all_data)
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                df = df.sort_values(['market_ticker', 'timestamp']).reset_index(drop=True)
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                df = df.sort_values(["market_ticker", "timestamp"]).reset_index(drop=True)
                 logger.info(f"Collected {len(df)} event candlesticks for {event_ticker}")
                 return df
             else:
@@ -321,9 +328,9 @@ class KalshiHistoricalDataSource(BaseDataSource):
             logger.error(f"Error collecting event candlesticks for {event_ticker}: {e}")
             return pd.DataFrame()
 
-    async def collect_historical_data(self, ticker: str,
-                                    start_ts: int, end_ts: int,
-                                    data_type: str = "trades") -> pd.DataFrame:
+    async def collect_historical_data(
+        self, ticker: str, start_ts: int, end_ts: int, data_type: str = "trades"
+    ) -> pd.DataFrame:
         """
         Unified method to collect historical data with automatic method selection.
 
@@ -342,10 +349,16 @@ class KalshiHistoricalDataSource(BaseDataSource):
             # For market candlesticks, ticker should be in format "series/market"
             if "/" in ticker:
                 series_ticker, market_ticker = ticker.split("/", 1)
-                return await self.collect_market_candlesticks(series_ticker, market_ticker, start_ts, end_ts)
+                return await self.collect_market_candlesticks(
+                    series_ticker, market_ticker, start_ts, end_ts
+                )
             else:
-                raise ValueError("For market_candlesticks, ticker must be in format 'series/market'")
+                raise ValueError(
+                    "For market_candlesticks, ticker must be in format 'series/market'"
+                )
         elif data_type == "event_candlesticks":
             return await self.collect_event_candlesticks(ticker, start_ts, end_ts)
         else:
-            raise ValueError(f"Unsupported data_type: {data_type}. Use 'trades', 'market_candlesticks', or 'event_candlesticks'")
+            raise ValueError(
+                f"Unsupported data_type: {data_type}. Use 'trades', 'market_candlesticks', or 'event_candlesticks'"
+            )

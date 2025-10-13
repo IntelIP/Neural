@@ -5,10 +5,10 @@ Trades when Kalshi prices diverge significantly from sportsbook consensus
 or historical averages.
 """
 
-import pandas as pd
 import numpy as np
-from typing import Optional, Dict, List
-from .base import Strategy, Signal, SignalType
+import pandas as pd
+
+from .base import Signal, Strategy
 
 
 class MeanReversionStrategy(Strategy):
@@ -26,7 +26,7 @@ class MeanReversionStrategy(Strategy):
         use_sportsbook: bool = True,
         lookback_periods: int = 20,
         confidence_decay: float = 0.95,  # Confidence decreases with time
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize mean reversion strategy.
@@ -45,14 +45,9 @@ class MeanReversionStrategy(Strategy):
         self.use_sportsbook = use_sportsbook
         self.lookback_periods = lookback_periods
         self.confidence_decay = confidence_decay
-        self.price_history: Dict[str, List[float]] = {}
+        self.price_history: dict[str, list[float]] = {}
 
-    def analyze(
-        self,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        **kwargs
-    ) -> Signal:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Analyze market for mean reversion opportunities.
 
@@ -69,9 +64,9 @@ class MeanReversionStrategy(Strategy):
 
         # Get the latest market
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
-        yes_price = latest['yes_ask']
-        no_price = latest['no_ask']
+        ticker = latest["ticker"]
+        yes_price = latest["yes_ask"]
+        no_price = latest["no_ask"]
 
         # Calculate mean price (fair value)
         fair_value = self._calculate_fair_value(ticker, yes_price, market_data)
@@ -90,11 +85,7 @@ class MeanReversionStrategy(Strategy):
         edge = abs(divergence) * self.reversion_target
 
         # Adjust confidence based on various factors
-        confidence = self._calculate_confidence(
-            divergence,
-            market_data,
-            espn_data
-        )
+        confidence = self._calculate_confidence(divergence, market_data, espn_data)
 
         # Calculate position size
         size = self.calculate_position_size(edge, 1.0, confidence)
@@ -112,7 +103,7 @@ class MeanReversionStrategy(Strategy):
                 target_price=1 - fair_value,
                 stop_loss=no_price * 1.2,  # 20% stop loss
                 divergence=divergence,
-                fair_value=fair_value
+                fair_value=fair_value,
             )
         else:  # Price too low, expect it to rise
             return self.buy_yes(
@@ -123,15 +114,12 @@ class MeanReversionStrategy(Strategy):
                 target_price=fair_value,
                 stop_loss=yes_price * 0.8,  # 20% stop loss
                 divergence=divergence,
-                fair_value=fair_value
+                fair_value=fair_value,
             )
 
     def _calculate_fair_value(
-        self,
-        ticker: str,
-        current_price: float,
-        market_data: pd.DataFrame
-    ) -> Optional[float]:
+        self, ticker: str, current_price: float, market_data: pd.DataFrame
+    ) -> float | None:
         """
         Calculate fair value using multiple methods.
 
@@ -157,7 +145,7 @@ class MeanReversionStrategy(Strategy):
         if ticker in self.price_history:
             history = self.price_history[ticker]
             if len(history) >= self.lookback_periods:
-                ma = np.mean(history[-self.lookback_periods:])
+                ma = np.mean(history[-self.lookback_periods :])
                 fair_values.append(ma)
                 weights.append(1.0)
         else:
@@ -166,19 +154,19 @@ class MeanReversionStrategy(Strategy):
         # Update price history
         self.price_history[ticker].append(current_price)
         if len(self.price_history[ticker]) > self.lookback_periods * 2:
-            self.price_history[ticker] = self.price_history[ticker][-self.lookback_periods * 2:]
+            self.price_history[ticker] = self.price_history[ticker][-self.lookback_periods * 2 :]
 
         # Method 3: Volume-weighted average price (VWAP)
-        if 'volume' in market_data.columns and len(market_data) > 1:
+        if "volume" in market_data.columns and len(market_data) > 1:
             vwap = self._calculate_vwap(market_data)
             if vwap is not None:
                 fair_values.append(vwap)
                 weights.append(1.5)
 
         # Method 4: Bid-ask midpoint
-        if 'yes_bid' in market_data.columns:
+        if "yes_bid" in market_data.columns:
             latest = market_data.iloc[-1]
-            midpoint = (latest['yes_bid'] + latest['yes_ask']) / 2
+            midpoint = (latest["yes_bid"] + latest["yes_ask"]) / 2
             fair_values.append(midpoint)
             weights.append(0.5)
 
@@ -188,26 +176,23 @@ class MeanReversionStrategy(Strategy):
 
         return None
 
-    def _calculate_vwap(self, market_data: pd.DataFrame) -> Optional[float]:
+    def _calculate_vwap(self, market_data: pd.DataFrame) -> float | None:
         """Calculate volume-weighted average price"""
-        if 'volume' not in market_data.columns or market_data['volume'].sum() == 0:
+        if "volume" not in market_data.columns or market_data["volume"].sum() == 0:
             return None
 
         # Use last N periods
         recent = market_data.tail(self.lookback_periods)
-        if 'yes_ask' in recent.columns and 'volume' in recent.columns:
-            prices = recent['yes_ask'].values
-            volumes = recent['volume'].values
+        if "yes_ask" in recent.columns and "volume" in recent.columns:
+            prices = recent["yes_ask"].values
+            volumes = recent["volume"].values
             if volumes.sum() > 0:
                 return np.sum(prices * volumes) / volumes.sum()
 
         return None
 
     def _calculate_confidence(
-        self,
-        divergence: float,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict]
+        self, divergence: float, market_data: pd.DataFrame, espn_data: dict | None
     ) -> float:
         """
         Calculate confidence level for the trade.
@@ -227,36 +212,32 @@ class MeanReversionStrategy(Strategy):
         confidence *= divergence_factor
 
         # Factor 2: Volume confirmation
-        if 'volume' in market_data.columns:
-            latest_volume = market_data.iloc[-1]['volume']
-            avg_volume = market_data['volume'].mean()
+        if "volume" in market_data.columns:
+            latest_volume = market_data.iloc[-1]["volume"]
+            avg_volume = market_data["volume"].mean()
             if avg_volume > 0:
                 volume_factor = min(latest_volume / avg_volume, 1.5) / 1.5
                 confidence *= volume_factor
 
         # Factor 3: Time decay (less confident as event approaches)
-        if 'close_time' in market_data.columns:
+        if "close_time" in market_data.columns:
             # Implement time decay logic
             confidence *= self.confidence_decay
 
         # Factor 4: ESPN data confirmation
         if espn_data and self.use_espn:
             # Check if ESPN data supports our thesis
-            if 'momentum' in espn_data:
-                if (divergence > 0 and espn_data['momentum'] < 0) or \
-                   (divergence < 0 and espn_data['momentum'] > 0):
+            if "momentum" in espn_data:
+                if (divergence > 0 and espn_data["momentum"] < 0) or (
+                    divergence < 0 and espn_data["momentum"] > 0
+                ):
                     confidence *= 1.2  # Boost confidence if ESPN agrees
                 else:
                     confidence *= 0.8  # Reduce if ESPN disagrees
 
         return min(confidence, 1.0)
 
-    def should_exit_position(
-        self,
-        position,
-        current_price: float,
-        fair_value: float
-    ) -> bool:
+    def should_exit_position(self, position, current_price: float, fair_value: float) -> bool:
         """
         Determine if we should exit a mean reversion position.
 
@@ -275,12 +256,12 @@ class MeanReversionStrategy(Strategy):
         # Check if reversion is complete
         if position.side == "yes":
             price_diff = abs(current_price - fair_value)
-            initial_diff = abs(position.metadata.get('divergence', 0))
+            initial_diff = abs(position.metadata.get("divergence", 0))
             if price_diff < initial_diff * (1 - self.reversion_target):
                 return True
         else:  # "no" position
             price_diff = abs((1 - current_price) - (1 - fair_value))
-            initial_diff = abs(position.metadata.get('divergence', 0))
+            initial_diff = abs(position.metadata.get("divergence", 0))
             if price_diff < initial_diff * (1 - self.reversion_target):
                 return True
 
@@ -299,7 +280,7 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
         min_sportsbook_sources: int = 3,
         max_line_age_seconds: int = 60,
         arbitrage_threshold: float = 0.03,  # 3% minimum arbitrage
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize sportsbook arbitrage strategy.
@@ -318,9 +299,9 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
     def analyze(
         self,
         market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        sportsbook_data: Optional[Dict] = None,
-        **kwargs
+        espn_data: dict | None = None,
+        sportsbook_data: dict | None = None,
+        **kwargs,
     ) -> Signal:
         """
         Analyze for sportsbook arbitrage opportunities.
@@ -338,9 +319,9 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
             return self.hold()
 
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
-        kalshi_yes = latest['yes_ask']
-        kalshi_no = latest['no_ask']
+        ticker = latest["ticker"]
+        kalshi_yes = latest["yes_ask"]
+        kalshi_no = latest["no_ask"]
 
         # Calculate sportsbook consensus
         consensus = self._calculate_sportsbook_consensus(sportsbook_data)
@@ -358,7 +339,7 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
                 confidence=0.9,
                 entry_price=kalshi_yes,
                 sportsbook_consensus=consensus,
-                arbitrage_profit=edge
+                arbitrage_profit=edge,
             )
         elif kalshi_no < (1 - consensus) - self.arbitrage_threshold:
             # Kalshi NO is cheap relative to sportsbooks
@@ -370,15 +351,12 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
                 confidence=0.9,
                 entry_price=kalshi_no,
                 sportsbook_consensus=consensus,
-                arbitrage_profit=edge
+                arbitrage_profit=edge,
             )
 
         return self.hold(ticker)
 
-    def _calculate_sportsbook_consensus(
-        self,
-        sportsbook_data: Dict
-    ) -> Optional[float]:
+    def _calculate_sportsbook_consensus(self, sportsbook_data: dict) -> float | None:
         """Calculate consensus probability from multiple sportsbooks"""
         if not sportsbook_data:
             return None
@@ -386,19 +364,19 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
         valid_lines = []
         current_time = pd.Timestamp.now()
 
-        for book, data in sportsbook_data.items():
+        for _book, data in sportsbook_data.items():
             # Check data freshness
-            if 'timestamp' in data:
-                age = (current_time - data['timestamp']).seconds
+            if "timestamp" in data:
+                age = (current_time - data["timestamp"]).seconds
                 if age > self.max_line_age_seconds:
                     continue
 
             # Extract probability
-            if 'implied_probability' in data:
-                valid_lines.append(data['implied_probability'])
-            elif 'moneyline' in data:
+            if "implied_probability" in data:
+                valid_lines.append(data["implied_probability"])
+            elif "moneyline" in data:
                 # Convert moneyline to probability
-                ml = data['moneyline']
+                ml = data["moneyline"]
                 if ml > 0:
                     prob = 100 / (ml + 100)
                 else:

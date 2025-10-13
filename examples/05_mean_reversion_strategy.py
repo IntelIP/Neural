@@ -6,12 +6,13 @@ Demonstrates using the analysis stack to trade price divergences.
 """
 
 import asyncio
-import pandas as pd
 from datetime import datetime, timedelta
-from neural.data_collection import KalshiMarketsSource, get_game_markets
-from neural.analysis.strategies import MeanReversionStrategy
+
+import pandas as pd
+
 from neural.analysis.execution import OrderManager
-from neural.trading import TradingClient
+from neural.analysis.strategies import MeanReversionStrategy
+from neural.data_collection import KalshiMarketsSource, get_game_markets
 
 
 async def run_mean_reversion_strategy():
@@ -31,23 +32,19 @@ async def run_mean_reversion_strategy():
         stop_loss=0.2,  # 20% stop loss
         take_profit=0.5,  # 50% take profit
         use_kelly=True,
-        kelly_fraction=0.25  # Conservative Kelly
+        kelly_fraction=0.25,  # Conservative Kelly
     )
 
     # Initialize order manager (dry run for demo)
     order_manager = OrderManager(
         trading_client=None,  # Would pass real client here
         dry_run=True,  # Simulate orders
-        require_confirmation=False
+        require_confirmation=False,
     )
 
     # Get live NFL games
     print("\n📊 Fetching live NFL markets...")
-    source = KalshiMarketsSource(
-        series_ticker="KXNFLGAME",
-        status=None,
-        use_authenticated=True
-    )
+    source = KalshiMarketsSource(series_ticker="KXNFLGAME", status=None, use_authenticated=True)
 
     games_df = await source.fetch()
 
@@ -58,7 +55,7 @@ async def run_mean_reversion_strategy():
     print(f"Found {len(games_df)} NFL markets")
 
     # Group by event (game)
-    events = games_df.groupby('event_ticker').first()
+    events = games_df.groupby("event_ticker").first()
     print(f"\n🏈 Analyzing {len(events)} games for mean reversion...")
 
     for event_ticker, _ in events.iterrows():
@@ -69,16 +66,18 @@ async def run_mean_reversion_strategy():
             market_data = await get_game_markets(event_ticker)
 
             if market_data.empty:
-                print(f"  ⚠️ No market data available")
+                print("  ⚠️ No market data available")
                 continue
 
             # Prepare data for strategy
-            market_df = pd.DataFrame({
-                'ticker': market_data['ticker'],
-                'yes_ask': market_data['yes_ask'] / 100,  # Convert to decimal
-                'no_ask': market_data['no_ask'] / 100,
-                'volume': market_data['volume']
-            })
+            market_df = pd.DataFrame(
+                {
+                    "ticker": market_data["ticker"],
+                    "yes_ask": market_data["yes_ask"] / 100,  # Convert to decimal
+                    "no_ask": market_data["no_ask"] / 100,
+                    "volume": market_data["volume"],
+                }
+            )
 
             # Generate trading signal
             signal = strategy.analyze(market_df)
@@ -99,10 +98,10 @@ async def run_mean_reversion_strategy():
                 if result:
                     print(f"     Order: {result.get('status', 'executed')}")
             else:
-                print(f"  ⏸️ No signal (holding)")
+                print("  ⏸️ No signal (holding)")
 
             # Show current metrics
-            print(f"\n  📊 Strategy Metrics:")
+            print("\n  📊 Strategy Metrics:")
             metrics = strategy.get_performance_metrics()
             for key, value in metrics.items():
                 if isinstance(value, float):
@@ -124,9 +123,9 @@ async def run_mean_reversion_strategy():
     print(f"   Total P&L: ${portfolio['total_pnl']:.2f}")
     print(f"   Total Orders: {portfolio['total_orders']}")
 
-    if portfolio['active_positions']:
+    if portfolio["active_positions"]:
         print("\n   Position Details:")
-        for ticker, pos in portfolio['active_positions'].items():
+        for ticker, pos in portfolio["active_positions"].items():
             print(f"   - {ticker}:")
             print(f"     Side: {pos['side'].upper()}")
             print(f"     Size: {pos['size']} contracts")
@@ -143,16 +142,10 @@ async def backtest_mean_reversion():
     from neural.analysis.backtesting import Backtester
 
     # Create strategy
-    strategy = MeanReversionStrategy(
-        divergence_threshold=0.05,
-        initial_capital=10000
-    )
+    strategy = MeanReversionStrategy(divergence_threshold=0.05, initial_capital=10000)
 
     # Initialize backtester
-    backtester = Backtester(
-        initial_capital=10000,
-        fee_rate=0.0  # Kalshi fees handled by strategy
-    )
+    backtester = Backtester(initial_capital=10000, fee_rate=0.0)  # Kalshi fees handled by strategy
 
     # Run backtest on recent data
     end_date = datetime.now()
@@ -166,7 +159,7 @@ async def backtest_mean_reversion():
             strategy=strategy,
             start_date=start_date,
             end_date=end_date,
-            markets=["KXNFLGAME"]  # NFL games only
+            markets=["KXNFLGAME"],  # NFL games only
         )
 
         # Display results

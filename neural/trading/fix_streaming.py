@@ -5,26 +5,29 @@ Provides real-time streaming of Kalshi market data via FIX protocol.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Optional, Callable, Dict, Any, List
-import simplefix
+from collections.abc import Callable
 from dataclasses import dataclass
-import pandas as pd
+from datetime import datetime
+from typing import Any
 
-from .fix import KalshiFIXClient, FIXConnectionConfig
+import pandas as pd
+import simplefix
+
+from .fix import FIXConnectionConfig, KalshiFIXClient
 
 
 @dataclass
 class MarketDataSnapshot:
     """Represents a market data snapshot"""
+
     timestamp: datetime
     symbol: str
     bid_price: float
     ask_price: float
     bid_size: int
     ask_size: int
-    last_price: Optional[float] = None
-    volume: Optional[int] = None
+    last_price: float | None = None
+    volume: int | None = None
 
     @property
     def spread(self) -> float:
@@ -55,11 +58,11 @@ class FIXStreamingClient:
 
     def __init__(
         self,
-        on_market_data: Optional[Callable[[MarketDataSnapshot], None]] = None,
-        on_execution: Optional[Callable[[Dict[str, Any]], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None,
+        on_market_data: Callable[[MarketDataSnapshot], None] | None = None,
+        on_execution: Callable[[dict[str, Any]], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
         auto_reconnect: bool = True,
-        heartbeat_interval: int = 30
+        heartbeat_interval: int = 30,
     ):
         """
         Initialize streaming client.
@@ -77,12 +80,12 @@ class FIXStreamingClient:
         self.auto_reconnect = auto_reconnect
         self.heartbeat_interval = heartbeat_interval
 
-        self.client: Optional[KalshiFIXClient] = None
+        self.client: KalshiFIXClient | None = None
         self.connected = False
-        self.subscribed_symbols: List[str] = []
-        self.market_data_cache: Dict[str, MarketDataSnapshot] = {}
+        self.subscribed_symbols: list[str] = []
+        self.market_data_cache: dict[str, MarketDataSnapshot] = {}
         self._running = False
-        self._reconnect_task: Optional[asyncio.Task] = None
+        self._reconnect_task: asyncio.Task | None = None
 
     async def connect(self) -> None:
         """Connect to FIX gateway"""
@@ -93,13 +96,10 @@ class FIXStreamingClient:
             heartbeat_interval=self.heartbeat_interval,
             reset_seq_num=True,
             listener_session=True,  # Enable market data
-            cancel_on_disconnect=True
+            cancel_on_disconnect=True,
         )
 
-        self.client = KalshiFIXClient(
-            config=config,
-            on_message=self._handle_message
-        )
+        self.client = KalshiFIXClient(config=config, on_message=self._handle_message)
 
         try:
             await self.client.connect(timeout=10)
@@ -165,7 +165,10 @@ class FIXStreamingClient:
         # Market Data Request (MsgType = V)
         fields = [
             (262, f"MDR_{datetime.now().strftime('%Y%m%d%H%M%S')}"),  # MDReqID
-            (263, "1" if subscribe else "2"),  # SubscriptionRequestType (1=Subscribe, 2=Unsubscribe)
+            (
+                263,
+                "1" if subscribe else "2",
+            ),  # SubscriptionRequestType (1=Subscribe, 2=Unsubscribe)
             (264, "0"),  # MarketDepth (0=Full book)
             (265, "1"),  # MDUpdateType (1=Incremental refresh)
             (267, "2"),  # NoMDEntryTypes (2 types: Bid and Offer)
@@ -183,15 +186,15 @@ class FIXStreamingClient:
             msg_dict = KalshiFIXClient.to_dict(message)
             msg_type = msg_dict.get(35)
 
-            if msg_type == 'W':  # Market Data Snapshot/Full Refresh
+            if msg_type == "W":  # Market Data Snapshot/Full Refresh
                 self._handle_market_data_snapshot(msg_dict)
-            elif msg_type == 'X':  # Market Data Incremental Refresh
+            elif msg_type == "X":  # Market Data Incremental Refresh
                 self._handle_market_data_update(msg_dict)
-            elif msg_type == '8':  # Execution Report
+            elif msg_type == "8":  # Execution Report
                 self._handle_execution_report(msg_dict)
-            elif msg_type == 'Y':  # Market Data Request Reject
+            elif msg_type == "Y":  # Market Data Request Reject
                 self._handle_market_data_reject(msg_dict)
-            elif msg_type == '5':  # Logout
+            elif msg_type == "5":  # Logout
                 self.connected = False
                 if self.auto_reconnect and self._running:
                     self._reconnect_task = asyncio.create_task(self._reconnect())
@@ -200,7 +203,7 @@ class FIXStreamingClient:
             if self.on_error:
                 self.on_error(f"Error handling message: {e}")
 
-    def _handle_market_data_snapshot(self, msg: Dict[int, Any]) -> None:
+    def _handle_market_data_snapshot(self, msg: dict[int, Any]) -> None:
         """Handle market data snapshot"""
         symbol = msg.get(55)  # Symbol
         if not symbol:
@@ -219,7 +222,7 @@ class FIXStreamingClient:
             bid_price=bid_price,
             ask_price=ask_price,
             bid_size=bid_size,
-            ask_size=ask_size
+            ask_size=ask_size,
         )
 
         # Cache and notify
@@ -227,29 +230,29 @@ class FIXStreamingClient:
         if self.on_market_data:
             self.on_market_data(snapshot)
 
-    def _handle_market_data_update(self, msg: Dict[int, Any]) -> None:
+    def _handle_market_data_update(self, msg: dict[int, Any]) -> None:
         """Handle incremental market data update"""
         # Parse incremental updates
         # This would contain multiple entries for bid/ask updates
         # Implementation depends on Kalshi's specific FIX format
         pass
 
-    def _handle_execution_report(self, msg: Dict[int, Any]) -> None:
+    def _handle_execution_report(self, msg: dict[int, Any]) -> None:
         """Handle execution report"""
         if self.on_execution:
             exec_report = {
-                'order_id': msg.get(11),  # ClOrdID
-                'symbol': msg.get(55),  # Symbol
-                'side': msg.get(54),  # Side
-                'quantity': msg.get(38),  # OrderQty
-                'price': self._parse_price(msg.get(44)),  # Price
-                'status': msg.get(39),  # OrdStatus
-                'exec_type': msg.get(150),  # ExecType
-                'timestamp': datetime.now()
+                "order_id": msg.get(11),  # ClOrdID
+                "symbol": msg.get(55),  # Symbol
+                "side": msg.get(54),  # Side
+                "quantity": msg.get(38),  # OrderQty
+                "price": self._parse_price(msg.get(44)),  # Price
+                "status": msg.get(39),  # OrdStatus
+                "exec_type": msg.get(150),  # ExecType
+                "timestamp": datetime.now(),
             }
             self.on_execution(exec_report)
 
-    def _handle_market_data_reject(self, msg: Dict[int, Any]) -> None:
+    def _handle_market_data_reject(self, msg: dict[int, Any]) -> None:
         """Handle market data request rejection"""
         reason = msg.get(58, "Unknown reason")
         if self.on_error:
@@ -263,7 +266,9 @@ class FIXStreamingClient:
 
         while self._running and retry_count < max_retries:
             await asyncio.sleep(retry_delay)
-            print(f"[{self._timestamp()}] 🔄 Attempting reconnection... (attempt {retry_count + 1})")
+            print(
+                f"[{self._timestamp()}] 🔄 Attempting reconnection... (attempt {retry_count + 1})"
+            )
 
             try:
                 await self.connect()
@@ -283,13 +288,13 @@ class FIXStreamingClient:
 
     def _timestamp(self) -> str:
         """Get current timestamp string"""
-        return datetime.now().strftime('%H:%M:%S')
+        return datetime.now().strftime("%H:%M:%S")
 
-    def get_snapshot(self, symbol: str) -> Optional[MarketDataSnapshot]:
+    def get_snapshot(self, symbol: str) -> MarketDataSnapshot | None:
         """Get latest market data snapshot for symbol"""
         return self.market_data_cache.get(symbol)
 
-    def get_all_snapshots(self) -> Dict[str, MarketDataSnapshot]:
+    def get_all_snapshots(self) -> dict[str, MarketDataSnapshot]:
         """Get all cached market data snapshots"""
         return self.market_data_cache.copy()
 
@@ -302,9 +307,9 @@ class FIXStreamingClient:
 
 
 async def stream_market_data(
-    symbols: List[str],
+    symbols: list[str],
     duration_seconds: int = 60,
-    on_update: Optional[Callable[[MarketDataSnapshot], None]] = None
+    on_update: Callable[[MarketDataSnapshot], None] | None = None,
 ) -> pd.DataFrame:
     """
     Stream market data for specified symbols.
@@ -321,28 +326,32 @@ async def stream_market_data(
 
     def handle_market_data(snapshot: MarketDataSnapshot):
         # Record to history
-        history.append({
-            'timestamp': snapshot.timestamp,
-            'symbol': snapshot.symbol,
-            'bid': snapshot.bid_price,
-            'ask': snapshot.ask_price,
-            'spread': snapshot.spread,
-            'mid': snapshot.mid_price,
-            'implied_prob': snapshot.implied_probability,
-            'bid_size': snapshot.bid_size,
-            'ask_size': snapshot.ask_size
-        })
+        history.append(
+            {
+                "timestamp": snapshot.timestamp,
+                "symbol": snapshot.symbol,
+                "bid": snapshot.bid_price,
+                "ask": snapshot.ask_price,
+                "spread": snapshot.spread,
+                "mid": snapshot.mid_price,
+                "implied_prob": snapshot.implied_probability,
+                "bid_size": snapshot.bid_size,
+                "ask_size": snapshot.ask_size,
+            }
+        )
 
         # Call user callback
         if on_update:
             on_update(snapshot)
 
         # Print update
-        print(f"[{snapshot.timestamp.strftime('%H:%M:%S')}] "
-              f"{snapshot.symbol}: "
-              f"Bid ${snapshot.bid_price:.2f} x {snapshot.bid_size} | "
-              f"Ask ${snapshot.ask_price:.2f} x {snapshot.ask_size} | "
-              f"Spread ${snapshot.spread:.2f}")
+        print(
+            f"[{snapshot.timestamp.strftime('%H:%M:%S')}] "
+            f"{snapshot.symbol}: "
+            f"Bid ${snapshot.bid_price:.2f} x {snapshot.bid_size} | "
+            f"Ask ${snapshot.ask_price:.2f} x {snapshot.ask_size} | "
+            f"Spread ${snapshot.spread:.2f}"
+        )
 
     # Create streaming client
     client = FIXStreamingClient(on_market_data=handle_market_data)

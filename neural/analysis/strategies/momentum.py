@@ -5,10 +5,10 @@ Trades based on momentum indicators and trend following.
 Particularly effective during game events when markets trend strongly.
 """
 
-import pandas as pd
 import numpy as np
-from typing import Optional, Dict, List
-from .base import Strategy, Signal, SignalType
+import pandas as pd
+
+from .base import Signal, SignalType, Strategy
 
 
 class MomentumStrategy(Strategy):
@@ -27,7 +27,7 @@ class MomentumStrategy(Strategy):
         rsi_overbought: float = 70,
         rsi_oversold: float = 30,
         trend_strength_min: float = 0.6,  # R-squared of trend
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize momentum strategy.
@@ -51,12 +51,7 @@ class MomentumStrategy(Strategy):
         self.rsi_oversold = rsi_oversold
         self.trend_strength_min = trend_strength_min
 
-    def analyze(
-        self,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        **kwargs
-    ) -> Signal:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Analyze market for momentum opportunities.
 
@@ -72,7 +67,7 @@ class MomentumStrategy(Strategy):
             return self.hold()
 
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
+        ticker = latest["ticker"]
 
         # Calculate momentum indicators
         momentum = self._calculate_momentum(market_data)
@@ -109,10 +104,10 @@ class MomentumStrategy(Strategy):
                     ticker=ticker,
                     size=size,
                     confidence=confidence,
-                    entry_price=latest['yes_ask'],
+                    entry_price=latest["yes_ask"],
                     momentum=momentum,
                     rsi=rsi,
-                    trend_strength=trend_strength
+                    trend_strength=trend_strength,
                 )
 
         elif momentum < -self.momentum_threshold and rsi > self.rsi_oversold:
@@ -126,20 +121,20 @@ class MomentumStrategy(Strategy):
                     ticker=ticker,
                     size=size,
                     confidence=confidence,
-                    entry_price=latest['no_ask'],
+                    entry_price=latest["no_ask"],
                     momentum=momentum,
                     rsi=rsi,
-                    trend_strength=trend_strength
+                    trend_strength=trend_strength,
                 )
 
         return self.hold(ticker)
 
-    def _calculate_momentum(self, market_data: pd.DataFrame) -> Optional[float]:
+    def _calculate_momentum(self, market_data: pd.DataFrame) -> float | None:
         """Calculate price momentum"""
-        if 'yes_ask' not in market_data.columns:
+        if "yes_ask" not in market_data.columns:
             return None
 
-        prices = market_data['yes_ask'].tail(self.lookback_periods + 1).values
+        prices = market_data["yes_ask"].tail(self.lookback_periods + 1).values
         if len(prices) < 2:
             return None
 
@@ -147,12 +142,12 @@ class MomentumStrategy(Strategy):
         momentum = (prices[-1] - prices[0]) / prices[0] if prices[0] != 0 else 0
         return momentum
 
-    def _calculate_rsi(self, market_data: pd.DataFrame, periods: int = 14) -> Optional[float]:
+    def _calculate_rsi(self, market_data: pd.DataFrame, periods: int = 14) -> float | None:
         """Calculate Relative Strength Index"""
-        if 'yes_ask' not in market_data.columns or len(market_data) < periods + 1:
+        if "yes_ask" not in market_data.columns or len(market_data) < periods + 1:
             return None
 
-        prices = market_data['yes_ask'].tail(periods + 1).values
+        prices = market_data["yes_ask"].tail(periods + 1).values
         deltas = np.diff(prices)
 
         gains = deltas[deltas > 0].sum() / periods if len(deltas[deltas > 0]) > 0 else 0
@@ -168,10 +163,10 @@ class MomentumStrategy(Strategy):
 
     def _calculate_trend_strength(self, market_data: pd.DataFrame) -> float:
         """Calculate trend strength using R-squared"""
-        if 'yes_ask' not in market_data.columns:
+        if "yes_ask" not in market_data.columns:
             return 0
 
-        prices = market_data['yes_ask'].tail(self.lookback_periods).values
+        prices = market_data["yes_ask"].tail(self.lookback_periods).values
         if len(prices) < 3:
             return 0
 
@@ -192,7 +187,7 @@ class MomentumStrategy(Strategy):
 
     def _check_volume_trend(self, market_data: pd.DataFrame) -> bool:
         """Check if volume is increasing with price movement"""
-        if 'volume' not in market_data.columns:
+        if "volume" not in market_data.columns:
             return True  # Don't block if no volume data
 
         recent = market_data.tail(self.lookback_periods)
@@ -200,18 +195,14 @@ class MomentumStrategy(Strategy):
             return True
 
         # Check if volume is trending up
-        volumes = recent['volume'].values
-        avg_early = np.mean(volumes[:len(volumes)//2])
-        avg_late = np.mean(volumes[len(volumes)//2:])
+        volumes = recent["volume"].values
+        avg_early = np.mean(volumes[: len(volumes) // 2])
+        avg_late = np.mean(volumes[len(volumes) // 2 :])
 
         return avg_late > avg_early * 1.2  # 20% increase
 
     def _calculate_confidence(
-        self,
-        momentum: float,
-        trend_strength: float,
-        rsi: float,
-        espn_data: Optional[Dict]
+        self, momentum: float, trend_strength: float, rsi: float, espn_data: dict | None
     ) -> float:
         """Calculate confidence based on multiple factors"""
         confidence = 1.0
@@ -229,10 +220,10 @@ class MomentumStrategy(Strategy):
 
         # ESPN data confirmation
         if espn_data and self.use_espn:
-            if 'scoring_drive' in espn_data:
+            if "scoring_drive" in espn_data:
                 # Boost confidence during scoring drives
                 confidence *= 1.2
-            if 'red_zone' in espn_data and espn_data['red_zone']:
+            if "red_zone" in espn_data and espn_data["red_zone"]:
                 # High confidence in red zone
                 confidence *= 1.3
 
@@ -249,10 +240,10 @@ class GameMomentumStrategy(MomentumStrategy):
     def __init__(
         self,
         event_window: int = 5,  # Minutes after event
-        event_multipliers: Optional[Dict[str, float]] = None,
+        event_multipliers: dict[str, float] | None = None,
         fade_blowouts: bool = True,
         blowout_threshold: float = 0.8,  # 80% probability
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize game momentum strategy.
@@ -267,23 +258,18 @@ class GameMomentumStrategy(MomentumStrategy):
         super().__init__(**kwargs)
         self.event_window = event_window
         self.event_multipliers = event_multipliers or {
-            'touchdown': 1.5,
-            'field_goal': 1.2,
-            'turnover': 1.4,
-            'injury_star': 1.6,
-            'red_zone': 1.3,
-            'two_minute': 1.4
+            "touchdown": 1.5,
+            "field_goal": 1.2,
+            "turnover": 1.4,
+            "injury_star": 1.6,
+            "red_zone": 1.3,
+            "two_minute": 1.4,
         }
         self.fade_blowouts = fade_blowouts
         self.blowout_threshold = blowout_threshold
-        self.recent_events: List[Dict] = []
+        self.recent_events: list[dict] = []
 
-    def analyze(
-        self,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        **kwargs
-    ) -> Signal:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Analyze for game-specific momentum.
 
@@ -299,8 +285,8 @@ class GameMomentumStrategy(MomentumStrategy):
             return super().analyze(market_data, espn_data, **kwargs)
 
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
-        yes_price = latest['yes_ask']
+        ticker = latest["ticker"]
+        yes_price = latest["yes_ask"]
 
         # Check for blowout fade opportunity
         if self.fade_blowouts:
@@ -311,9 +297,9 @@ class GameMomentumStrategy(MomentumStrategy):
                     ticker=ticker,
                     size=size,
                     confidence=0.7,
-                    entry_price=latest['no_ask'],
-                    strategy='fade_blowout',
-                    yes_price=yes_price
+                    entry_price=latest["no_ask"],
+                    strategy="fade_blowout",
+                    yes_price=yes_price,
                 )
             elif yes_price < (1 - self.blowout_threshold):
                 # Fade the underdog being written off
@@ -323,7 +309,7 @@ class GameMomentumStrategy(MomentumStrategy):
                     size=size,
                     confidence=0.7,
                     entry_price=yes_price,
-                    strategy='fade_blowout'
+                    strategy="fade_blowout",
                 )
 
         # Check for recent game events
@@ -334,60 +320,42 @@ class GameMomentumStrategy(MomentumStrategy):
         # Fall back to regular momentum
         return super().analyze(market_data, espn_data, **kwargs)
 
-    def _check_game_events(
-        self,
-        espn_data: Dict,
-        market_data: pd.DataFrame
-    ) -> Signal:
+    def _check_game_events(self, espn_data: dict, market_data: pd.DataFrame) -> Signal:
         """Check for tradeable game events"""
-        ticker = market_data.iloc[-1]['ticker']
+        ticker = market_data.iloc[-1]["ticker"]
 
         # Check for touchdown
-        if espn_data.get('last_play', {}).get('touchdown'):
-            team = espn_data['last_play'].get('team')
+        if espn_data.get("last_play", {}).get("touchdown"):
+            team = espn_data["last_play"].get("team")
             if self._is_home_team(team, ticker):
                 # Home team scored, momentum up
-                return self._create_event_signal(
-                    'touchdown', True, market_data, espn_data
-                )
+                return self._create_event_signal("touchdown", True, market_data, espn_data)
             else:
                 # Away team scored, momentum down
-                return self._create_event_signal(
-                    'touchdown', False, market_data, espn_data
-                )
+                return self._create_event_signal("touchdown", False, market_data, espn_data)
 
         # Check for turnover
-        if espn_data.get('last_play', {}).get('turnover'):
-            team = espn_data['last_play'].get('team')
+        if espn_data.get("last_play", {}).get("turnover"):
+            team = espn_data["last_play"].get("team")
             if self._is_home_team(team, ticker):
                 # Home team turned it over, bad
-                return self._create_event_signal(
-                    'turnover', False, market_data, espn_data
-                )
+                return self._create_event_signal("turnover", False, market_data, espn_data)
             else:
                 # Away team turned it over, good for home
-                return self._create_event_signal(
-                    'turnover', True, market_data, espn_data
-                )
+                return self._create_event_signal("turnover", True, market_data, espn_data)
 
         # Check for red zone
-        if espn_data.get('red_zone'):
-            return self._create_event_signal(
-                'red_zone', True, market_data, espn_data
-            )
+        if espn_data.get("red_zone"):
+            return self._create_event_signal("red_zone", True, market_data, espn_data)
 
         return self.hold(ticker)
 
     def _create_event_signal(
-        self,
-        event_type: str,
-        bullish: bool,
-        market_data: pd.DataFrame,
-        espn_data: Dict
+        self, event_type: str, bullish: bool, market_data: pd.DataFrame, espn_data: dict
     ) -> Signal:
         """Create signal based on game event"""
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
+        ticker = latest["ticker"]
 
         multiplier = self.event_multipliers.get(event_type, 1.0)
         confidence = 0.6 * multiplier  # Base confidence times multiplier
@@ -404,25 +372,25 @@ class GameMomentumStrategy(MomentumStrategy):
                 ticker=ticker,
                 size=size,
                 confidence=confidence,
-                entry_price=latest['yes_ask'],
+                entry_price=latest["yes_ask"],
                 event_type=event_type,
-                game_time=espn_data.get('game_clock')
+                game_time=espn_data.get("game_clock"),
             )
         else:
             return self.buy_no(
                 ticker=ticker,
                 size=size,
                 confidence=confidence,
-                entry_price=latest['no_ask'],
+                entry_price=latest["no_ask"],
                 event_type=event_type,
-                game_time=espn_data.get('game_clock')
+                game_time=espn_data.get("game_clock"),
             )
 
     def _is_home_team(self, team: str, ticker: str) -> bool:
         """Check if team is home team based on ticker"""
         # Ticker format: KXNFLGAME-25SEP22DETBAL
         # Home team is typically listed second
-        parts = ticker.split('-')
+        parts = ticker.split("-")
         if len(parts) > 1:
             teams = parts[-1]
             # Last 3 chars are typically home team

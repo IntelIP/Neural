@@ -1,5 +1,4 @@
 import base64
-import types
 from typing import Any
 
 import pytest

@@ -13,8 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neural.data_collection.kalshi_historical import KalshiHistoricalDataSource
 from neural.data_collection.base import DataSourceConfig
+from neural.data_collection.kalshi_historical import KalshiHistoricalDataSource
 
 
 async def test_trade_collection():
@@ -45,16 +45,13 @@ async def test_trade_collection():
     try:
         # Collect trades
         trades_df = await source.collect_trades(
-            ticker=ticker,
-            start_ts=start_ts,
-            end_ts=end_ts,
-            limit=100
+            ticker=ticker, start_ts=start_ts, end_ts=end_ts, limit=100
         )
 
         # Display results
         if not trades_df.empty:
             print(f"\n✅ SUCCESS: Collected {len(trades_df)} trades")
-            print(f"\nFirst 5 trades:")
+            print("\nFirst 5 trades:")
             print(trades_df.head())
             print(f"\nColumns: {list(trades_df.columns)}")
             print(f"\nData types:\n{trades_df.dtypes}")
@@ -73,6 +70,7 @@ async def test_trade_collection():
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -93,7 +91,7 @@ async def test_quick_trades():
     start_ts = end_ts - (24 * 3600)  # Last 24 hours
 
     print(f"\nTicker: {ticker}")
-    print(f"Time range: Last 24 hours")
+    print("Time range: Last 24 hours")
 
     try:
         trades = await source.collect_trades(ticker, start_ts, end_ts, limit=10)
@@ -101,11 +99,13 @@ async def test_quick_trades():
         if not trades.empty:
             print(f"✅ Found {len(trades)} trades")
             print("\nTrade details:")
-            for idx, row in trades.iterrows():
-                print(f"  [{row['created_time']}] "
-                      f"Yes: {row.get('yes_price', 'N/A')}, "
-                      f"No: {row.get('no_price', 'N/A')}, "
-                      f"Count: {row.get('count', 'N/A')}")
+            for _idx, row in trades.iterrows():
+                print(
+                    f"  [{row['created_time']}] "
+                    f"Yes: {row.get('yes_price', 'N/A')}, "
+                    f"No: {row.get('no_price', 'N/A')}, "
+                    f"Count: {row.get('count', 'N/A')}"
+                )
         else:
             print("⚠️  No recent trades found")
 

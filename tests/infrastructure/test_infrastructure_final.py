@@ -4,14 +4,15 @@ Final Infrastructure Test - Verify all components work
 """
 
 print("\n🚀 Neural SDK - Infrastructure Components Test\n")
-print("="*70)
+print("=" * 70)
 
 # Test 1: REST API Data Collection
 print("\n📊 TEST 1: REST API Market Data")
-print("-"*40)
+print("-" * 40)
 try:
-    from neural.data_collection import get_game_markets
     import asyncio
+
+    from neural.data_collection import get_game_markets
 
     async def test_rest():
         markets = await get_game_markets("KXNFLGAME-25SEP25SEAARI")
@@ -19,7 +20,7 @@ try:
             print("✅ REST API: Working")
             print(f"  Found {len(markets)} markets")
             for _, m in markets.iterrows():
-                team = "Seattle" if "SEA" in m['ticker'] else "Arizona"
+                team = "Seattle" if "SEA" in m["ticker"] else "Arizona"
                 print(f"  {team}: ${m['yes_ask']/100:.2f} ({m['yes_ask']:.0f}%)")
             return True
         else:
@@ -33,21 +34,19 @@ except Exception as e:
 
 # Test 2: FIX Connection
 print("\n🔧 TEST 2: FIX API Connection")
-print("-"*40)
+print("-" * 40)
 try:
-    from neural.trading.fix import KalshiFIXClient, FIXConnectionConfig
+    from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
 
     async def test_fix():
-        config = FIXConnectionConfig(
-            heartbeat_interval=30,
-            reset_seq_num=True
-        )
+        config = FIXConnectionConfig(heartbeat_interval=30, reset_seq_num=True)
 
         connected = False
+
         def handle_msg(msg):
             nonlocal connected
             msg_dict = KalshiFIXClient.to_dict(msg)
-            if msg_dict.get(35) == 'A':  # Logon
+            if msg_dict.get(35) == "A":  # Logon
                 connected = True
 
         client = KalshiFIXClient(config=config, on_message=handle_msg)
@@ -76,7 +75,7 @@ except Exception as e:
 
 # Test 3: WebSocket (expected to fail without special permissions)
 print("\n📡 TEST 3: WebSocket Connection")
-print("-"*40)
+print("-" * 40)
 try:
     from neural.trading import KalshiWebSocketClient
 
@@ -102,14 +101,14 @@ except Exception as e:
     ws_works = False
 
 # Summary
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("📊 INFRASTRUCTURE STATUS SUMMARY")
-print("="*70)
+print("=" * 70)
 
 components = [
     ("REST API (Market Data)", rest_works, "Primary data source"),
     ("FIX API (Order Execution)", fix_works, "Ultra-fast trading"),
-    ("WebSocket (Streaming)", ws_works, "Optional - needs permissions")
+    ("WebSocket (Streaming)", ws_works, "Optional - needs permissions"),
 ]
 
 working = 0
@@ -118,7 +117,7 @@ for name, status, purpose in components:
     working += 1 if status else 0
     print(f"{symbol} {name:25} - {purpose}")
 
-print("\n" + "-"*70)
+print("\n" + "-" * 70)
 
 if rest_works and fix_works:
     print("\n🎉 SUCCESS! Core infrastructure is operational!")
@@ -143,4 +142,4 @@ else:
     print("  • Network connectivity")
     print("  • Dependencies installed")
 
-print("\n" + "="*70)
+print("\n" + "=" * 70)

@@ -1,19 +1,28 @@
 import asyncio
-import requests
-from typing import Dict, Any, Optional, AsyncGenerator
+from collections.abc import AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor
-from .base import DataSource
-from neural.auth.signers.kalshi import KalshiSigner
+from typing import Any
+
+import requests
+
 from neural.auth.env import get_api_key_id, get_private_key_material
+from neural.auth.signers.kalshi import KalshiSigner
+
+from .base import DataSource
 
 
 class KalshiApiSource(DataSource):
     """Authenticated data source for Kalshi REST API endpoints."""
 
-    def __init__(self, name: str, url: str, method: str = 'GET',
-                 params: Optional[Dict[str, Any]] = None,
-                 interval: float = 60.0,
-                 config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        name: str,
+        url: str,
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
+        interval: float = 60.0,
+        config: dict[str, Any] | None = None,
+    ):
         super().__init__(name, config)
         self.url = url
         self.method = method.upper()
@@ -34,11 +43,12 @@ class KalshiApiSource(DataSource):
         self._executor.shutdown(wait=True)
         self._connected = False
 
-    async def _fetch_data(self) -> Dict[str, Any]:
+    async def _fetch_data(self) -> dict[str, Any]:
         """Fetch data from the Kalshi API with authentication."""
         loop = asyncio.get_event_loop()
 
         from urllib.parse import urlparse
+
         parsed = urlparse(self.url)
         path = parsed.path
 
@@ -47,14 +57,13 @@ class KalshiApiSource(DataSource):
         response = await loop.run_in_executor(
             self._executor,
             lambda: requests.request(
-                self.method, self.url,
-                headers=auth_headers, params=self.params
-            )
+                self.method, self.url, headers=auth_headers, params=self.params
+            ),
         )
         response.raise_for_status()
         return response.json()
 
-    async def collect(self) -> AsyncGenerator[Dict[str, Any], None]:
+    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
         """Continuously fetch data at intervals."""
         retry_count = 0
         max_retries = 3

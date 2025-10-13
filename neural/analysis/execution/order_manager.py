@@ -4,11 +4,11 @@ Order Manager for executing analysis signals
 Bridges the analysis stack with the trading stack for order execution.
 """
 
-import asyncio
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+
 import pandas as pd
-from ..strategies.base import Signal, SignalType, Position
+
+from ..strategies.base import Position, Signal, SignalType
 
 
 class OrderManager:
@@ -27,7 +27,7 @@ class OrderManager:
         trading_client=None,
         max_slippage: float = 0.02,
         require_confirmation: bool = False,
-        dry_run: bool = False
+        dry_run: bool = False,
     ):
         """
         Initialize order manager.
@@ -44,12 +44,12 @@ class OrderManager:
         self.dry_run = dry_run
 
         # State tracking
-        self.pending_orders: List[Dict] = []
-        self.executed_orders: List[Dict] = []
-        self.active_positions: Dict[str, Position] = {}
-        self.order_history: List[Dict] = []
+        self.pending_orders: list[dict] = []
+        self.executed_orders: list[dict] = []
+        self.active_positions: dict[str, Position] = {}
+        self.order_history: list[dict] = []
 
-    async def execute_signal(self, signal: Signal) -> Optional[Dict]:
+    async def execute_signal(self, signal: Signal) -> dict | None:
         """
         Execute a trading signal.
 
@@ -86,7 +86,7 @@ class OrderManager:
 
         return None
 
-    async def _execute_buy_yes(self, signal: Signal) -> Optional[Dict]:
+    async def _execute_buy_yes(self, signal: Signal) -> dict | None:
         """Execute BUY_YES order"""
         if self.dry_run:
             return self._simulate_order(signal, "buy", "yes")
@@ -95,41 +95,31 @@ class OrderManager:
             raise ValueError("Trading client not configured")
 
         # Check for arbitrage (need to buy both sides)
-        if signal.metadata and signal.metadata.get('also_buy') == 'no':
+        if signal.metadata and signal.metadata.get("also_buy") == "no":
             # Execute arbitrage trades
             yes_order = await self._place_order(
-                signal.ticker,
-                "buy",
-                "yes",
-                signal.size,
-                signal.entry_price
+                signal.ticker, "buy", "yes", signal.size, signal.entry_price
             )
 
             no_order = await self._place_order(
                 signal.ticker,
                 "buy",
                 "no",
-                signal.metadata.get('no_size', signal.size),
-                signal.metadata.get('no_price')
+                signal.metadata.get("no_size", signal.size),
+                signal.metadata.get("no_price"),
             )
 
             return {
-                'type': 'arbitrage',
-                'yes_order': yes_order,
-                'no_order': no_order,
-                'signal': signal
+                "type": "arbitrage",
+                "yes_order": yes_order,
+                "no_order": no_order,
+                "signal": signal,
             }
 
         # Regular buy YES
-        return await self._place_order(
-            signal.ticker,
-            "buy",
-            "yes",
-            signal.size,
-            signal.entry_price
-        )
+        return await self._place_order(signal.ticker, "buy", "yes", signal.size, signal.entry_price)
 
-    async def _execute_buy_no(self, signal: Signal) -> Optional[Dict]:
+    async def _execute_buy_no(self, signal: Signal) -> dict | None:
         """Execute BUY_NO order"""
         if self.dry_run:
             return self._simulate_order(signal, "buy", "no")
@@ -137,15 +127,9 @@ class OrderManager:
         if not self.trading_client:
             raise ValueError("Trading client not configured")
 
-        return await self._place_order(
-            signal.ticker,
-            "buy",
-            "no",
-            signal.size,
-            signal.entry_price
-        )
+        return await self._place_order(signal.ticker, "buy", "no", signal.size, signal.entry_price)
 
-    async def _execute_sell_yes(self, signal: Signal) -> Optional[Dict]:
+    async def _execute_sell_yes(self, signal: Signal) -> dict | None:
         """Execute SELL_YES order"""
         if self.dry_run:
             return self._simulate_order(signal, "sell", "yes")
@@ -154,14 +138,10 @@ class OrderManager:
             raise ValueError("Trading client not configured")
 
         return await self._place_order(
-            signal.ticker,
-            "sell",
-            "yes",
-            signal.size,
-            signal.entry_price
+            signal.ticker, "sell", "yes", signal.size, signal.entry_price
         )
 
-    async def _execute_sell_no(self, signal: Signal) -> Optional[Dict]:
+    async def _execute_sell_no(self, signal: Signal) -> dict | None:
         """Execute SELL_NO order"""
         if self.dry_run:
             return self._simulate_order(signal, "sell", "no")
@@ -169,15 +149,9 @@ class OrderManager:
         if not self.trading_client:
             raise ValueError("Trading client not configured")
 
-        return await self._place_order(
-            signal.ticker,
-            "sell",
-            "no",
-            signal.size,
-            signal.entry_price
-        )
+        return await self._place_order(signal.ticker, "sell", "no", signal.size, signal.entry_price)
 
-    async def _execute_close(self, signal: Signal) -> Optional[Dict]:
+    async def _execute_close(self, signal: Signal) -> dict | None:
         """Close existing position"""
         if signal.ticker not in self.active_positions:
             print(f"No position to close for {signal.ticker}")
@@ -187,38 +161,19 @@ class OrderManager:
 
         if self.dry_run:
             del self.active_positions[signal.ticker]
-            return {
-                'type': 'close',
-                'position': position,
-                'pnl': position.pnl
-            }
+            return {"type": "close", "position": position, "pnl": position.pnl}
 
         # Close through trading client
         if position.side == "yes":
             return await self._place_order(
-                signal.ticker,
-                "sell",
-                "yes",
-                position.size,
-                None  # Market order
+                signal.ticker, "sell", "yes", position.size, None  # Market order
             )
         else:
-            return await self._place_order(
-                signal.ticker,
-                "sell",
-                "no",
-                position.size,
-                None
-            )
+            return await self._place_order(signal.ticker, "sell", "no", position.size, None)
 
     async def _place_order(
-        self,
-        ticker: str,
-        action: str,
-        side: str,
-        size: int,
-        limit_price: Optional[float] = None
-    ) -> Dict:
+        self, ticker: str, action: str, side: str, size: int, limit_price: float | None = None
+    ) -> dict:
         """
         Place order through trading client.
 
@@ -243,27 +198,24 @@ class OrderManager:
                     side=side,
                     action=action,
                     count=size,
-                    limit_price=int(limit_price * 100)  # Convert to cents
+                    limit_price=int(limit_price * 100),  # Convert to cents
                 )
             else:
                 # Market order
                 order = await self.trading_client.orders.place_market_order(
-                    ticker=ticker,
-                    side=side,
-                    action=action,
-                    count=size
+                    ticker=ticker, side=side, action=action, count=size
                 )
 
             # Track order
             order_record = {
-                'timestamp': datetime.now(),
-                'ticker': ticker,
-                'action': action,
-                'side': side,
-                'size': size,
-                'price': limit_price or market.get(f'{side}_ask'),
-                'order_id': order.get('order_id'),
-                'status': 'executed'
+                "timestamp": datetime.now(),
+                "ticker": ticker,
+                "action": action,
+                "side": side,
+                "size": size,
+                "price": limit_price or market.get(f"{side}_ask"),
+                "order_id": order.get("order_id"),
+                "status": "executed",
             }
 
             self.executed_orders.append(order_record)
@@ -271,7 +223,7 @@ class OrderManager:
 
             # Update positions
             if action == "buy":
-                self._add_position(ticker, side, size, order_record['price'])
+                self._add_position(ticker, side, size, order_record["price"])
             elif action == "sell":
                 self._remove_position(ticker, side, size)
 
@@ -279,24 +231,20 @@ class OrderManager:
 
         except Exception as e:
             print(f"Order execution failed: {e}")
-            return {
-                'status': 'failed',
-                'error': str(e),
-                'ticker': ticker
-            }
+            return {"status": "failed", "error": str(e), "ticker": ticker}
 
-    def _simulate_order(self, signal: Signal, action: str, side: str) -> Dict:
+    def _simulate_order(self, signal: Signal, action: str, side: str) -> dict:
         """Simulate order for dry run mode"""
         order = {
-            'timestamp': datetime.now(),
-            'ticker': signal.ticker,
-            'action': action,
-            'side': side,
-            'size': signal.size,
-            'price': signal.entry_price,
-            'confidence': signal.confidence,
-            'simulated': True,
-            'signal': signal
+            "timestamp": datetime.now(),
+            "ticker": signal.ticker,
+            "action": action,
+            "side": side,
+            "size": signal.size,
+            "price": signal.entry_price,
+            "confidence": signal.confidence,
+            "simulated": True,
+            "signal": signal,
         }
 
         self.executed_orders.append(order)
@@ -323,7 +271,7 @@ class OrderManager:
                 size=size,
                 entry_price=price,
                 current_price=price,
-                entry_time=datetime.now()
+                entry_time=datetime.now(),
             )
 
     def _remove_position(self, ticker: str, side: str, size: int):
@@ -358,7 +306,7 @@ class OrderManager:
     async def _get_confirmation(self, signal: Signal) -> bool:
         """Get manual confirmation for order"""
         print(f"\n{'='*50}")
-        print(f"CONFIRM ORDER:")
+        print("CONFIRM ORDER:")
         print(f"  Ticker: {signal.ticker}")
         print(f"  Type: {signal.type.value}")
         print(f"  Size: {signal.size} contracts")
@@ -369,63 +317,52 @@ class OrderManager:
             print(f"  Metadata: {signal.metadata}")
 
         response = input("Execute? (y/n): ").lower()
-        return response == 'y'
+        return response == "y"
 
     def update_prices(self, market_data: pd.DataFrame):
         """Update current prices for positions"""
         for ticker, position in self.active_positions.items():
-            ticker_data = market_data[market_data['ticker'] == ticker]
+            ticker_data = market_data[market_data["ticker"] == ticker]
             if not ticker_data.empty:
                 latest = ticker_data.iloc[-1]
                 if position.side == "yes":
-                    position.current_price = latest['yes_ask']
+                    position.current_price = latest["yes_ask"]
                 else:
-                    position.current_price = latest['no_ask']
+                    position.current_price = latest["no_ask"]
 
-    def get_portfolio_summary(self) -> Dict:
+    def get_portfolio_summary(self) -> dict:
         """Get current portfolio summary"""
-        total_value = sum(
-            pos.size * pos.current_price
-            for pos in self.active_positions.values()
-        )
+        total_value = sum(pos.size * pos.current_price for pos in self.active_positions.values())
 
-        total_cost = sum(
-            pos.size * pos.entry_price
-            for pos in self.active_positions.values()
-        )
+        total_cost = sum(pos.size * pos.entry_price for pos in self.active_positions.values())
 
         total_pnl = sum(pos.pnl for pos in self.active_positions.values())
 
         return {
-            'positions': len(self.active_positions),
-            'total_value': total_value,
-            'total_cost': total_cost,
-            'total_pnl': total_pnl,
-            'total_orders': len(self.executed_orders),
-            'active_positions': {
+            "positions": len(self.active_positions),
+            "total_value": total_value,
+            "total_cost": total_cost,
+            "total_pnl": total_pnl,
+            "total_orders": len(self.executed_orders),
+            "active_positions": {
                 ticker: {
-                    'side': pos.side,
-                    'size': pos.size,
-                    'entry_price': pos.entry_price,
-                    'current_price': pos.current_price,
-                    'pnl': pos.pnl,
-                    'pnl_pct': pos.pnl_percentage
+                    "side": pos.side,
+                    "size": pos.size,
+                    "entry_price": pos.entry_price,
+                    "current_price": pos.current_price,
+                    "pnl": pos.pnl,
+                    "pnl_pct": pos.pnl_percentage,
                 }
                 for ticker, pos in self.active_positions.items()
-            }
+            },
         }
 
-    async def close_all_positions(self) -> List[Dict]:
+    async def close_all_positions(self) -> list[dict]:
         """Close all open positions"""
         results = []
 
         for ticker in list(self.active_positions.keys()):
-            signal = Signal(
-                type=SignalType.CLOSE,
-                ticker=ticker,
-                size=0,
-                confidence=1.0
-            )
+            signal = Signal(type=SignalType.CLOSE, ticker=ticker, size=0, confidence=1.0)
             result = await self.execute_signal(signal)
             if result:
                 results.append(result)

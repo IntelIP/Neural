@@ -1,4 +1,5 @@
 import base64
+
 import pytest
 
 from neural.trading.client import TradingClient

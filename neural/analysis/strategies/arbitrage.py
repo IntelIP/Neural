@@ -6,9 +6,8 @@ Detects when YES + NO prices < $1.00 or cross-market discrepancies.
 """
 
 import pandas as pd
-import numpy as np
-from typing import Optional, Dict, List, Tuple
-from .base import Strategy, Signal, SignalType
+
+from .base import Signal, SignalType, Strategy
 
 
 class ArbitrageStrategy(Strategy):
@@ -28,7 +27,7 @@ class ArbitrageStrategy(Strategy):
         max_exposure_per_arb: float = 0.3,  # 30% of capital per arb
         include_fees: bool = True,
         speed_priority: bool = True,  # Prioritize speed over size
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize arbitrage strategy.
@@ -47,14 +46,14 @@ class ArbitrageStrategy(Strategy):
         self.max_exposure_per_arb = max_exposure_per_arb
         self.include_fees = include_fees
         self.speed_priority = speed_priority
-        self.active_arbitrages: List[Dict] = []
+        self.active_arbitrages: list[dict] = []
 
     def analyze(
         self,
         market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        cross_markets: Optional[Dict[str, pd.DataFrame]] = None,
-        **kwargs
+        espn_data: dict | None = None,
+        cross_markets: dict[str, pd.DataFrame] | None = None,
+        **kwargs,
     ) -> Signal:
         """
         Analyze for arbitrage opportunities.
@@ -72,7 +71,7 @@ class ArbitrageStrategy(Strategy):
             return self.hold()
 
         latest = market_data.iloc[-1]
-        ticker = latest['ticker']
+        ticker = latest["ticker"]
 
         # Check for YES+NO arbitrage
         yes_no_arb = self._check_yes_no_arbitrage(latest)
@@ -81,23 +80,19 @@ class ArbitrageStrategy(Strategy):
 
         # Check for cross-market arbitrage
         if cross_markets:
-            cross_arb = self._check_cross_market_arbitrage(
-                latest, cross_markets
-            )
+            cross_arb = self._check_cross_market_arbitrage(latest, cross_markets)
             if cross_arb:
                 return cross_arb
 
         # Check for sportsbook arbitrage
-        if 'sportsbook_data' in kwargs:
-            sb_arb = self._check_sportsbook_arbitrage(
-                latest, kwargs['sportsbook_data']
-            )
+        if "sportsbook_data" in kwargs:
+            sb_arb = self._check_sportsbook_arbitrage(latest, kwargs["sportsbook_data"])
             if sb_arb:
                 return sb_arb
 
         return self.hold(ticker)
 
-    def _check_yes_no_arbitrage(self, market: pd.Series) -> Optional[Signal]:
+    def _check_yes_no_arbitrage(self, market: pd.Series) -> Signal | None:
         """
         Check for YES + NO < $1.00 arbitrage.
 
@@ -107,12 +102,12 @@ class ArbitrageStrategy(Strategy):
         Returns:
             Signal if arbitrage exists
         """
-        if 'yes_ask' not in market or 'no_ask' not in market:
+        if "yes_ask" not in market or "no_ask" not in market:
             return None
 
-        yes_price = market['yes_ask']
-        no_price = market['no_ask']
-        ticker = market['ticker']
+        yes_price = market["yes_ask"]
+        no_price = market["no_ask"]
+        ticker = market["ticker"]
 
         # Calculate total cost
         total_cost = yes_price + no_price
@@ -146,23 +141,21 @@ class ArbitrageStrategy(Strategy):
                     confidence=self.execution_confidence,
                     entry_price=yes_price,
                     metadata={
-                        'strategy': 'yes_no_arbitrage',
-                        'also_buy': 'no',
-                        'no_price': no_price,
-                        'no_size': size,
-                        'total_cost': total_cost,
-                        'expected_profit': profit_per_contract * size,
-                        'profit_per_contract': profit_per_contract
-                    }
+                        "strategy": "yes_no_arbitrage",
+                        "also_buy": "no",
+                        "no_price": no_price,
+                        "no_size": size,
+                        "total_cost": total_cost,
+                        "expected_profit": profit_per_contract * size,
+                        "profit_per_contract": profit_per_contract,
+                    },
                 )
 
         return None
 
     def _check_cross_market_arbitrage(
-        self,
-        primary_market: pd.Series,
-        cross_markets: Dict[str, pd.DataFrame]
-    ) -> Optional[Signal]:
+        self, primary_market: pd.Series, cross_markets: dict[str, pd.DataFrame]
+    ) -> Signal | None:
         """
         Check for arbitrage across related markets.
 
@@ -176,21 +169,19 @@ class ArbitrageStrategy(Strategy):
         Returns:
             Signal if arbitrage exists
         """
-        ticker = primary_market['ticker']
+        ticker = primary_market["ticker"]
 
         # Find related markets
         related = self._find_related_markets(ticker, cross_markets)
 
-        for related_ticker, related_data in related.items():
+        for _related_ticker, related_data in related.items():
             if related_data.empty:
                 continue
 
             related_latest = related_data.iloc[-1]
 
             # Check for logical arbitrage
-            arb_opportunity = self._check_logical_arbitrage(
-                primary_market, related_latest
-            )
+            arb_opportunity = self._check_logical_arbitrage(primary_market, related_latest)
 
             if arb_opportunity:
                 return arb_opportunity
@@ -198,16 +189,14 @@ class ArbitrageStrategy(Strategy):
         return None
 
     def _find_related_markets(
-        self,
-        ticker: str,
-        cross_markets: Dict[str, pd.DataFrame]
-    ) -> Dict[str, pd.DataFrame]:
+        self, ticker: str, cross_markets: dict[str, pd.DataFrame]
+    ) -> dict[str, pd.DataFrame]:
         """Find markets related to the primary ticker"""
         related = {}
 
         # Extract team codes from ticker
-        if '-' in ticker:
-            parts = ticker.split('-')
+        if "-" in ticker:
+            parts = ticker.split("-")
             if len(parts) > 1:
                 teams = parts[-1]  # e.g., "DETBAL"
 
@@ -218,11 +207,7 @@ class ArbitrageStrategy(Strategy):
 
         return related
 
-    def _check_logical_arbitrage(
-        self,
-        market1: pd.Series,
-        market2: pd.Series
-    ) -> Optional[Signal]:
+    def _check_logical_arbitrage(self, market1: pd.Series, market2: pd.Series) -> Signal | None:
         """
         Check for logical arbitrage between two markets.
 
@@ -240,14 +225,14 @@ class ArbitrageStrategy(Strategy):
         # Implement based on actual Kalshi market structures
 
         # Example: Check if one market implies another
-        ticker1 = market1['ticker']
-        ticker2 = market2['ticker']
+        ticker1 = market1["ticker"]
+        ticker2 = market2["ticker"]
 
         # Check for spread markets
-        if 'SPREAD' in ticker2 and 'SPREAD' not in ticker1:
+        if "SPREAD" in ticker2 and "SPREAD" not in ticker1:
             # market1 is win/loss, market2 is spread
-            yes_price1 = market1['yes_ask']
-            yes_price2 = market2['yes_ask']
+            yes_price1 = market1["yes_ask"]
+            yes_price2 = market2["yes_ask"]
 
             # If spread YES is cheaper than outright WIN
             if yes_price2 < yes_price1 - self.min_arbitrage_profit:
@@ -262,20 +247,18 @@ class ArbitrageStrategy(Strategy):
                         confidence=self.execution_confidence,
                         entry_price=yes_price2,
                         metadata={
-                            'strategy': 'cross_market_arbitrage',
-                            'hedge_market': ticker1,
-                            'hedge_price': yes_price1,
-                            'arbitrage_profit': yes_price1 - yes_price2
-                        }
+                            "strategy": "cross_market_arbitrage",
+                            "hedge_market": ticker1,
+                            "hedge_price": yes_price1,
+                            "arbitrage_profit": yes_price1 - yes_price2,
+                        },
                     )
 
         return None
 
     def _check_sportsbook_arbitrage(
-        self,
-        market: pd.Series,
-        sportsbook_data: Dict
-    ) -> Optional[Signal]:
+        self, market: pd.Series, sportsbook_data: dict
+    ) -> Signal | None:
         """
         Check for arbitrage between Kalshi and sportsbooks.
 
@@ -286,9 +269,9 @@ class ArbitrageStrategy(Strategy):
         Returns:
             Signal if arbitrage exists
         """
-        ticker = market['ticker']
-        kalshi_yes = market['yes_ask']
-        kalshi_no = market['no_ask']
+        ticker = market["ticker"]
+        kalshi_yes = market["yes_ask"]
+        kalshi_no = market["no_ask"]
 
         # Get sportsbook consensus
         sb_prob = self._get_sportsbook_probability(ticker, sportsbook_data)
@@ -304,9 +287,7 @@ class ArbitrageStrategy(Strategy):
                     return None
 
             profit = sb_prob - kalshi_yes
-            size = self.calculate_position_size(
-                profit, 1.0, self.execution_confidence
-            )
+            size = self.calculate_position_size(profit, 1.0, self.execution_confidence)
 
             if size > 0:
                 return self.buy_yes(
@@ -314,9 +295,9 @@ class ArbitrageStrategy(Strategy):
                     size=size,
                     confidence=self.execution_confidence,
                     entry_price=kalshi_yes,
-                    strategy='sportsbook_arbitrage',
+                    strategy="sportsbook_arbitrage",
                     sportsbook_prob=sb_prob,
-                    expected_profit=profit * size
+                    expected_profit=profit * size,
                 )
 
         # Buy NO on Kalshi if significantly cheaper
@@ -327,9 +308,7 @@ class ArbitrageStrategy(Strategy):
                     return None
 
             profit = (1 - sb_prob) - kalshi_no
-            size = self.calculate_position_size(
-                profit, 1.0, self.execution_confidence
-            )
+            size = self.calculate_position_size(profit, 1.0, self.execution_confidence)
 
             if size > 0:
                 return self.buy_no(
@@ -337,35 +316,31 @@ class ArbitrageStrategy(Strategy):
                     size=size,
                     confidence=self.execution_confidence,
                     entry_price=kalshi_no,
-                    strategy='sportsbook_arbitrage',
+                    strategy="sportsbook_arbitrage",
                     sportsbook_prob=sb_prob,
-                    expected_profit=profit * size
+                    expected_profit=profit * size,
                 )
 
         return None
 
-    def _get_sportsbook_probability(
-        self,
-        ticker: str,
-        sportsbook_data: Dict
-    ) -> Optional[float]:
+    def _get_sportsbook_probability(self, ticker: str, sportsbook_data: dict) -> float | None:
         """Extract sportsbook implied probability"""
         if not sportsbook_data:
             return None
 
         # Extract team from ticker
-        if '-' in ticker:
-            parts = ticker.split('-')
+        if "-" in ticker:
+            parts = ticker.split("-")
             teams = parts[-1] if len(parts) > 1 else ""
 
             # Look for matching game in sportsbook data
             for game, odds in sportsbook_data.items():
                 if teams[:3] in game or teams[-3:] in game:
                     # Convert odds to probability
-                    if 'moneyline' in odds:
-                        return self._moneyline_to_probability(odds['moneyline'])
-                    elif 'decimal' in odds:
-                        return 1 / odds['decimal']
+                    if "moneyline" in odds:
+                        return self._moneyline_to_probability(odds["moneyline"])
+                    elif "decimal" in odds:
+                        return 1 / odds["decimal"]
 
         return None
 
@@ -389,7 +364,7 @@ class HighSpeedArbitrageStrategy(ArbitrageStrategy):
         pre_calculate_size: bool = True,
         fixed_size: int = 100,  # Fixed size for speed
         latency_threshold_ms: float = 50,  # Max acceptable latency
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize high-speed arbitrage.
@@ -405,12 +380,7 @@ class HighSpeedArbitrageStrategy(ArbitrageStrategy):
         self.fixed_size = fixed_size
         self.latency_threshold_ms = latency_threshold_ms
 
-    def analyze(
-        self,
-        market_data: pd.DataFrame,
-        espn_data: Optional[Dict] = None,
-        **kwargs
-    ) -> Signal:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Fast arbitrage detection with pre-calculated parameters.
 
@@ -428,8 +398,8 @@ class HighSpeedArbitrageStrategy(ArbitrageStrategy):
         latest = market_data.iloc[-1]
 
         # Quick YES+NO check (most common arbitrage)
-        if 'yes_ask' in latest and 'no_ask' in latest:
-            total = latest['yes_ask'] + latest['no_ask']
+        if "yes_ask" in latest and "no_ask" in latest:
+            total = latest["yes_ask"] + latest["no_ask"]
 
             # No fee calculation for speed
             if total < 0.99:  # Quick threshold
@@ -438,18 +408,18 @@ class HighSpeedArbitrageStrategy(ArbitrageStrategy):
 
                 return Signal(
                     type=SignalType.BUY_YES,
-                    ticker=latest['ticker'],
+                    ticker=latest["ticker"],
                     size=size,
                     confidence=1.0,
-                    entry_price=latest['yes_ask'],
+                    entry_price=latest["yes_ask"],
                     metadata={
-                        'strategy': 'high_speed_arbitrage',
-                        'also_buy': 'no',
-                        'no_price': latest['no_ask'],
-                        'no_size': size,
-                        'total_cost': total,
-                        'immediate': True
-                    }
+                        "strategy": "high_speed_arbitrage",
+                        "also_buy": "no",
+                        "no_price": latest["no_ask"],
+                        "no_size": size,
+                        "total_cost": total,
+                        "immediate": True,
+                    },
                 )
 
-        return self.hold(latest['ticker'])
+        return self.hold(latest["ticker"])

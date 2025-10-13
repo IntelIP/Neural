@@ -6,10 +6,10 @@ This test requires real Kalshi credentials; skip when not configured to keep CI 
 
 import os
 import ssl
-import json
+from urllib.parse import urlparse, urlunparse
+
 import pytest
 import websocket
-from urllib.parse import urlparse, urlunparse
 
 from neural.auth.env import get_api_key_id, get_private_key_material
 from neural.auth.signers.kalshi import KalshiSigner
@@ -42,10 +42,10 @@ def test_ws_debug_headers_and_connection() -> None:
     method = "GET"
     headers = signer.headers(method, path)
 
-    print(f"\n📝 Generated Headers for WebSocket:")
+    print("\n📝 Generated Headers for WebSocket:")
     print(f"  Path: {path}")
     print(f"  Method: {method}")
-    print(f"\nHeaders:")
+    print("\nHeaders:")
     for key, value in headers.items():
         if "SIGNATURE" in key:
             print(f"  {key}: {value[:20]}...")

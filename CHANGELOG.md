@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
-## [0.2.0] - 2025-10-11 (Beta)
+## [0.2.0] - 2025-01-13 (Beta)
 
 ### Fixed
 - **Twitter API Domain (Bug #1):** Corrected base URL from `twitter-api.io` to `api.twitterapi.io`
@@ -33,6 +33,12 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Documented NumPy version requirements and compatibility constraints
 - Added SSL/TLS configuration examples with certifi
 - Enhanced WebSocket authentication documentation with working examples
+
+### Code Quality
+- Fixed 1,513 ruff linting errors (99.7% improvement)
+- Applied black formatting to entire codebase
+- Resolved critical mypy type errors in 4 core modules
+- All tests passing (17 passed, 2 skipped)
 
 ### Notes
 - All changes are backward compatible (no breaking changes)

@@ -2,13 +2,15 @@
 """Direct synchronous test of historical data."""
 
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neural.auth.http_client import KalshiHTTPClient
+
 
 def collect_trades_sync(client, ticker, start_ts, end_ts, limit=100):
     """Synchronous trade collection with pagination."""
@@ -19,11 +21,7 @@ def collect_trades_sync(client, ticker, start_ts, end_ts, limit=100):
         try:
             # Call API
             response = client.get_trades(
-                ticker=ticker,
-                min_ts=start_ts,
-                max_ts=end_ts,
-                limit=limit,
-                cursor=cursor
+                ticker=ticker, min_ts=start_ts, max_ts=end_ts, limit=limit, cursor=cursor
             )
 
             # Parse trades
@@ -64,7 +62,7 @@ def main():
     start_ts = end_ts - (7 * 24 * 3600)
 
     print(f"\nTicker: {ticker}")
-    print(f"Time range: Last 7 days")
+    print("Time range: Last 7 days")
     print(f"Start: {datetime.fromtimestamp(start_ts)}")
     print(f"End: {datetime.fromtimestamp(end_ts)}\n")
 
@@ -77,15 +75,17 @@ def main():
         print(f"\n✅ SUCCESS: Collected {len(trades_df)} trades\n")
 
         # Convert timestamp
-        trades_df['created_time'] = pd.to_datetime(trades_df['created_time'])
+        trades_df["created_time"] = pd.to_datetime(trades_df["created_time"])
 
         # Show sample
         print("Sample trades:")
-        print(trades_df[['created_time', 'yes_price', 'no_price', 'count', 'taker_side']].head(10))
+        print(trades_df[["created_time", "yes_price", "no_price", "count", "taker_side"]].head(10))
 
         # Statistics
-        print(f"\nStatistics:")
-        print(f"  Time range: {trades_df['created_time'].min()} to {trades_df['created_time'].max()}")
+        print("\nStatistics:")
+        print(
+            f"  Time range: {trades_df['created_time'].min()} to {trades_df['created_time'].max()}"
+        )
         print(f"  Total volume: {trades_df['count'].sum():,}")
         print(f"  Price range: {trades_df['yes_price'].min()}-{trades_df['yes_price'].max()}")
 

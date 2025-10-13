@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import List
 
 import pandas as pd
 
@@ -58,13 +57,13 @@ def fetch_markets(series_ticker: str = SERIES_TICKER, limit: int = FETCH_LIMIT) 
     return df
 
 
-def choose_candidates(df: pd.DataFrame, top_n: int = 3) -> List[MarketPick]:
+def choose_candidates(df: pd.DataFrame, top_n: int = 3) -> list[MarketPick]:
     """Pick a few markets with the tightest YES/NO spread as a toy "edge" signal."""
     df = df.copy()
     df["yes_spread"] = df["yes_ask"] - df.get("yes_bid", 0)
     narrowed = df.sort_values(["yes_spread", "volume"], ascending=[True, False]).head(top_n)
 
-    picks: List[MarketPick] = []
+    picks: list[MarketPick] = []
     for _, row in narrowed.iterrows():
         picks.append(
             MarketPick(
@@ -78,7 +77,7 @@ def choose_candidates(df: pd.DataFrame, top_n: int = 3) -> List[MarketPick]:
     return picks
 
 
-async def simulate_orders(picks: List[MarketPick]) -> None:
+async def simulate_orders(picks: list[MarketPick]) -> None:
     paper = PaperTradingClient(
         initial_capital=10_000,
         commission_per_trade=0.00,
@@ -121,9 +120,7 @@ async def main() -> None:
     print("\n🎯 Selecting candidates")
     picks = choose_candidates(df)
     for pick in picks:
-        print(
-            f"  - {pick.ticker} | {pick.title} | YES ${pick.yes_ask:.2f} | NO ${pick.no_ask:.2f}"
-        )
+        print(f"  - {pick.ticker} | {pick.title} | YES ${pick.yes_ask:.2f} | NO ${pick.no_ask:.2f}")
 
     print("\n🧪 Simulating trades in paper account\n")
     await simulate_orders(picks)

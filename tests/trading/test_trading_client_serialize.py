@@ -30,6 +30,7 @@ class DummyClient:
 
 
 import base64
+
 import pytest
 
 

@@ -5,10 +5,12 @@ Simple WebSocket Test with Correct Endpoint
 
 import asyncio
 import logging
+
 from neural.trading import KalshiWebSocketClient
 
 # Enable debug logging to see what's happening
 logging.basicConfig(level=logging.DEBUG)
+
 
 def handle_message(msg):
     """Handle incoming WebSocket messages"""
@@ -23,10 +25,11 @@ def handle_message(msg):
         ticker = msg.get("market_ticker")
         print(f"📊 Orderbook for {ticker}")
 
+
 async def test_websocket():
     """Test WebSocket connection with correct endpoint"""
     print("🚀 Testing Kalshi WebSocket Connection")
-    print("="*50)
+    print("=" * 50)
 
     print("\n📡 Connection Details:")
     print("  Endpoint: wss://api.elections.kalshi.com/trade-api/ws/v2")
@@ -46,10 +49,7 @@ async def test_websocket():
         sea_ticker = "KXNFLGAME-25SEP25SEAARI-SEA"
         print(f"\n📊 Subscribing to: {sea_ticker}")
 
-        req_id = ws.subscribe(
-            ["orderbook_delta"],
-            params={"market_tickers": [sea_ticker]}
-        )
+        req_id = ws.subscribe(["orderbook_delta"], params={"market_tickers": [sea_ticker]})
         print(f"  Request ID: {req_id}")
 
         # Wait for messages
@@ -65,7 +65,9 @@ async def test_websocket():
     except Exception as e:
         print(f"\n❌ Connection failed: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(test_websocket())

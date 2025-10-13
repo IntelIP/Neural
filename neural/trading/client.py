@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Protocol
 
-from neural.auth.env import get_api_key_id, get_private_key_material, get_base_url
+from neural.auth.env import get_api_key_id, get_base_url, get_private_key_material
 
 
 class _KalshiClientFactory(Protocol):
@@ -88,11 +88,11 @@ class TradingClient:
     - Dependency-injectable client factory for testing
     """
 
-    api_key_id: Optional[str] = None
-    private_key_pem: Optional[bytes] = None
-    env: Optional[str] = None
+    api_key_id: str | None = None
+    private_key_pem: bytes | None = None
+    env: str | None = None
     timeout: int = 15
-    client_factory: Optional[_KalshiClientFactory] = None
+    client_factory: _KalshiClientFactory | None = None
 
     _client: Any = field(init=False)
     portfolio: _ServiceProxy = field(init=False)
@@ -126,7 +126,7 @@ class TradingClient:
             except Exception:
                 pass
 
-    def __enter__(self) -> "TradingClient":
+    def __enter__(self) -> TradingClient:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
