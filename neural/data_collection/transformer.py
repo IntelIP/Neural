@@ -5,10 +5,12 @@ import datetime
 class DataTransformer:
     """Transforms raw data from sources into normalized format for analysis."""
 
-    def __init__(self, transformations: Optional[List[Callable[[Dict[str, Any]], Dict[str, Any]]]] = None):
+    def __init__(
+        self, transformations: Optional[List[Callable[[Dict[str, Any]], Dict[str, Any]]]] = None
+    ):
         self.transformations = transformations or []
 
-    def add_transformation(self, func: Callable[[Dict[str, Any]], Dict[str, Any]]):
+    def add_transformation(self, func: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
         """Add a transformation function."""
         self.transformations.append(func)
 
@@ -17,12 +19,12 @@ class DataTransformer:
         for transform in self.transformations:
             data = transform(data)
         # Add timestamp if not present
-        if 'timestamp' not in data:
-            data['timestamp'] = datetime.datetime.utcnow().isoformat()
+        if "timestamp" not in data:
+            data["timestamp"] = datetime.datetime.utcnow().isoformat()
         return data
 
     @staticmethod
-    def flatten_keys(data: Dict[str, Any], prefix: str = '') -> Dict[str, Any]:
+    def flatten_keys(data: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
         """Flatten nested dict keys."""
         flattened = {}
         for key, value in data.items():

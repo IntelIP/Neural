@@ -14,7 +14,8 @@ def get_base_url(env: Optional[str] = None) -> str:
     """Return the trading API host (production by default).
     Demo endpoints are not supported; raise if a non-prod env is requested.
     """
-    env_value = (env or os.getenv("KALSHI_ENV", "prod")).lower()
+    env_str = env or os.getenv("KALSHI_ENV", "prod")
+    env_value = env_str.lower() if env_str else "prod"
     if env_value in ("prod", "production", "live", ""):  # allow empty for defaults
         return PROD_BASE_URL
     raise ValueError("Kalshi demo environment is unsupported; use production credentials.")

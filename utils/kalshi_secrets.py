@@ -4,7 +4,7 @@ import os
 def load_kalshi_credentials(
     api_key_path: str = "secrets/kalshi_api_key_id.txt",
     private_key_path: str = "secrets/kalshi_private_key.pem",
-):
+) -> tuple[str, bytes]:
     """
     Load Kalshi API credentials from the secrets directory and export env vars
     for components that rely on environment configuration.
@@ -20,5 +20,3 @@ def load_kalshi_credentials(
     os.environ["KALSHI_PRIVATE_KEY_PATH"] = os.path.abspath(private_key_path)
 
     return api_key_id, private_key_pem
-
-
