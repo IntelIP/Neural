@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.3.0] - 2025-10-24
+
+### Added
+- **Historical Data Fetching:** Added `fetch_historical_candlesticks()` to KalshiMarketsSource with OHLCV support for backtesting
+- **Enhanced Backtesting Engine:** Multi-sport support with Plotly visualization and caching capabilities
+- **NBA Market Collection:** Implemented `get_nba_games()` with team parsing and date extraction
+- **Enhanced CFB Collection:** Improved `get_cfb_games()` with better market discovery
+- **Moneyline Market Discovery:** Added `filter_moneyline_markets()` utility and `get_moneyline_markets()` sport-agnostic function
+- **Unified Sports Interface:** New `SportMarketCollector` class for multi-sport market collection
+- **Complete v0.3.0 Demo:** End-to-end example showcasing NBA/NFL collection, moneyline filtering, and historical data analysis
+
+### Changed
+- **Data Collection Exports:** Updated `data_collection/__init__.py` to include new sports market utilities
+- **Version Management:** Synchronized version numbers across `pyproject.toml`, `neural/__init__.py`, and `.bumpversion.cfg`
+
+### Documentation
+- Added comprehensive examples for historical data fetching and sports market analysis
+- Updated README with sports examples and backtesting guides
+- Enhanced documentation for multi-sport market discovery
+
+### Performance
+- Historical data fetching benchmarks: <1s per market
+- Backtesting performance optimized with caching
+- Real-time workflow demonstrations showing 43% price improvement potential
+
 ## [0.2.0] - 2025-01-13 (Beta)
 
 ### Fixed
