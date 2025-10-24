@@ -51,6 +51,7 @@ class Signal:
     edge: float | None = None
     expected_value: float | None = None
     max_contracts: int | None = None
+    entry_price: float | None = None  # Price to enter at (for order execution)
     stop_loss_price: float | None = None
     take_profit_price: float | None = None
     metadata: dict[str, Any] | None = None
