@@ -97,15 +97,20 @@ class OrderManager:
         # Check for arbitrage (need to buy both sides)
         if signal.metadata and signal.metadata.get("also_buy") == "no":
             # Execute arbitrage trades
+            size_contracts = (
+                int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+            )
             yes_order = await self._place_order(
-                signal.ticker, "buy", "yes", signal.size, signal.entry_price
+                signal.ticker, "buy", "yes", size_contracts, signal.entry_price
             )
 
+            no_size = signal.metadata.get("no_size", signal.size)
+            no_size_contracts = int(no_size) if isinstance(no_size, (int, float)) else no_size
             no_order = await self._place_order(
                 signal.ticker,
                 "buy",
                 "no",
-                signal.metadata.get("no_size", signal.size),
+                no_size_contracts,
                 signal.metadata.get("no_price"),
             )
 
@@ -117,7 +122,10 @@ class OrderManager:
             }
 
         # Regular buy YES
-        return await self._place_order(signal.ticker, "buy", "yes", signal.size, signal.entry_price)
+        size_contracts = int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+        return await self._place_order(
+            signal.ticker, "buy", "yes", size_contracts, signal.entry_price
+        )
 
     async def _execute_buy_no(self, signal: Signal) -> dict | None:
         """Execute BUY_NO order"""
@@ -127,7 +135,10 @@ class OrderManager:
         if not self.trading_client:
             raise ValueError("Trading client not configured")
 
-        return await self._place_order(signal.ticker, "buy", "no", signal.size, signal.entry_price)
+        size_contracts = int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+        return await self._place_order(
+            signal.ticker, "buy", "no", size_contracts, signal.entry_price
+        )
 
     async def _execute_sell_yes(self, signal: Signal) -> dict | None:
         """Execute SELL_YES order"""
@@ -137,8 +148,9 @@ class OrderManager:
         if not self.trading_client:
             raise ValueError("Trading client not configured")
 
+        size_contracts = int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
         return await self._place_order(
-            signal.ticker, "sell", "yes", signal.size, signal.entry_price
+            signal.ticker, "sell", "yes", size_contracts, signal.entry_price
         )
 
     async def _execute_sell_no(self, signal: Signal) -> dict | None:
@@ -149,7 +161,10 @@ class OrderManager:
         if not self.trading_client:
             raise ValueError("Trading client not configured")
 
-        return await self._place_order(signal.ticker, "sell", "no", signal.size, signal.entry_price)
+        size_contracts = int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+        return await self._place_order(
+            signal.ticker, "sell", "no", size_contracts, signal.entry_price
+        )
 
     async def _execute_close(self, signal: Signal) -> dict | None:
         """Close existing position"""
@@ -166,7 +181,11 @@ class OrderManager:
         # Close through trading client
         if position.side == "yes":
             return await self._place_order(
-                signal.ticker, "sell", "yes", position.size, None  # Market order
+                signal.ticker,
+                "sell",
+                "yes",
+                position.size,
+                None,  # Market order
             )
         else:
             return await self._place_order(signal.ticker, "sell", "no", position.size, None)
@@ -235,13 +254,16 @@ class OrderManager:
 
     def _simulate_order(self, signal: Signal, action: str, side: str) -> dict:
         """Simulate order for dry run mode"""
+        size_contracts = int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+        price = signal.entry_price if signal.entry_price is not None else 0.5  # Default price
+
         order = {
             "timestamp": datetime.now(),
             "ticker": signal.ticker,
             "action": action,
             "side": side,
-            "size": signal.size,
-            "price": signal.entry_price,
+            "size": size_contracts,
+            "price": price,
             "confidence": signal.confidence,
             "simulated": True,
             "signal": signal,
@@ -251,7 +273,7 @@ class OrderManager:
         self.order_history.append(order)
 
         if action == "buy":
-            self._add_position(signal.ticker, side, signal.size, signal.entry_price)
+            self._add_position(signal.ticker, side, size_contracts, price)
 
         return order
 
@@ -305,7 +327,7 @@ class OrderManager:
 
     async def _get_confirmation(self, signal: Signal) -> bool:
         """Get manual confirmation for order"""
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print("CONFIRM ORDER:")
         print(f"  Ticker: {signal.ticker}")
         print(f"  Type: {signal.type.value}")
@@ -362,7 +384,12 @@ class OrderManager:
         results = []
 
         for ticker in list(self.active_positions.keys()):
-            signal = Signal(type=SignalType.CLOSE, ticker=ticker, size=0, confidence=1.0)
+            signal = Signal(
+                signal_type=SignalType.CLOSE,
+                market_id=ticker,
+                recommended_size=0.0,
+                confidence=1.0,
+            )
             result = await self.execute_signal(signal)
             if result:
                 results.append(result)
