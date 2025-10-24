@@ -7,6 +7,7 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
+import pytest
 import simplefix
 from dotenv import load_dotenv
 
@@ -14,6 +15,8 @@ from neural.auth.env import get_api_key_id, get_private_key_material
 from neural.trading.fix import FIXConnectionConfig, KalshiFIXClient
 
 load_dotenv()
+
+pytestmark = pytest.mark.skip(reason="Requires Kalshi API credentials")
 
 
 class OrderExecutionTester:

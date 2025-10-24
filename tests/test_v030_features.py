@@ -127,9 +127,9 @@ class TestMoneylineFiltering:
                     "KXNFLGAME-DAL-PHI-WIN",
                 ],
                 "title": [
-                    "Chiefs to win",
-                    "Chiefs to cover spread",
-                    "Cowboys to win",
+                    "Will Chiefs beat Buffalo?",
+                    "Chiefs to cover spread?",
+                    "Will Cowboys win?",
                 ],
             }
         )
@@ -176,17 +176,17 @@ class TestSportMarketCollector:
     @pytest.mark.asyncio
     async def test_sport_market_collector_nfl(self):
         """Test SportMarketCollector for NFL"""
-        collector = SportMarketCollector(sport="NFL")
+        collector = SportMarketCollector()
 
-        with patch.object(collector, "fetch_markets") as mock_fetch:
+        with patch.object(collector, "get_games") as mock_fetch:
             mock_fetch.return_value = pd.DataFrame(
                 {
                     "ticker": ["KXNFLGAME-KC-BUF-WIN"],
-                    "title": ["Chiefs to win"],
+                    "title": ["Will Chiefs beat Buffalo?"],
                 }
             )
 
-            result = await collector.fetch_markets()
+            result = await collector.get_games(sport="NFL")
 
             assert not result.empty
             mock_fetch.assert_called_once()
@@ -194,17 +194,17 @@ class TestSportMarketCollector:
     @pytest.mark.asyncio
     async def test_sport_market_collector_nba(self):
         """Test SportMarketCollector for NBA"""
-        collector = SportMarketCollector(sport="NBA")
+        collector = SportMarketCollector()
 
-        with patch.object(collector, "fetch_markets") as mock_fetch:
+        with patch.object(collector, "get_games") as mock_fetch:
             mock_fetch.return_value = pd.DataFrame(
                 {
                     "ticker": ["KXNBA-LAL-GSW-WIN"],
-                    "title": ["Lakers to win"],
+                    "title": ["Will Lakers beat GSW?"],
                 }
             )
 
-            result = await collector.fetch_markets()
+            result = await collector.get_games(sport="NBA")
 
             assert not result.empty
             assert "KXNBA" in result.iloc[0]["ticker"]
@@ -212,7 +212,7 @@ class TestSportMarketCollector:
     @pytest.mark.asyncio
     async def test_sport_market_collector_with_filters(self):
         """Test SportMarketCollector with moneyline filter"""
-        collector = SportMarketCollector(sport="NFL", moneyline_only=True)
+        collector = SportMarketCollector()
 
         with patch("neural.data_collection.kalshi._fetch_markets") as mock_fetch:
             mock_fetch.return_value = pd.DataFrame(
@@ -221,11 +221,11 @@ class TestSportMarketCollector:
                         "KXNFLGAME-KC-BUF-WIN",
                         "KXNFLGAME-KC-BUF-SPREAD",
                     ],
-                    "title": ["Chiefs to win", "Chiefs spread"],
+                    "title": ["Will Chiefs beat Buffalo?", "Chiefs to cover spread?"],
                 }
             )
 
-            result = await collector.fetch_markets()
+            result = await collector.get_games(sport="NFL", market_type="moneyline")
 
             # Should filter to only moneyline markets
             assert all("-WIN" in ticker for ticker in result["ticker"])
@@ -262,14 +262,14 @@ class TestIntegrationScenarios:
         results = {}
 
         for sport in sports:
-            collector = SportMarketCollector(sport=sport)
+            collector = SportMarketCollector()
 
-            with patch.object(collector, "fetch_markets") as mock_fetch:
+            with patch.object(collector, "get_games") as mock_fetch:
                 mock_fetch.return_value = pd.DataFrame(
-                    {"ticker": [f"KX{sport}-TEST"], "title": [f"{sport} game"]}
+                    {"ticker": [f"KX{sport}-TEST"], "title": [f"Will {sport} team win?"]}
                 )
 
-                results[sport] = await collector.fetch_markets()
+                results[sport] = await collector.get_games(sport=sport)
 
         assert len(results) == 3
         assert all(not df.empty for df in results.values())
