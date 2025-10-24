@@ -3,6 +3,10 @@
 Final Infrastructure Test - Verify all components work
 """
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="Requires Kalshi API credentials")
+
 print("\n🚀 Neural SDK - Infrastructure Components Test\n")
 print("=" * 70)
 
@@ -21,7 +25,7 @@ try:
             print(f"  Found {len(markets)} markets")
             for _, m in markets.iterrows():
                 team = "Seattle" if "SEA" in m["ticker"] else "Arizona"
-                print(f"  {team}: ${m['yes_ask']/100:.2f} ({m['yes_ask']:.0f}%)")
+                print(f"  {team}: ${m['yes_ask'] / 100:.2f} ({m['yes_ask']:.0f}%)")
             return True
         else:
             print("❌ REST API: No markets found")
