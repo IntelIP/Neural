@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Iterable
+from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
@@ -113,8 +114,9 @@ class KalshiMarketsSource:
         Returns:
             DataFrame with OHLCV data and metadata
         """
-        from neural.auth.http_client import KalshiHTTPClient
         from datetime import datetime, timedelta
+
+        from neural.auth.http_client import KalshiHTTPClient
 
         # Set up time range
         if end_date is None:

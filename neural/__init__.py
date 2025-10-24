@@ -22,6 +22,9 @@ from typing import Set  # noqa: UP035
 # Track which experimental features have been used
 _experimental_features_used: set[str] = set()
 
+# Track if beta warning has been issued
+_beta_warning_issued = False
+
 
 def _warn_experimental(feature: str, module: str | None = None) -> None:
     """Issue a warning for experimental features."""
@@ -39,7 +42,8 @@ def _warn_experimental(feature: str, module: str | None = None) -> None:
 
 def _warn_beta() -> None:
     """Issue a one-time beta warning."""
-    if not hasattr(_warn_beta, "_warned"):
+    global _beta_warning_issued
+    if not _beta_warning_issued:
         warnings.warn(
             f"⚠️  Neural SDK Beta v{__version__} is in BETA. "
             "Core features are stable, but advanced modules are experimental. "
@@ -47,7 +51,7 @@ def _warn_beta() -> None:
             UserWarning,
             stacklevel=2,
         )
-        _warn_beta._warned = True
+        _beta_warning_issued = True
 
 
 # Issue beta warning on import

@@ -13,7 +13,6 @@ Run with: python examples/11_complete_v030_demo.py
 """
 
 import asyncio
-from datetime import datetime
 
 import pandas as pd
 
@@ -97,7 +96,7 @@ async def demo_historical_data(sample_ticker=None):
         print(f"Columns: {list(historical_data.columns)}")
 
         # Show summary statistics
-        print(f"\nPrice Summary:")
+        print("\nPrice Summary:")
         print(f"  Open: ${historical_data['open'].iloc[0]:.3f}")
         print(f"  Close: ${historical_data['close'].iloc[-1]:.3f}")
         print(f"  High: ${historical_data['high'].max():.3f}")
@@ -105,7 +104,7 @@ async def demo_historical_data(sample_ticker=None):
         print(f"  Volume: {historical_data['volume'].sum():,} contracts")
 
         # Show first few rows
-        print(f"\nSample Data:")
+        print("\nSample Data:")
         print(
             historical_data[["timestamp", "open", "high", "low", "close", "volume"]]
             .head(3)
@@ -147,7 +146,7 @@ async def demo_complete_workflow():
             print(f"✅ Got {len(historical_data)} data points")
 
             # Step 3: Simple analysis
-            print(f"\nStep 3: Basic analysis...")
+            print("\nStep 3: Basic analysis...")
 
             # Calculate volatility
             returns = historical_data["close"].pct_change().dropna()
@@ -166,11 +165,11 @@ async def demo_complete_workflow():
 
             # Trading opportunity assessment
             if abs(price_change) > 2:
-                print(f"  📈 High movement detected - potential trading opportunity")
+                print("  📈 High movement detected - potential trading opportunity")
             else:
-                print(f"  📊 Low movement - stable market")
+                print("  📊 Low movement - stable market")
 
-            print(f"\n✅ Complete workflow successful!")
+            print("\n✅ Complete workflow successful!")
             return True
         else:
             print("❌ No historical data available")
@@ -212,13 +211,13 @@ async def main():
         print("✅ Unified interface: Working")
         print(f"✅ Complete workflow: {'Working' if success else 'Partial'}")
 
-        print(f"\n📊 Data Summary:")
+        print("\n📊 Data Summary:")
         print(f"  NFL markets tested: {len(nfl_games) if not nfl_games.empty else 0}")
         print(
             f"  Historical data points: {len(historical_data) if not historical_data.empty else 0}"
         )
 
-        print(f"\n🚀 Neural SDK v0.3.0 is ready for production!")
+        print("\n🚀 Neural SDK v0.3.0 is ready for production!")
 
     except Exception as e:
         print(f"❌ Demo failed: {e}")

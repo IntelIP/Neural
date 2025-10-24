@@ -96,10 +96,10 @@ def create_strategy(preset: str, **override_params) -> Strategy:
         raise ValueError(f"Unknown preset: {preset}. Choose from: {list(STRATEGY_PRESETS.keys())}")
 
     preset_config = STRATEGY_PRESETS[preset]
-    strategy_class = preset_config["class"]
-    params = preset_config["params"].copy()
+    strategy_class = preset_config["class"]  # type: ignore[index]
+    params = dict(preset_config["params"])  # type: ignore[index,arg-type]
 
     # Apply overrides
     params.update(override_params)
 
-    return strategy_class(**params)
+    return strategy_class(**params)  # type: ignore[return-value,operator]

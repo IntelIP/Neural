@@ -182,14 +182,19 @@ class RESTStreamingClient:
             if not self.client:
                 return
 
-            # Get market data using the client's method
-            markets_df = self.client.get_markets_for_ticker(ticker)
+            # Get market data - fetch single ticker
+            markets_df = await self.client.fetch()
 
             if markets_df.empty:
                 return
 
+            # Filter for specific ticker
+            market_row = markets_df[markets_df["ticker"] == ticker]
+            if market_row.empty:
+                return
+
             # Get first market (should be the only one for a specific ticker)
-            market = markets_df.iloc[0].to_dict()
+            market = market_row.iloc[0].to_dict()
 
             # Create snapshot
             snapshot = MarketSnapshot(
@@ -221,7 +226,7 @@ class RESTStreamingClient:
                         print(
                             f"[{self._timestamp()}] {direction} {ticker}: "
                             f"${old_snapshot.yes_mid:.3f} → ${snapshot.yes_mid:.3f} "
-                            f"({price_change*100:.1f}¢ move)"
+                            f"({price_change * 100:.1f}¢ move)"
                         )
 
             # Update cache
