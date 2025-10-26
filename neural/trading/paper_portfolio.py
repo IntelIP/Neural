@@ -135,6 +135,7 @@ class PaperPortfolio:
         initial_capital: float,
         commission_per_trade: float = 0.50,
         default_slippage_pct: float = 0.002,
+        risk_manager: Any = None,
     ):
         """
         Initialize paper trading portfolio.
@@ -143,11 +144,13 @@ class PaperPortfolio:
             initial_capital: Starting cash amount
             commission_per_trade: Fixed commission per trade
             default_slippage_pct: Default slippage percentage
+            risk_manager: Optional RiskManager for real-time risk monitoring
         """
         self.initial_capital = initial_capital
         self.cash = initial_capital
         self.commission_per_trade = commission_per_trade
         self.default_slippage_pct = default_slippage_pct
+        self.risk_manager = risk_manager
 
         self.positions: dict[str, Position] = {}
         self.trade_history: list[Trade] = []

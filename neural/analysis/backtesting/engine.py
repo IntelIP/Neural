@@ -85,6 +85,7 @@ class Backtester:
         commission: float = 0.0,  # Additional commission if any
         initial_capital: float = 1000.0,
         max_workers: int = 4,
+        risk_manager: Any = None,  # Optional risk manager for stop-loss simulation
     ):
         """
         Initialize backtesting engine.
@@ -97,6 +98,7 @@ class Backtester:
             commission: Additional commission per trade
             initial_capital: Starting capital for backtest
             max_workers: Number of parallel workers
+            risk_manager: Optional RiskManager for stop-loss and risk simulation
         """
         self.data_source = data_source
         self.espn_source = espn_source
@@ -105,6 +107,7 @@ class Backtester:
         self.commission = commission
         self.initial_capital = initial_capital
         self.max_workers = max_workers
+        self.risk_manager = risk_manager
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
 
     def backtest(

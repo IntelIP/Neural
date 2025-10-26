@@ -12,7 +12,7 @@ This package provides tools for:
 modules (sentiment analysis, FIX streaming) are experimental.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __author__ = "Neural Contributors"
 __license__ = "MIT"
 

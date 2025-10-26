@@ -1,0 +1,292 @@
+---
+title: 'Risk Management & Stop-Loss'
+description: 'Real-time risk monitoring, automated stop-loss execution, and position management for live trading.'
+---
+
+## Overview
+
+Neural's risk management system provides comprehensive protection for your trading operations through real-time monitoring, automated stop-loss execution, and configurable risk limits. Designed specifically for websocket-based trading flows, it ensures positions are managed and exited quickly when risk thresholds are breached.
+
+## Key Features
+
+- **Multiple Stop-Loss Types**: Percentage, absolute price, and trailing stops
+- **Real-Time Monitoring**: Continuous position evaluation via websocket updates
+- **Automated Execution**: Immediate order placement when risk events trigger
+- **Risk Limits**: Configurable drawdown, position size, and daily loss limits
+- **Emergency Controls**: Circuit breakers and emergency stop functionality
+
+## Quick Start
+
+```python
+from neural.analysis.risk import RiskManager, StopLossConfig, StopLossType, RiskLimits
+from neural.analysis.execution import AutoExecutor
+from neural.trading import TradingClient, KalshiWebSocketClient
+
+# Create risk manager with conservative limits
+risk_manager = RiskManager(
+    limits=RiskLimits(
+        max_drawdown_pct=0.10,      # 10% max drawdown
+        max_position_size_pct=0.05, # 5% of portfolio per position
+        daily_loss_limit_pct=0.05   # 5% daily loss limit
+    )
+)
+
+# Create automated executor
+executor = AutoExecutor(trading_client=TradingClient(), risk_manager=risk_manager)
+
+# Connect risk manager to websocket for real-time monitoring
+ws_client = KalshiWebSocketClient(risk_manager=risk_manager)
+ws_client.connect()
+
+# Trading client with risk integration
+client = TradingClient(risk_manager=risk_manager)
+
+# Place order with stop-loss protection
+client.place_order_with_risk(
+    market_id="market_123",
+    side="yes",
+    quantity=100,
+    stop_loss_config=StopLossConfig(type=StopLossType.PERCENTAGE, value=0.05)
+)
+```
+
+## Stop-Loss Types
+
+### Percentage Stop-Loss
+
+Exits position when loss exceeds a percentage of entry value.
+
+```python
+stop_config = StopLossConfig(
+    type=StopLossType.PERCENTAGE,
+    value=0.05  # 5% stop-loss
+)
+```
+
+### Absolute Price Stop-Loss
+
+Exits at a specific price level.
+
+```python
+stop_config = StopLossConfig(
+    type=StopLossType.ABSOLUTE,
+    value=0.45  # Exit if price drops to 0.45
+)
+```
+
+### Trailing Stop-Loss
+
+Follows favorable price movement, locking in profits.
+
+```python
+stop_config = StopLossConfig(
+    type=StopLossType.TRAILING,
+    value=0.03  # 3% trail behind highest price
+)
+```
+
+## Advanced Stop-Loss Strategies
+
+The `StopLossEngine` provides sophisticated stop-loss calculations:
+
+```python
+from neural.analysis.risk import StopLossEngine
+
+engine = StopLossEngine()
+
+# Volatility-adjusted stop
+stop_price = engine.calculate_stop_price(
+    entry_price=0.50,
+    current_price=0.55,
+    side="yes",
+    strategy="volatility",
+    volatility=0.02,  # 2% volatility
+    multiplier=2.0    # 2x volatility for safety
+)
+
+# Time-based decaying stop
+stop_price = engine.calculate_stop_price(
+    entry_price=0.50,
+    current_price=0.52,
+    side="yes",
+    strategy="time_based",
+    time_held=3600,     # 1 hour held
+    max_time=86400,     # 24 hours max
+    time_factor=0.1     # 10% max adjustment
+)
+```
+
+## Risk Limits Configuration
+
+```python
+from neural.analysis.risk import RiskLimits
+
+limits = RiskLimits(
+    max_drawdown_pct=0.15,        # Stop trading if portfolio drops 15%
+    max_position_size_pct=0.10,   # No position larger than 10% of portfolio
+    daily_loss_limit_pct=0.08,    # Stop if daily loss exceeds 8%
+    max_positions=20              # Maximum 20 open positions
+)
+
+risk_manager = RiskManager(limits=limits)
+```
+
+## WebSocket Integration
+
+Real-time risk monitoring through websocket price updates:
+
+```python
+# WebSocket automatically monitors positions
+ws_client = KalshiWebSocketClient(risk_manager=risk_manager)
+ws_client.connect()
+
+# As prices update, risk manager evaluates positions
+# Stop-loss orders are triggered automatically when conditions met
+```
+
+## Automated Execution
+
+The `AutoExecutor` handles risk events automatically:
+
+```python
+from neural.analysis.execution import AutoExecutor
+
+executor = AutoExecutor(
+    trading_client=client,
+    config=ExecutionConfig(
+        enable_auto_execution=True,
+        max_orders_per_minute=10,
+        dry_run=False  # Set to True for testing
+    )
+)
+
+# Connect to risk manager
+risk_manager.event_handler = executor
+
+# Now risk events trigger automatic orders
+```
+
+## Paper Trading Integration
+
+Test risk management in paper trading environment:
+
+```python
+from neural.trading import PaperPortfolio
+
+portfolio = PaperPortfolio(
+    initial_capital=10000,
+    risk_manager=risk_manager
+)
+
+# Risk monitoring works in paper trading
+# Stop-loss orders become paper orders
+```
+
+## Backtesting with Risk Management
+
+Include risk management in backtesting:
+
+```python
+from neural.analysis.backtesting import Backtester
+
+backtester = Backtester(risk_manager=risk_manager)
+
+# Backtest includes stop-loss simulation
+result = backtester.backtest(strategy, start_date, end_date)
+```
+
+## Risk Metrics Dashboard
+
+Monitor current risk exposure:
+
+```python
+metrics = risk_manager.get_risk_metrics()
+print(f"Portfolio Value: ${metrics['portfolio_value']:.2f}")
+print(f"Drawdown: {metrics['drawdown_pct']:.2%}")
+print(f"Daily P&L: ${metrics['daily_pnl']:.2f}")
+print(f"Open Positions: {metrics['open_positions']}")
+```
+
+## Emergency Controls
+
+```python
+# Manual emergency stop
+executor._emergency_stop({"reason": "manual_override"})
+
+# Check system status
+status = executor.get_execution_summary()
+print(f"Auto-execution: {status['auto_execution_enabled']}")
+print(f"Active orders: {status['active_orders']}")
+```
+
+## Configuration Best Practices
+
+### Conservative Settings (Recommended for beginners)
+```python
+limits = RiskLimits(
+    max_drawdown_pct=0.05,      # 5% max drawdown
+    max_position_size_pct=0.02, # 2% per position
+    daily_loss_limit_pct=0.03   # 3% daily limit
+)
+```
+
+### Aggressive Settings (Experienced traders)
+```python
+limits = RiskLimits(
+    max_drawdown_pct=0.20,      # 20% max drawdown
+    max_position_size_pct=0.10, # 10% per position
+    daily_loss_limit_pct=0.10   # 10% daily limit
+)
+```
+
+## Monitoring and Alerts
+
+The system provides comprehensive logging:
+
+```
+INFO: Added position monitoring: market_123, quantity: 100
+WARNING: Stop-loss triggered for market_123: 0.047 <= -0.05
+INFO: Executing stop-loss for position in market_123
+INFO: Stop-loss order executed for market_123
+```
+
+## Integration with Existing Code
+
+Risk management is designed to be non-intrusive:
+
+- Add `risk_manager` parameter to existing classes
+- Existing code continues to work unchanged
+- Risk features activate only when configured
+
+## Performance Considerations
+
+- Risk calculations are optimized for real-time use
+- Minimal latency impact on websocket processing
+- Configurable rate limiting for order execution
+- Efficient position tracking with O(1) updates
+
+## Troubleshooting
+
+### Stop-loss not triggering
+- Check `stop_loss.enabled` is `True`
+- Verify position is registered with risk manager
+- Ensure websocket is connected and receiving price updates
+
+### Orders not executing
+- Check trading client configuration
+- Verify API credentials
+- Review rate limiting settings
+
+### High latency
+- Reduce number of monitored positions
+- Adjust websocket ping intervals
+- Consider server-side deployment
+
+## Next Steps
+
+1. Start with paper trading to test risk settings
+2. Gradually reduce stop-loss percentages as confidence grows
+3. Monitor execution logs for optimization opportunities
+4. Consider integrating with external alerting systems
+
+The risk management system provides essential protection for algorithmic trading while maintaining the flexibility to customize risk parameters for different strategies and market conditions.

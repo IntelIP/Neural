@@ -31,6 +31,7 @@ class KalshiWebSocketClient:
     path: str = "/trade-api/ws/v2"
     on_message: Callable[[dict[str, Any]], None] | None = None
     on_event: Callable[[str, dict[str, Any]], None] | None = None
+    risk_manager: Any = None  # RiskManager instance for real-time risk monitoring
     sslopt: dict[str, Any] | None = None
     ping_interval: float = 25.0
     ping_timeout: float = 10.0
@@ -82,10 +83,54 @@ class KalshiWebSocketClient:
         except json.JSONDecodeError:
             _LOG.debug("non-json websocket payload: %s", message)
             return
+
+        # Process risk monitoring for price updates
+        self._process_risk_monitoring(payload)
+
         if self.on_message:
             self.on_message(payload)
         if self.on_event and (msg_type := payload.get("type")):
             self.on_event(msg_type, payload)
+
+    def _process_risk_monitoring(self, payload: dict[str, Any]) -> None:
+        """Process websocket messages for risk monitoring."""
+        if not self.risk_manager:
+            return
+
+        msg_type = payload.get("type")
+
+        # Handle market price updates
+        if msg_type == "market_price":
+            market_data = payload.get("market", {})
+            market_id = market_data.get("id")
+            price_data = market_data.get("price", {})
+
+            # Extract latest price (assuming yes_price for simplicity)
+            latest_price = price_data.get("latest_price")
+            if market_id and latest_price:
+                # Update risk manager with new price
+                if hasattr(self.risk_manager, "update_position_price"):
+                    events = self.risk_manager.update_position_price(market_id, latest_price)
+                    if events:
+                        _LOG.info(
+                            f"Risk events triggered for {market_id}: {[e.value for e in events]}"
+                        )
+
+        # Handle trade executions that might affect positions
+        elif msg_type == "trade":
+            trade_data = payload.get("trade", {})
+            market_id = trade_data.get("market_id")
+            if market_id and self.risk_manager:
+                # Could trigger position updates or P&L recalculations
+                _LOG.debug(f"Trade executed in market {market_id}")
+
+        # Handle position updates
+        elif msg_type == "position_update":
+            position_data = payload.get("position", {})
+            market_id = position_data.get("market_id")
+            if market_id and self.risk_manager:
+                # Update position in risk manager
+                _LOG.debug(f"Position update for market {market_id}")
 
     def _handle_open(self, _ws: websocket.WebSocketApp) -> None:
         self._ready.set()

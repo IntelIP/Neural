@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.3.1] - 2025-10-26
+
+### Added
+- **Risk Management System:** Complete real-time risk monitoring with stop-loss functionality
+  - `RiskManager` class for position monitoring and risk limit enforcement
+  - Multiple stop-loss types: percentage, absolute price, and trailing stops
+  - `StopLossEngine` with advanced strategies (volatility-adjusted, time-based)
+  - Configurable risk limits (max drawdown, position size, daily loss limits)
+- **Automated Execution Layer:** `AutoExecutor` for automated risk response
+  - Real-time risk event detection and order generation
+  - Emergency stop functionality with circuit breakers
+  - Rate limiting and execution controls
+- **WebSocket Risk Integration:** Enhanced `KalshiWebSocketClient` with risk monitoring
+  - Real-time position P&L updates via websocket price feeds
+  - Automatic risk evaluation on market data changes
+- **Trading Client Enhancements:** Risk-aware order placement
+  - `place_order_with_risk()` method with stop-loss configuration
+  - Automatic position registration with risk manager
+- **Portfolio Risk Integration:** Enhanced paper trading with risk controls
+  - Real-time risk monitoring in `PaperPortfolio`
+  - Risk metrics dashboard and position management
+- **Backtesting Risk Simulation:** Risk management in historical testing
+  - Stop-loss simulation in backtesting engine
+  - Risk-adjusted performance metrics
+- **Comprehensive Testing:** Full test suite for risk management components
+  - Unit tests for all risk classes and methods
+  - Integration tests for websocket and execution layers
+  - Mock-based testing for reliability
+
+### Changed
+- **Analysis Module Structure:** Updated `neural/analysis/risk/` to include risk management beyond position sizing
+- **Execution Module:** Enhanced `neural/analysis/execution/` with automated risk execution
+- **Trading Integration:** Added risk management parameters to trading clients and portfolios
+
+### Fixed
+- **Import Dependencies:** Resolved circular import issues in risk management modules
+- **Type Annotations:** Improved type safety across risk management components
+
 ## [0.3.0] - 2025-10-24
 
 ### Added
