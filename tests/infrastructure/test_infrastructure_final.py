@@ -6,13 +6,6 @@ Final Infrastructure Test - Verify all components work
 import pytest
 
 pytestmark = pytest.mark.skip(reason="Requires Kalshi API credentials")
-
-print("\n🚀 Neural SDK - Infrastructure Components Test\n")
-print("=" * 70)
-
-# Test 1: REST API Data Collection
-print("\n📊 TEST 1: REST API Market Data")
-print("-" * 40)
 try:
     import asyncio
 

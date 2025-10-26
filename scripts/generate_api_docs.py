@@ -7,13 +7,12 @@ by scanning the neural package and creating structured documentation
 files for each module.
 """
 
-import os
-import sys
-import inspect
-import importlib
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 import argparse
+import importlib
+import inspect
+import sys
+from pathlib import Path
+from typing import Any
 
 
 class APIDocGenerator:
@@ -116,11 +115,11 @@ description: API documentation for {module_name}
         classes = []
         functions = []
 
-for name, obj in inspect.getmembers(module):
+        for name, obj in inspect.getmembers(module):
             is_class = inspect.isclass(obj)
             is_function = inspect.isfunction(obj)
-            obj_module = getattr(obj, '__module__', None)
-            
+            obj_module = getattr(obj, "__module__", None)
+
             if is_class and obj_module == module_name:
                 classes.append((name, obj))
             elif is_function and obj_module == module_name:
@@ -171,7 +170,7 @@ for name, obj in inspect.getmembers(module):
         try:
             sig = inspect.signature(func)
             content += f"```python\n{name}{sig}\n```\n\n"
-        except:
+        except Exception:
             content += f"```python\n{name}()\n```\n\n"
 
         # Add docstring
@@ -193,7 +192,7 @@ for name, obj in inspect.getmembers(module):
                 params = params[1:]
             new_sig = sig.replace(parameters=params)
             content += f"```python\n{name}{new_sig}\n```\n\n"
-        except:
+        except Exception:
             content += f"```python\n{name}()\n```\n\n"
 
         # Add docstring

@@ -112,7 +112,7 @@ class DocumentationExampleTester:
             if "temp_file" in locals():
                 try:
                     Path(temp_file).unlink()
-                except:
+                except Exception:
                     pass
             raise e
 

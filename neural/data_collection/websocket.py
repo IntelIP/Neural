@@ -1,5 +1,4 @@
 import json
-from collections.abc import AsyncGenerator
 from typing import Any
 
 import websockets
@@ -36,7 +35,7 @@ class WebSocketSource(DataSource):
             await self.websocket.close()
         self._connected = False
 
-    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
+    async def collect(self) -> Any:
         """Listen for messages from the WebSocket."""
         if not self.websocket:
             raise RuntimeError("WebSocket not connected")

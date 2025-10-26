@@ -8,7 +8,7 @@ to identify trading opportunities on Kalshi prediction markets.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -258,9 +258,9 @@ class SentimentTradingStrategy(BaseStrategy):
             return Signal(
                 signal_type=signal_type,
                 market_id=ticker,
-                recommended_size=position_size,
+                recommended_size=cast(float, position_size),
                 confidence=confidence,
-                edge=momentum_strength * 0.1,  # Estimated edge from momentum
+                edge=cast(float, momentum_strength * 0.1),  # Estimated edge from momentum
                 metadata={
                     "strategy_type": SentimentSignalType.MOMENTUM_SHIFT.value,
                     "play_momentum": play_momentum,

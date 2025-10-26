@@ -1,7 +1,6 @@
 import asyncio
-from collections.abc import AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -48,9 +47,9 @@ class RestApiSource(DataSource):
             ),
         )
         response.raise_for_status()
-        return response.json()
+        return cast(dict[str, Any], response.json())
 
-    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
+    async def collect(self) -> Any:
         """Continuously fetch data at intervals."""
         retry_count = 0
         max_retries = 3
