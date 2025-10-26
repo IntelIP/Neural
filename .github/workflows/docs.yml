@@ -61,81 +61,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev,docs]
 
-      - name: Generate API docs with mkdocstrings
-        if: steps.changes.outputs.docs == 'true'
-        run: |
-          mkdir -p docs/api
-          python -c "
-          import mkdocs.config
-          import mkdocs.structure.files
-          from mkdocstrings.handlers.python import PythonHandler
-          import inspect
-          import neural
-          from pathlib import Path
-          
-          # Generate API documentation structure
-          api_dir = Path('docs/api')
-          api_dir.mkdir(exist_ok=True)
-          
-          # Create index file
-          with open(api_dir / 'overview.mdx', 'w') as f:
-              f.write('''---
-title: API Reference
-description: Complete API documentation for the Neural SDK
----
-              
-# API Reference
-
-This section contains automatically generated documentation for all Neural SDK modules.
-
-## Modules
-
-{modules}
-              ''')
-          
-          # Generate module documentation
-          modules_to_doc = [
-              'neural.auth',
-              'neural.data_collection', 
-              'neural.trading',
-              'neural.analysis',
-              'neural.analysis.strategies',
-              'neural.analysis.risk',
-              'neural.analysis.execution'
-          ]
-          
-          modules_list = []
-          for module_name in modules_to_doc:
-              try:
-                  module = __import__(module_name, fromlist=[''])
-                  modules_list.append(f'- [{module_name}](api/{module_name.replace(\".\", \"/\")})')
-                  
-                  # Create module doc file
-                  module_path = api_dir / module_name.replace('.', '/')
-                  module_path.mkdir(parents=True, exist_ok=True)
-                  
-                  with open(module_path / 'index.mdx', 'w') as f:
-                      f.write(f'''---
-title: {module_name}
-description: API documentation for {module_name}
----
-
-# {module_name}
-
-```python
-{inspect.getsource(module) if hasattr(module, '__file__') else '# Module documentation'}
-```
-                      ''')
-              except ImportError:
-                  pass
-          
-          # Update index with module list
-          with open(api_dir / 'overview.mdx', 'r') as f:
-              content = f.read()
-          content = content.replace('{modules}', '\\n'.join(modules_list))
-          with open(api_dir / 'overview.mdx', 'w') as f:
-              f.write(content)
-          "
+       - name: Generate API docs with mkdocstrings
+         if: steps.changes.outputs.docs == 'true'
+         run: |
+           mkdir -p docs/api
+           echo "API documentation generation skipped for beta release"
+           # TODO: Re-enable API doc generation in stable release
+           # python -c "... complex doc generation code ..."
 
       - name: Generate examples documentation
         if: steps.changes.outputs.docs == 'true'
