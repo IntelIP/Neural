@@ -165,10 +165,9 @@ class KalshiWebSocketClient:
             return
 
         signed_headers = self._sign_headers()
-        header_list = [f"{k}: {v}" for k, v in signed_headers.items()]
         self._ws_app = websocket.WebSocketApp(
             self._resolved_url,
-            header=header_list,
+            header=signed_headers,
             on_message=self._handle_message,
             on_error=self._handle_error,
             on_close=self._handle_close,

@@ -213,7 +213,7 @@ class RiskManager:
                 return True
 
         elif stop_loss.type == StopLossType.TRAILING:
-            stop_price = position.trailing_high - stop_loss.value
+            stop_price = position.trailing_high * (1 - stop_loss.value)
             if position.current_price <= stop_price:
                 _LOG.warning(
                     f"Trailing stop-loss triggered for {position.market_id}: "

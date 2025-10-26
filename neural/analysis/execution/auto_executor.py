@@ -280,6 +280,12 @@ class AutoExecutor(RiskEventHandler):
         self.execution_history.append(event_record)
         _LOG.info(f"Execution event: {event_type} for {market_id}")
 
+    def emergency_stop(self, event_data: dict[str, Any] | None = None) -> None:
+        """Public method to trigger emergency stop - cancel all pending orders and stop trading."""
+        if event_data is None:
+            event_data = {"reason": "manual_emergency_stop"}
+        self._emergency_stop(event_data)
+
     def get_execution_summary(self) -> dict[str, Any]:
         """Get summary of execution activity."""
         return {

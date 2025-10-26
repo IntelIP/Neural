@@ -134,15 +134,20 @@ class TestRiskManager:
 class TestWebSocketRiskIntegration:
     """Test websocket risk monitoring integration."""
 
-    @patch("neural.trading.websocket.KalshiWebSocketClient")
-    def test_price_update_risk_check(self, mock_ws):
+    def test_price_update_risk_check(self):
         """Test that websocket price updates trigger risk checks."""
         from neural.trading.websocket import KalshiWebSocketClient
 
         risk_manager = Mock()
         risk_manager.update_position_price.return_value = []
 
-        ws_client = KalshiWebSocketClient(risk_manager=risk_manager)
+        # Create a mock websocket client with just the needed attributes
+        ws_client = Mock()
+        ws_client.risk_manager = risk_manager
+        # Use the real _process_risk_monitoring method
+        ws_client._process_risk_monitoring = KalshiWebSocketClient._process_risk_monitoring.__get__(
+            ws_client, KalshiWebSocketClient
+        )
 
         # Simulate market price message
         payload = {

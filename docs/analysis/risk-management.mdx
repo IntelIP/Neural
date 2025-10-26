@@ -19,7 +19,7 @@ Neural's risk management system provides comprehensive protection for your tradi
 
 ```python
 from neural.analysis.risk import RiskManager, StopLossConfig, StopLossType, RiskLimits
-from neural.analysis.execution import AutoExecutor
+from neural.analysis.execution import AutoExecutor, ExecutionConfig
 from neural.trading import TradingClient, KalshiWebSocketClient
 
 # Create risk manager with conservative limits
@@ -32,7 +32,10 @@ risk_manager = RiskManager(
 )
 
 # Create automated executor
-executor = AutoExecutor(trading_client=TradingClient(), risk_manager=risk_manager)
+executor = AutoExecutor(trading_client=TradingClient())
+
+# Connect executor to risk manager for event handling
+risk_manager.event_handler = executor
 
 # Connect risk manager to websocket for real-time monitoring
 ws_client = KalshiWebSocketClient(risk_manager=risk_manager)
@@ -211,7 +214,7 @@ print(f"Open Positions: {metrics['open_positions']}")
 
 ```python
 # Manual emergency stop
-executor._emergency_stop({"reason": "manual_override"})
+executor.emergency_stop({"reason": "manual_override"})
 
 # Check system status
 status = executor.get_execution_summary()
