@@ -136,9 +136,10 @@ class AutoExecutor(RiskEventHandler):
                 return
 
             # Submit market order to close position
+            close_side = "no" if side == "yes" else "yes"  # Opposite side to close
             order_result = self._execute_market_order(
                 market_id=market_id,
-                side=side,  # Close by taking opposite side
+                side=close_side,  # Close by taking opposite side
                 quantity=quantity,
                 reason="stop_loss",
                 event_data=event_data,

@@ -12,6 +12,7 @@ import time
 
 from neural.analysis.execution import AutoExecutor, ExecutionConfig
 from neural.analysis.risk import (
+    Position,
     RiskLimits,
     RiskManager,
     StopLossConfig,
@@ -159,24 +160,22 @@ class RiskManagementDemo:
         logger.info("=== Demonstrating Risk Limits ===")
 
         # Test position size limit
-        large_position = type(
-            "Position",
-            (),
-            {
-                "market_id": "large_pos",
-                "current_value": 600.0,  # 6% of $10k portfolio
-                "quantity": 100,
-            },
-        )()
+        large_position = Position(
+            market_id="large_pos",
+            side="yes",
+            quantity=100,
+            entry_price=1.0,
+            current_price=6.0,  # 6% of $10k portfolio
+        )
 
         # This should trigger position size limit
-        events = self.risk_manager._check_position_size_limit(large_position)
+        events = self.risk_manager.check_position_size_limit(large_position)
         if events:
             logger.warning("Position size limit triggered")
 
         # Test drawdown limit
         self.risk_manager.portfolio_value = 8500.0  # 15% drawdown
-        drawdown_events = self.risk_manager._check_drawdown_limit()
+        drawdown_events = self.risk_manager.check_drawdown_limit()
         if drawdown_events:
             logger.warning("Drawdown limit triggered")
 

@@ -116,17 +116,22 @@ class TestRiskManager:
 
     def test_drawdown_limits(self):
         """Test drawdown limit enforcement."""
-        limits = RiskLimits(max_drawdown_pct=0.10)
-        risk_manager = RiskManager(limits=limits, portfolio_value=1000.0)
-
-        # Simulate portfolio decline
-        risk_manager.portfolio_value = 850.0  # 15% drawdown
+        limits = RiskLimits(max_drawdown_pct=0.10, max_position_size_pct=1.0)  # High position limit
+        risk_manager = RiskManager(limits=limits, initial_capital=850.0)  # Start with drawdown
 
         position = Position(
-            market_id="test_market", side="yes", quantity=100, entry_price=0.50, current_price=0.50
+            market_id="test_market",
+            side="yes",
+            quantity=10,
+            entry_price=0.50,
+            current_price=0.50,  # Small position
         )
 
         risk_manager.add_position(position)
+        events = risk_manager.update_position_price("test_market", 0.50)
+        # Portfolio value is 850 + 0 P&L = 850, peak is 850, so drawdown is 0
+        # To test drawdown, we need to set peak_portfolio_value higher
+        risk_manager.peak_portfolio_value = 1000.0  # Simulate previous peak
         events = risk_manager.update_position_price("test_market", 0.50)
         assert RiskEvent.MAX_DRAWDOWN_EXCEEDED in events
 

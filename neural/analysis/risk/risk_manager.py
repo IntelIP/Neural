@@ -98,6 +98,7 @@ class RiskEventHandler(Protocol):
 @dataclass
 class RiskManager:
     """
+
     Core risk management system for monitoring positions and enforcing risk controls.
 
     Provides real-time risk monitoring, stop-loss management, and automated risk responses.
@@ -105,6 +106,7 @@ class RiskManager:
 
     limits: RiskLimits = field(default_factory=RiskLimits)
     event_handler: RiskEventHandler | None = None
+    initial_capital: float = 1000.0  # Initial cash balance
 
     # Runtime state
     positions: dict[str, Position] = field(default_factory=dict)
@@ -114,6 +116,7 @@ class RiskManager:
 
     def __post_init__(self) -> None:
         """Initialize risk manager state."""
+        self.portfolio_value = self.initial_capital
         self.peak_portfolio_value = self.portfolio_value
 
     def add_position(self, position: Position) -> None:
@@ -155,20 +158,19 @@ class RiskManager:
         events = []
 
         # Check stop-loss conditions
-        if self._check_stop_loss(position):
+        if self.check_stop_loss(position):
             events.append(RiskEvent.STOP_LOSS_TRIGGERED)
 
         # Check position size limit
-        if self._check_position_size_limit(position):
+        if self.check_position_size_limit(position):
             events.append(RiskEvent.POSITION_SIZE_EXCEEDED)
 
         # Update portfolio value and check drawdown
-        self._update_portfolio_value()
-        if self._check_drawdown_limit():
+        self.update_portfolio_value()
+        if self.check_drawdown_limit():
             events.append(RiskEvent.MAX_DRAWDOWN_EXCEEDED)
 
-        # Check daily loss limit
-        if self._check_daily_loss_limit():
+        if self.check_daily_loss_limit():
             events.append(RiskEvent.DAILY_LOSS_LIMIT_EXCEEDED)
 
         # Notify event handler
@@ -187,7 +189,7 @@ class RiskManager:
 
         return events
 
-    def _check_stop_loss(self, position: Position) -> bool:
+    def check_stop_loss(self, position: Position) -> bool:
         """Check if stop-loss should be triggered."""
         if not position.stop_loss or not position.stop_loss.enabled:
             return False
@@ -237,7 +239,7 @@ class RiskManager:
 
         return False
 
-    def _check_position_size_limit(self, position: Position) -> bool:
+    def check_position_size_limit(self, position: Position) -> bool:
         """Check if position exceeds size limits."""
         if self.portfolio_value == 0:
             return False
@@ -252,7 +254,7 @@ class RiskManager:
 
         return False
 
-    def _check_drawdown_limit(self) -> bool:
+    def check_drawdown_limit(self) -> bool:
         """Check if portfolio drawdown exceeds limit."""
         if self.peak_portfolio_value == 0:
             return False
@@ -266,7 +268,7 @@ class RiskManager:
 
         return False
 
-    def _check_daily_loss_limit(self) -> bool:
+    def check_daily_loss_limit(self) -> bool:
         """Check if daily loss exceeds limit."""
         if self.portfolio_value == 0:
             return False
@@ -280,13 +282,11 @@ class RiskManager:
 
         return False
 
-    def _update_portfolio_value(self) -> None:
-        """Update total portfolio value from positions."""
-        total_value = 0.0
-        for position in self.positions.values():
-            total_value += position.current_value
-
-        self.portfolio_value = total_value
+    def update_portfolio_value(self) -> None:
+        """Update total portfolio value from positions and cash."""
+        # Portfolio value = initial capital + unrealized P&L from all positions
+        unrealized_pnl = sum(position.unrealized_pnl for position in self.positions.values())
+        self.portfolio_value = self.initial_capital + unrealized_pnl
         self.peak_portfolio_value = max(self.peak_portfolio_value, self.portfolio_value)
 
     def get_risk_metrics(self) -> dict[str, Any]:
@@ -366,11 +366,13 @@ class StopLossEngine:
     ) -> float:
         """Trailing stop-loss that follows favorable price movement."""
         if side == "yes":
-            # For long positions, trail below the highest price
+            # For long positions, trail below the highest price seen
+            # This method should be called with trailing_high as current_price
             trail_amount = current_price * trail_pct
             return current_price - trail_amount
         else:  # "no"
-            # For short positions, trail above the lowest price
+            # For short positions, trail above the lowest price seen
+            # This method should be called with trailing_low as current_price
             trail_amount = current_price * trail_pct
             return current_price + trail_amount
 
