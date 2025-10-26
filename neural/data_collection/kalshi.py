@@ -44,14 +44,11 @@ async def _fetch_markets(
     api_key_id: str | None,
     private_key_pem: bytes | None,
 ) -> pd.DataFrame:
-    async def _request() -> dict[str, Any]:
+    def _request() -> dict[str, Any]:
         if use_authenticated:
             client = KalshiHTTPClient(api_key_id=api_key_id, private_key_pem=private_key_pem)
             try:
-                result = client.get("/markets", params=params)
-                if asyncio.iscoroutine(result):
-                    return await result
-                return result
+                return client.get("/markets", params=params)
             finally:
                 client.close()
         url = f"{_BASE_URL}/markets"
@@ -59,7 +56,7 @@ async def _fetch_markets(
         resp.raise_for_status()
         return dict(resp.json())
 
-    payload = await _request()
+    payload = await asyncio.to_thread(_request)
     return pd.DataFrame(payload.get("markets", []))
 
 
@@ -107,8 +104,6 @@ class KalshiMarketsSource:
         Returns:
             DataFrame with the market data (empty if not found)
         """
-        from neural.auth.http_client import KalshiHTTPClient
-
         client = KalshiHTTPClient(api_key_id=self.api_key_id, private_key_pem=self.private_key_pem)
 
         try:
@@ -235,9 +230,7 @@ class KalshiMarketsSource:
             traceback.print_exc()
             return pd.DataFrame()
         finally:
-            result = client.close()
-            if asyncio.iscoroutine(result):
-                pass
+            client.close()
 
 
 async def get_sports_series(

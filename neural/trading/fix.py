@@ -240,7 +240,7 @@ class KalshiFIXClient:
         payload = "\x01".join(payload_parts)
         signature = self._private_key.sign(
             payload.encode("utf-8"),
-            padding.PKCS1v15(),
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
             hashes.SHA256(),
         )
         return base64.b64encode(signature).decode("ascii")

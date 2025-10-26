@@ -9,7 +9,7 @@ Tests for:
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -31,35 +31,44 @@ class TestHistoricalCandlesticks:
         """Test basic historical candlesticks fetching"""
         source = KalshiMarketsSource(series_ticker="KXNFLGAME")
 
-        # Mock the HTTP client response instead of the method under test
-        with patch.object(source, "http_client") as mock_http:
-            # Mock the candlesticks API response
-            mock_response = {
-                "candlesticks": [
-                    {
-                        "ts": (datetime.now() - timedelta(hours=i)).timestamp(),
-                        "open": 45 + i,  # in cents
-                        "high": 46 + i,
-                        "low": 44 + i,
-                        "close": 45 + i,
-                        "volume": 100 + i * 10,
-                    }
-                    for i in range(5)
-                ]
-            }
-            mock_http.get.return_value = mock_response
+        # Mock the HTTP client instance on the source
+        mock_client = MagicMock()
+        source.http_client = mock_client
 
-            result = await source.fetch_historical_candlesticks(
-                market_ticker="KXNFLGAME-1234", hours_back=24
-            )
+        # Mock the candlesticks API response
+        mock_response = {
+            "candlesticks": [
+                {
+                    "ts": (datetime.now() - timedelta(hours=i)).timestamp(),
+                    "open": 45 + i,  # in cents
+                    "high": 46 + i,
+                    "low": 44 + i,
+                    "close": 45 + i,
+                    "volume": 100 + i * 10,
+                }
+                for i in range(5)
+            ]
+        }
+        mock_client.get.return_value = mock_response
 
-            assert not result.empty
-            assert "timestamp" in result.columns
-            assert "open" in result.columns
-            assert "close" in result.columns
-            assert len(result) == 5
-            # Verify prices are converted from cents to dollars
-            assert result["open"].iloc[0] == 0.45
+        result = await source.fetch_historical_candlesticks(
+            market_ticker="KXNFLGAME-1234", hours_back=24
+        )
+
+        # Verify the HTTP client was called correctly
+        mock_client.get.assert_called_once()
+        call_args = mock_client.get.call_args
+        assert "series_ticker" in call_args[1]  # kwargs
+        assert "start_ts" in call_args[1]
+        assert "end_ts" in call_args[1]
+
+        assert not result.empty
+        assert "timestamp" in result.columns
+        assert "open" in result.columns
+        assert "close" in result.columns
+        assert len(result) == 5
+        # Verify prices are converted from cents to dollars
+        assert result["open"].iloc[0] == 0.45
 
     @pytest.mark.asyncio
     async def test_fetch_historical_candlesticks_with_date_range(self):
