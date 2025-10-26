@@ -25,7 +25,8 @@ try:
     from neural.analysis.risk import StopLossConfig, StopLossType
 
     RISK_MODULE_AVAILABLE = True
-except ImportError:
+except Exception as e:
+    _LOG.warning(f"Risk module not available: {e}")
     RISK_MODULE_AVAILABLE = False
     RiskPosition = None
     StopLossConfig = None
@@ -315,7 +316,13 @@ class Backtester:
                     strategy.positions.append(position)
 
                     # Add to risk manager if available
-                    if self.risk_manager and RISK_MODULE_AVAILABLE:
+                    if (
+                        self.risk_manager
+                        and RISK_MODULE_AVAILABLE
+                        and RiskPosition
+                        and StopLossConfig
+                        and StopLossType
+                    ):
                         risk_position = RiskPosition(
                             market_id=ticker,
                             side=side,
@@ -328,6 +335,8 @@ class Backtester:
                                 if strategy.stop_loss
                                 else None
                             ),  # Default 5% stop-loss
+                            trailing_high=entry_price if side == "yes" else 0.0,
+                            trailing_low=entry_price if side == "no" else float("inf"),
                         )
                         self.risk_manager.add_position(risk_position)
 

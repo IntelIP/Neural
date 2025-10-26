@@ -63,7 +63,8 @@ async def test_fix_basic():
 
     # Create FIX client with minimal config
     config = FIXConnectionConfig(
-        reset_seq_num=True, heartbeat_interval=30  # Reset sequence numbers
+        reset_seq_num=True,
+        heartbeat_interval=30,  # Reset sequence numbers
     )
 
     client = KalshiFIXClient(config=config, on_message=handle_message)

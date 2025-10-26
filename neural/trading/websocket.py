@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import ssl
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -9,9 +11,12 @@ from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 try:
-    import websocket
+    import certifi
+    import websockets
 except ImportError as exc:
-    raise ImportError("websocket-client is required for Neural Kalshi WebSocket support.") from exc
+    raise ImportError(
+        "websockets and certifi are required for Neural Kalshi WebSocket support."
+    ) from exc
 
 from neural.auth.env import get_api_key_id, get_base_url, get_private_key_material
 from neural.auth.signers.kalshi import KalshiSigner
@@ -21,7 +26,7 @@ _LOG = logging.getLogger(__name__)
 
 @dataclass
 class KalshiWebSocketClient:
-    """Thin wrapper over the Kalshi WebSocket RPC channel."""
+    """Thin wrapper over Kalshi WebSocket RPC channel using websockets library."""
 
     signer: KalshiSigner | None = None
     api_key_id: str | None = None
@@ -32,7 +37,7 @@ class KalshiWebSocketClient:
     on_message: Callable[[dict[str, Any]], None] | None = None
     on_event: Callable[[str, dict[str, Any]], None] | None = None
     risk_manager: Any = None  # RiskManager instance for real-time risk monitoring
-    sslopt: dict[str, Any] | None = None
+    ssl_context: ssl.SSLContext | None = None
     ping_interval: float = 25.0
     ping_timeout: float = 10.0
     _connect_timeout: float = 10.0
@@ -48,14 +53,20 @@ class KalshiWebSocketClient:
                 priv_material.encode("utf-8") if isinstance(priv_material, str) else priv_material,
             )
 
-        self._ws_app: websocket.WebSocketApp | None = None
-        self._thread: threading.Thread | None = None
+        # Use websockets library instead of websocket-client
+        self._websocket: Any | None = None
+        self._task: asyncio.Task | None = None
         self._ready = threading.Event()
         self._closing = threading.Event()
+        self._loop: asyncio.AbstractEventLoop | None = None
 
         self._resolved_url = self.url or self._build_default_url()
         parsed = urlparse(self._resolved_url)
         self._path = parsed.path or "/"
+
+        # Create SSL context with certifi for proper certificate verification
+        if self.ssl_context is None:
+            self.ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     def _build_default_url(self) -> str:
         base = get_base_url(self.env)
@@ -69,7 +80,7 @@ class KalshiWebSocketClient:
 
         Bug Fix #11 Note: This method generates PSS (Probabilistic Signature Scheme)
         signatures required by Kalshi's WebSocket API. The signature must be included
-        in the initial HTTP upgrade request headers.
+        in initial HTTP upgrade request headers.
 
         Returns:
                 Dict with KALSHI-ACCESS-KEY, KALSHI-ACCESS-SIGNATURE, and KALSHI-ACCESS-TIMESTAMP
@@ -77,7 +88,7 @@ class KalshiWebSocketClient:
         assert self.signer is not None
         return dict(self.signer.headers("GET", self._path))
 
-    def _handle_message(self, _ws: websocket.WebSocketApp, message: str) -> None:
+    def _handle_message(self, message: str) -> None:
         try:
             payload = json.loads(message)
         except json.JSONDecodeError:
@@ -132,28 +143,25 @@ class KalshiWebSocketClient:
                 # Update position in risk manager
                 _LOG.debug(f"Position update for market {market_id}")
 
-    def _handle_open(self, _ws: websocket.WebSocketApp) -> None:
-        self._ready.set()
-        _LOG.debug("Kalshi websocket connection opened")
-
-    def _handle_close(self, _ws: websocket.WebSocketApp, status_code: int, msg: str) -> None:
-        self._ready.clear()
-        self._thread = None
-        if not self._closing.is_set():
-            _LOG.warning("Kalshi websocket closed (%s) %s", status_code, msg)
-
-    def _handle_error(self, _ws: websocket.WebSocketApp, error: Exception) -> None:
-        _LOG.error("Kalshi websocket error: %s", error)
+    async def _listen(self) -> None:
+        """Background task to listen for WebSocket messages."""
+        try:
+            if self._websocket:
+                async for message in self._websocket:
+                    self._handle_message(message)
+        except websockets.exceptions.ConnectionClosed:
+            _LOG.info("WebSocket connection closed")
+        except Exception as e:
+            _LOG.error("WebSocket error: %s", e)
+        finally:
+            self._ready.clear()
 
     def connect(self, *, block: bool = True) -> None:
         """
-        Open the WebSocket connection in a background thread.
+        Open WebSocket connection in a background thread.
 
-        Bug Fix #11 Note: For proper SSL certificate verification, pass sslopt parameter
-        when initializing the client. Example:
-                import ssl, certifi
-                sslopt = {"cert_reqs": ssl.CERT_REQUIRED, "ca_certs": certifi.where()}
-                client = KalshiWebSocketClient(sslopt=sslopt)
+        Bug Fix #11 Note: Uses websockets.connect with proper SSL context and authentication
+        headers to fix 403 Forbidden issues with websocket-client library.
 
         Args:
                 block: If True, wait for connection to establish before returning
@@ -161,40 +169,60 @@ class KalshiWebSocketClient:
         Raises:
                 TimeoutError: If connection doesn't establish within timeout period
         """
-        if self._ws_app is not None:
+        if self._websocket is not None:
             return
 
-        signed_headers = self._sign_headers()
-        self._ws_app = websocket.WebSocketApp(
-            self._resolved_url,
-            header=signed_headers,
-            on_message=self._handle_message,
-            on_error=self._handle_error,
-            on_close=self._handle_close,
-            on_open=self._handle_open,
-        )
+        def _run_in_thread():
+            """Run the async connection in a separate thread."""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._loop = loop
 
-        sslopt = self.sslopt or {}
-        self._thread = threading.Thread(
-            target=self._ws_app.run_forever,
-            kwargs={
-                "sslopt": sslopt,
-                "ping_interval": self.ping_interval,
-                "ping_timeout": self.ping_timeout,
-            },
-            daemon=True,
-        )
+            async def _connect_async():
+                try:
+                    signed_headers = self._sign_headers()
+                    self._websocket = await websockets.connect(
+                        self._resolved_url,
+                        additional_headers=signed_headers,
+                        ssl=self.ssl_context,
+                        ping_interval=self.ping_interval,
+                        ping_timeout=self.ping_timeout,
+                    )
+                    self._ready.set()
+                    _LOG.debug("Kalshi websocket connection opened")
+
+                    # Start listening for messages
+                    await self._listen()
+                except Exception as e:
+                    _LOG.error("Failed to connect to Kalshi websocket: %s", e)
+                    self._ready.set()  # Unblock waiting threads
+                finally:
+                    if self._websocket:
+                        await self._websocket.close()
+                    self._websocket = None
+
+            try:
+                loop.run_until_complete(_connect_async())
+            except Exception as e:
+                _LOG.error("WebSocket thread error: %s", e)
+            finally:
+                loop.close()
+
+        self._thread = threading.Thread(target=_run_in_thread, daemon=True)
         self._thread.start()
+
         if block:
             connected = self._ready.wait(self._connect_timeout)
             if not connected:
                 raise TimeoutError("Timed out waiting for Kalshi websocket to open")
+            if self._websocket is None:
+                raise ConnectionError("Failed to establish WebSocket connection")
 
     def close(self) -> None:
         self._closing.set()
-        if self._ws_app is not None:
-            self._ws_app.close()
-        self._ws_app = None
+        if self._loop and self._websocket:
+            # Schedule close on the event loop
+            asyncio.run_coroutine_threadsafe(self._websocket.close(), self._loop)
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2)
         self._thread = None
@@ -202,9 +230,17 @@ class KalshiWebSocketClient:
         self._closing.clear()
 
     def send(self, payload: dict[str, Any]) -> None:
-        if not self._ws_app or not self._ready.is_set():
+        if not self._websocket or not self._ready.is_set():
             raise RuntimeError("WebSocket connection is not ready")
-        self._ws_app.send(json.dumps(payload))
+
+        def _send_in_loop():
+            if self._loop and self._websocket:
+                asyncio.run_coroutine_threadsafe(
+                    self._websocket.send(json.dumps(payload)), self._loop
+                )
+
+        # Send in the event loop thread
+        threading.Thread(target=_send_in_loop, daemon=True).start()
 
     def _next_id(self) -> int:
         request_id = self._request_id

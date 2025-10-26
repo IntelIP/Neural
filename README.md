@@ -88,11 +88,11 @@ print(f"Collected {len(trades_data)} trades")
 
 ```python
 from neural.analysis.strategies import MeanReversionStrategy
-from neural.analysis.backtesting import BacktestEngine
+from neural.analysis import Backtester
 
 strategy = MeanReversionStrategy(lookback_period=20, z_score_threshold=2.0)
-engine = BacktestEngine(strategy, initial_capital=10000)
-results = engine.run(historical_data)
+engine = Backtester(initial_capital=10000)
+results = engine.backtest(strategy, start_date="2024-01-01", end_date="2024-12-31")
 
 print(f"Total Return: {results['total_return']:.2%}")
 print(f"Sharpe Ratio: {results['sharpe_ratio']:.2f}")

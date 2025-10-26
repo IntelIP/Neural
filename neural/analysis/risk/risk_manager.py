@@ -62,7 +62,8 @@ class Position:
     current_price: float = 0.0
     entry_time: float = 0.0
     stop_loss: StopLossConfig | None = None
-    trailing_high: float = 0.0  # For trailing stops
+    trailing_high: float = 0.0  # For trailing stops (long positions)
+    trailing_low: float = float("inf")  # For trailing stops (short positions)
 
     @property
     def current_value(self) -> float:
@@ -142,10 +143,14 @@ class RiskManager:
         old_price = position.current_price
         position.current_price = current_price
 
-        # Update trailing stop high if applicable
+        # Update trailing stops if applicable
         if position.stop_loss and position.stop_loss.type == StopLossType.TRAILING:
-            if current_price > position.trailing_high:
-                position.trailing_high = current_price
+            if position.side == "yes":  # Long position - trail the high
+                if current_price > position.trailing_high:
+                    position.trailing_high = current_price
+            else:  # Short position - trail the low
+                if current_price < position.trailing_low:
+                    position.trailing_low = current_price
 
         events = []
 
@@ -213,13 +218,22 @@ class RiskManager:
                 return True
 
         elif stop_loss.type == StopLossType.TRAILING:
-            stop_price = position.trailing_high * (1 - stop_loss.value)
-            if position.current_price <= stop_price:
-                _LOG.warning(
-                    f"Trailing stop-loss triggered for {position.market_id}: "
-                    f"price {position.current_price} <= {stop_price}"
-                )
-                return True
+            if position.side == "yes":  # Long position
+                stop_price = position.trailing_high * (1 - stop_loss.value)
+                if position.current_price <= stop_price:
+                    _LOG.warning(
+                        f"Trailing stop-loss triggered for {position.market_id}: "
+                        f"price {position.current_price} <= {stop_price}"
+                    )
+                    return True
+            else:  # Short position
+                stop_price = position.trailing_low * (1 + stop_loss.value)
+                if position.current_price >= stop_price:
+                    _LOG.warning(
+                        f"Trailing stop-loss triggered for {position.market_id}: "
+                        f"price {position.current_price} >= {stop_price}"
+                    )
+                    return True
 
         return False
 
