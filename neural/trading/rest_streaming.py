@@ -182,33 +182,19 @@ class RESTStreamingClient:
             if not self.client:
                 return
 
-            # Get market data - fetch single ticker (optimized)
-            markets_df = await self.client.fetch_market(ticker)
+            # Get market data - fetch single ticker
+            markets_df = await self.client.fetch()
 
             if markets_df.empty:
                 return
 
-            # Get first market (should be the only one for a specific ticker)
-            market = markets_df.iloc[0].to_dict()
-
-            # Validate required fields and log warnings for missing data
-            required_fields = ["ticker", "title", "yes_bid", "yes_ask", "no_bid", "no_ask"]
-            missing_fields = [
-                field for field in required_fields if field not in market or market[field] is None
-            ]
-
-            if missing_fields:
-                if self.on_error:
-                    self.on_error(f"Missing required fields for {ticker}: {missing_fields}")
-                return  # Skip this market due to missing data
-
-            # Additional validation for data quality
-            if not isinstance(market.get("yes_bid", 0), (int, float)) or not isinstance(
-                market.get("yes_ask", 0), (int, float)
-            ):
-                if self.on_error:
-                    self.on_error(f"Invalid price data types for {ticker}")
+            # Filter for specific ticker
+            market_row = markets_df[markets_df["ticker"] == ticker]
+            if market_row.empty:
                 return
+
+            # Get first market (should be the only one for a specific ticker)
+            market = market_row.iloc[0].to_dict()
 
             # Create snapshot
             snapshot = MarketSnapshot(

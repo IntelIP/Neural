@@ -97,13 +97,15 @@ class OrderManager:
         # Check for arbitrage (need to buy both sides)
         if signal.metadata and signal.metadata.get("also_buy") == "no":
             # Execute arbitrage trades
-            size_contracts = int(signal.size)
+            size_contracts = (
+                int(signal.size) if isinstance(signal.size, (int, float)) else signal.size
+            )
             yes_order = await self._place_order(
                 signal.ticker, "buy", "yes", size_contracts, signal.entry_price
             )
 
             no_size = signal.metadata.get("no_size", signal.size)
-            no_size_contracts = int(no_size)
+            no_size_contracts = int(no_size) if isinstance(no_size, (int, float)) else no_size
             no_order = await self._place_order(
                 signal.ticker,
                 "buy",

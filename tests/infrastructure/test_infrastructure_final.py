@@ -6,6 +6,13 @@ Final Infrastructure Test - Verify all components work
 import pytest
 
 pytestmark = pytest.mark.skip(reason="Requires Kalshi API credentials")
+
+print("\n🚀 Neural SDK - Infrastructure Components Test\n")
+print("=" * 70)
+
+# Test 1: REST API Data Collection
+print("\n📊 TEST 1: REST API Market Data")
+print("-" * 40)
 try:
     import asyncio
 
@@ -73,30 +80,26 @@ except Exception as e:
 # Test 3: WebSocket (expected to fail without special permissions)
 print("\n📡 TEST 3: WebSocket Connection")
 print("-" * 40)
-ws_works = False
 try:
     from neural.trading import KalshiWebSocketClient
 
-    def test_websocket():
-        ws_connected = False
+    ws_connected = False
 
-        def handle_ws(msg):
-            nonlocal ws_connected
-            if msg.get("type") == "subscribed":
-                ws_connected = True
+    def handle_ws(msg):
+        global ws_connected
+        if msg.get("type") == "subscribed":
+            ws_connected = True
 
-        try:
-            ws = KalshiWebSocketClient(on_message=handle_ws)
-            ws.connect(block=True)
-            print("⚠️ WebSocket: Connected (unexpected)")
-            ws.close()
-            return True
-        except Exception as e:
-            print(f"⚠️ WebSocket: Not available - {str(e)[:50]}...")
-            print("  (This is expected without special permissions)")
-            return False
-
-    ws_works = test_websocket()
+    try:
+        ws = KalshiWebSocketClient(on_message=handle_ws)
+        ws.connect(block=True)
+        print("⚠️ WebSocket: Connected (unexpected)")
+        ws.close()
+        ws_works = True
+    except Exception as e:
+        print(f"⚠️ WebSocket: Not available - {str(e)[:50]}...")
+        print("  (This is expected without special permissions)")
+        ws_works = False
 except Exception as e:
     print(f"⚠️ WebSocket: Module error - {e}")
     ws_works = False
