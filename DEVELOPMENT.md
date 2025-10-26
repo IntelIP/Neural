@@ -4,9 +4,7 @@
 **Repository:** https://github.com/IntelIP/Neural  
 **Maintainer:** Hudson Aikins, Neural Contributors
 
----
-
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Branch Strategy](#branch-strategy)
 2. [Development Setup](#development-setup)
@@ -16,11 +14,9 @@
 6. [Code Quality Standards](#code-quality-standards)
 7. [Troubleshooting](#troubleshooting)
 
----
+## Branch Strategy
 
-## 🌳 Branch Strategy
-
-### **Main Production Branch**
+### Main Production Branch
 
 ```
 main (protected)
@@ -31,7 +27,7 @@ main (protected)
   └─ CI/CD pipeline runs on all commits
 ```
 
-### **Development Branches**
+### Development Branches
 
 #### Feature Branches
 ```
@@ -66,11 +62,9 @@ release/vX.Y.Z (from main)
   └─ Merge: Back to main after release
 ```
 
----
+## Development Setup
 
-## 🚀 Development Setup
-
-### **Local Setup**
+### Local Setup
 
 ```bash
 # Clone the repository
@@ -89,7 +83,7 @@ pip install pre-commit
 pre-commit install
 ```
 
-### **Branch Tracking**
+### Branch Tracking
 
 ```bash
 # Create local tracking of remote branches
@@ -100,11 +94,9 @@ git branch -r  # View all remote branches
 git checkout -b feature/xxx origin/feature/xxx
 ```
 
----
+## Creating Features
 
-## 💻 Creating Features
-
-### **1. Create Feature Branch**
+### 1. Create Feature Branch
 
 ```bash
 # Ensure main is up to date
@@ -115,7 +107,7 @@ git pull origin main
 git checkout -b feature/descriptive-name
 ```
 
-### **2. Implement Feature**
+### 2. Implement Feature
 
 ```bash
 # Make your changes
@@ -132,7 +124,7 @@ git add file1.py file2.py
 git add -A
 ```
 
-### **3. Commit Changes**
+### 3. Commit Changes
 
 ```bash
 # Commit with descriptive message
@@ -151,7 +143,7 @@ git commit -m "feat(module): add descriptive feature title
 - `test:` - Add/update tests
 - `chore:` - Maintenance tasks
 
-### **4. Code Quality Checks**
+### 4. Code Quality Checks
 
 ```bash
 # Run linting
@@ -173,7 +165,7 @@ python -m pytest -v
 python -m pytest --cov=neural --cov-report=term-missing
 ```
 
-### **5. Push to Remote**
+### 5. Push to Remote
 
 ```bash
 # Push feature branch
@@ -183,11 +175,9 @@ git push origin feature/descriptive-name
 git push -u origin feature/descriptive-name
 ```
 
----
+## Submitting Changes
 
-## 📤 Submitting Changes
-
-### **Create Pull Request**
+### Create Pull Request
 
 ```bash
 # From GitHub.com or using gh CLI:
@@ -195,7 +185,7 @@ gh pr create --title "feat: descriptive title" \
              --body "Description of changes..."
 ```
 
-### **PR Template**
+### PR Template
 
 ```markdown
 ## Summary
@@ -224,7 +214,7 @@ Relates to #456
 - [ ] No breaking changes
 ```
 
-### **Code Review Process**
+### Code Review Process
 
 1. **Create PR** against `main`
 2. **Wait for CI/CD** - All checks must pass
@@ -232,7 +222,7 @@ Relates to #456
 4. **Address feedback** - Make requested changes
 5. **Approve & Merge** - Squash or rebase as needed
 
-### **Branch Protection Rules**
+### Branch Protection Rules
 
 On `main` branch:
 - ✅ Require PR review before merge
@@ -240,11 +230,9 @@ On `main` branch:
 - ✅ Require status checks to pass
 - ✅ Require branches to be up to date
 
----
+## Release Process
 
-## 🏷️ Release Process
-
-### **Preparing a Release**
+### Preparing a Release
 
 ```bash
 # 1. Create release branch from main
@@ -267,7 +255,7 @@ gh pr create --title "release: v0.4.0" \
              --body "Release preparation PR"
 ```
 
-### **Publishing Release**
+### Publishing Release
 
 ```bash
 # After PR merged to main, create tag
@@ -281,7 +269,7 @@ git tag -a v0.4.0 -m "Release v0.4.0"
 git push origin v0.4.0
 ```
 
-### **Verify Release**
+### Verify Release
 
 ```bash
 # Check PyPI
@@ -293,11 +281,9 @@ python -c "import neural; print(neural.__version__)"
 # Should output: 0.4.0
 ```
 
----
+## Code Quality Standards
 
-## 📊 Code Quality Standards
-
-### **Linting (Ruff)**
+### Linting (Ruff)
 
 ```bash
 # Check
@@ -311,7 +297,7 @@ python -m ruff check neural/ --fix
 - Line length: 100 characters
 - Ignore: E501 (long lines handled by black)
 
-### **Formatting (Black)**
+### Formatting (Black)
 
 ```bash
 # Format all code
@@ -322,7 +308,7 @@ python -m black .
 - Line length: 100 characters
 - Target Python: 3.10+
 
-### **Type Checking (MyPy)**
+### Type Checking (MyPy)
 
 ```bash
 # Run type checker
@@ -336,7 +322,7 @@ python -m mypy neural/
 - Check untyped defs: true
 - No implicit optional: true
 
-### **Testing (Pytest)**
+### Testing (Pytest)
 
 ```bash
 # Run all tests
@@ -358,7 +344,7 @@ python -m pytest tests/test_v030_features.py::TestHistoricalCandlesticks::test_f
 - Use pytest fixtures for setup/teardown
 - Mock external dependencies
 
-### **Minimum Quality Gate**
+### Minimum Quality Gate
 
 Before submitting PR:
 
@@ -372,11 +358,9 @@ pytest -v --cov=neural
 # All must pass before PR submission
 ```
 
----
+## Git Workflow Examples
 
-## 🔗 Git Workflow Examples
-
-### **Adding a Feature**
+### Adding a Feature
 
 ```bash
 # 1. Start from clean main
@@ -402,7 +386,7 @@ git push -u origin feature/add-backtesting-viz
 gh pr create
 ```
 
-### **Fixing a Bug**
+### Fixing a Bug
 
 ```bash
 # 1. Create bugfix branch
@@ -429,7 +413,7 @@ Fixes #123
 git push -u origin bugfix/123-signal-type-error
 ```
 
-### **Syncing with Main**
+### Syncing with Main
 
 ```bash
 # If main has new commits while you're working
@@ -438,11 +422,9 @@ git rebase origin/main  # or merge
 git push origin feature/xxx --force-with-lease  # only if rebased
 ```
 
----
+## Troubleshooting
 
-## 🛠️ Troubleshooting
-
-### **Can't Push - Branch Not Updated**
+### Can't Push - Branch Not Updated
 
 ```bash
 # Solution: Fetch and merge latest main
@@ -453,7 +435,7 @@ git merge origin/main
 git push origin feature/xxx
 ```
 
-### **Accidentally Committed to Main**
+### Accidentally Committed to Main
 
 ```bash
 # Move last commit to new branch
@@ -464,7 +446,7 @@ git checkout feature/oops
 # Or just create PR from main if accidental commit is good
 ```
 
-### **Need to Undo Changes**
+### Need to Undo Changes
 
 ```bash
 # Undo uncommitted changes
@@ -477,7 +459,7 @@ git reset --soft HEAD~1
 git reset --hard HEAD~1
 ```
 
-### **Merge Conflicts**
+### Merge Conflicts
 
 ```bash
 # When pulling or merging
@@ -489,11 +471,9 @@ git commit -m "resolve: merge conflict"
 git push origin feature/xxx
 ```
 
----
+## Commit Message Guidelines
 
-## 📝 Commit Message Guidelines
-
-### **Good Examples**
+### Good Examples
 
 ```
 feat(data_collection): add NBA market discovery with team parsing
@@ -516,7 +496,7 @@ fix(order_manager): correct float to int conversion in order placement
 Fixes #567
 ```
 
-### **Poor Examples**
+### Poor Examples
 
 ```
 updated code
@@ -525,9 +505,7 @@ work in progress
 todo
 ```
 
----
-
-## 🚀 Quick Reference
+## Quick Reference
 
 ```bash
 # Clone and setup
@@ -555,13 +533,9 @@ git fetch origin && git rebase origin/main
 # 5. git push origin vX.Y.Z
 ```
 
----
-
-## 📞 Questions?
+## Questions?
 
 - Check [BRANCH_ANALYSIS.md](BRANCH_ANALYSIS.md) for branch history
 - Review [CHANGELOG.md](CHANGELOG.md) for version history
 - Open an issue on [GitHub](https://github.com/IntelIP/Neural/issues)
-
-Happy coding! 🚀
 

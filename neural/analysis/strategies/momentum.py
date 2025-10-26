@@ -147,7 +147,7 @@ class MomentumStrategy(Strategy):
         if "yes_ask" not in market_data.columns or len(market_data) < periods + 1:
             return None
 
-        prices = market_data["yes_ask"].tail(periods + 1).values
+        prices = market_data["yes_ask"].tail(periods + 1).values.astype(float)
         deltas = np.diff(prices)
 
         gains = deltas[deltas > 0].sum() / periods if len(deltas[deltas > 0]) > 0 else 0
@@ -172,17 +172,17 @@ class MomentumStrategy(Strategy):
 
         # Linear regression
         x = np.arange(len(prices))
-        coeffs = np.polyfit(x, prices, 1)
+        coeffs = np.polyfit(x, prices.astype(float), 1)
         predicted = np.poly1d(coeffs)(x)
 
         # Calculate R-squared
-        ss_res = np.sum((prices - predicted) ** 2)
-        ss_tot = np.sum((prices - np.mean(prices)) ** 2)
+        ss_res = np.sum((prices.astype(float) - predicted) ** 2)
+        ss_tot = np.sum((prices.astype(float) - np.mean(prices.astype(float))) ** 2)
 
         if ss_tot == 0:
             return 0
 
-        r_squared = 1 - (ss_res / ss_tot)
+        r_squared = float(1 - (ss_res / ss_tot))
         return max(0, r_squared)
 
     def _check_volume_trend(self, market_data: pd.DataFrame) -> bool:
@@ -195,9 +195,9 @@ class MomentumStrategy(Strategy):
             return True
 
         # Check if volume is trending up
-        volumes = recent["volume"].values
-        avg_early = np.mean(volumes[: len(volumes) // 2])
-        avg_late = np.mean(volumes[len(volumes) // 2 :])
+        volumes = recent["volume"].values.astype(float)
+        avg_early = float(np.mean(volumes[: len(volumes) // 2]))
+        avg_late = float(np.mean(volumes[len(volumes) // 2 :]))
 
         return avg_late > avg_early * 1.2  # 20% increase
 

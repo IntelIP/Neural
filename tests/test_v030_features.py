@@ -8,17 +8,18 @@ Tests for:
 - Moneyline filtering utilities
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
 import pandas as pd
+import pytest
 
 from neural.data_collection.kalshi import (
     KalshiMarketsSource,
-    get_nba_games,
+    SportMarketCollector,
     filter_moneyline_markets,
     get_moneyline_markets,
-    SportMarketCollector,
+    get_nba_games,
 )
 
 
@@ -30,18 +31,23 @@ class TestHistoricalCandlesticks:
         """Test basic historical candlesticks fetching"""
         source = KalshiMarketsSource(series_ticker="KXNFLGAME")
 
-        # Mock the HTTP response
-        with patch.object(source, "fetch_historical_candlesticks") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "timestamp": [datetime.now() - timedelta(hours=i) for i in range(5)],
-                    "open": [0.45, 0.46, 0.47, 0.48, 0.49],
-                    "high": [0.46, 0.47, 0.48, 0.49, 0.50],
-                    "low": [0.44, 0.45, 0.46, 0.47, 0.48],
-                    "close": [0.45, 0.46, 0.47, 0.48, 0.49],
-                    "volume": [100, 150, 200, 250, 300],
-                }
-            )
+        # Mock the HTTP client response instead of the method under test
+        with patch.object(source, "http_client") as mock_http:
+            # Mock the candlesticks API response
+            mock_response = {
+                "candlesticks": [
+                    {
+                        "ts": (datetime.now() - timedelta(hours=i)).timestamp(),
+                        "open": 45 + i,  # in cents
+                        "high": 46 + i,
+                        "low": 44 + i,
+                        "close": 45 + i,
+                        "volume": 100 + i * 10,
+                    }
+                    for i in range(5)
+                ]
+            }
+            mock_http.get.return_value = mock_response
 
             result = await source.fetch_historical_candlesticks(
                 market_ticker="KXNFLGAME-1234", hours_back=24
@@ -52,14 +58,17 @@ class TestHistoricalCandlesticks:
             assert "open" in result.columns
             assert "close" in result.columns
             assert len(result) == 5
+            # Verify prices are converted from cents to dollars
+            assert result["open"].iloc[0] == 0.45
 
     @pytest.mark.asyncio
     async def test_fetch_historical_candlesticks_with_date_range(self):
         """Test historical candlesticks with custom date range"""
         source = KalshiMarketsSource()
 
-        with patch.object(source, "fetch_historical_candlesticks") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame({"timestamp": [], "open": []})
+        with patch.object(source, "http_client") as mock_http:
+            mock_response = {"candlesticks": []}
+            mock_http.get.return_value = mock_response
 
             start_date = datetime.now() - timedelta(days=7)
             end_date = datetime.now()
@@ -69,7 +78,9 @@ class TestHistoricalCandlesticks:
             )
 
             assert isinstance(result, pd.DataFrame)
-            mock_fetch.assert_called_once()
+            assert result.empty
+            # Verify the correct API endpoint was called
+            mock_http.get.assert_called_once()
 
 
 class TestNBAMarketCollection:
@@ -78,33 +89,53 @@ class TestNBAMarketCollection:
     @pytest.mark.asyncio
     async def test_get_nba_games_basic(self):
         """Test basic NBA games fetching"""
-        with patch("neural.data_collection.kalshi._fetch_markets") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": ["KXNBA-LAL-GSW-01", "KXNBA-BOS-MIA-01"],
-                    "title": ["Lakers vs Warriors", "Celtics vs Heat"],
-                    "yes_bid": [0.45, 0.52],
-                    "yes_ask": [0.47, 0.54],
-                    "volume": [1000, 1500],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            # Mock the API response for NBA markets
+            mock_response = {
+                "markets": [
+                    {
+                        "ticker": "KXNBA-LAL-GSW-01",
+                        "title": "Lakers vs Warriors",
+                        "yes_bid": 45,
+                        "yes_ask": 47,
+                        "volume": 1000,
+                    },
+                    {
+                        "ticker": "KXNBA-BOS-MIA-01",
+                        "title": "Celtics vs Heat",
+                        "yes_bid": 52,
+                        "yes_ask": 54,
+                        "volume": 1500,
+                    },
+                ]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await get_nba_games()
 
             assert not result.empty
             assert len(result) == 2
             assert all(result["ticker"].str.startswith("KXNBA"))
+            # Verify prices are converted from cents to dollars
+            assert result["yes_bid"].iloc[0] == 0.45
 
     @pytest.mark.asyncio
     async def test_get_nba_games_with_team_filter(self):
         """Test NBA games with team filtering"""
-        with patch("neural.data_collection.kalshi._fetch_markets") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": ["KXNBA-LAL-GSW-01", "KXNBA-BOS-MIA-01"],
-                    "title": ["Lakers vs Warriors", "Celtics vs Heat"],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            mock_response = {
+                "markets": [
+                    {"ticker": "KXNBA-LAL-GSW-01", "title": "Lakers vs Warriors"},
+                    {"ticker": "KXNBA-BOS-MIA-01", "title": "Celtics vs Heat"},
+                ]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await get_nba_games()
 
@@ -151,16 +182,17 @@ class TestMoneylineFiltering:
     @pytest.mark.asyncio
     async def test_get_moneyline_markets(self):
         """Test get_moneyline_markets function"""
-        with patch("neural.data_collection.kalshi._fetch_markets") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": [
-                        "KXNFLGAME-KC-BUF-WIN",
-                        "KXNFLGAME-KC-BUF-SPREAD",
-                    ],
-                    "title": ["Chiefs to win", "Chiefs spread"],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            mock_response = {
+                "markets": [
+                    {"ticker": "KXNFLGAME-KC-BUF-WIN", "title": "Chiefs to win"},
+                    {"ticker": "KXNFLGAME-KC-BUF-SPREAD", "title": "Chiefs spread"},
+                ]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await get_moneyline_markets(sport="NFL")
 
@@ -178,31 +210,35 @@ class TestSportMarketCollector:
         """Test SportMarketCollector for NFL"""
         collector = SportMarketCollector()
 
-        with patch.object(collector, "get_games") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": ["KXNFLGAME-KC-BUF-WIN"],
-                    "title": ["Will Chiefs beat Buffalo?"],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            mock_response = {
+                "markets": [
+                    {"ticker": "KXNFLGAME-KC-BUF-WIN", "title": "Will Chiefs beat Buffalo?"}
+                ]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await collector.get_games(sport="NFL")
 
             assert not result.empty
-            mock_fetch.assert_called_once()
+            assert "KXNFLGAME" in result.iloc[0]["ticker"]
 
     @pytest.mark.asyncio
     async def test_sport_market_collector_nba(self):
         """Test SportMarketCollector for NBA"""
         collector = SportMarketCollector()
 
-        with patch.object(collector, "get_games") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": ["KXNBA-LAL-GSW-WIN"],
-                    "title": ["Will Lakers beat GSW?"],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            mock_response = {
+                "markets": [{"ticker": "KXNBA-LAL-GSW-WIN", "title": "Will Lakers beat GSW?"}]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await collector.get_games(sport="NBA")
 
@@ -214,16 +250,17 @@ class TestSportMarketCollector:
         """Test SportMarketCollector with moneyline filter"""
         collector = SportMarketCollector()
 
-        with patch("neural.data_collection.kalshi._fetch_markets") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "ticker": [
-                        "KXNFLGAME-KC-BUF-WIN",
-                        "KXNFLGAME-KC-BUF-SPREAD",
-                    ],
-                    "title": ["Will Chiefs beat Buffalo?", "Chiefs to cover spread?"],
-                }
-            )
+        with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            mock_response = {
+                "markets": [
+                    {"ticker": "KXNFLGAME-KC-BUF-WIN", "title": "Will Chiefs beat Buffalo?"},
+                    {"ticker": "KXNFLGAME-KC-BUF-SPREAD", "title": "Chiefs to cover spread?"},
+                ]
+            }
+            mock_client.get.return_value = mock_response
 
             result = await collector.get_games(sport="NFL", market_type="moneyline")
 
@@ -239,20 +276,26 @@ class TestIntegrationScenarios:
         """Test complete workflow: fetch historical data -> backtest"""
         source = KalshiMarketsSource()
 
-        with patch.object(source, "fetch_historical_candlesticks") as mock_fetch:
-            mock_fetch.return_value = pd.DataFrame(
-                {
-                    "timestamp": [datetime.now() - timedelta(hours=i) for i in range(10)],
-                    "close": [0.45 + i * 0.01 for i in range(10)],
-                    "volume": [100 + i * 10 for i in range(10)],
-                }
-            )
+        with patch.object(source, "http_client") as mock_http:
+            mock_response = {
+                "candlesticks": [
+                    {
+                        "ts": (datetime.now() - timedelta(hours=i)).timestamp(),
+                        "close": 45 + i,  # in cents
+                        "volume": 100 + i * 10,
+                    }
+                    for i in range(10)
+                ]
+            }
+            mock_http.get.return_value = mock_response
 
             historical_data = await source.fetch_historical_candlesticks(
                 market_ticker="TEST-1234", hours_back=24
             )
 
             assert len(historical_data) == 10
+            # Verify prices are converted from cents to dollars
+            assert historical_data["close"].iloc[0] == 0.45
             assert historical_data["close"].iloc[0] < historical_data["close"].iloc[-1]
 
     @pytest.mark.asyncio
@@ -262,13 +305,18 @@ class TestIntegrationScenarios:
         results = {}
 
         for sport in sports:
-            collector = SportMarketCollector()
+            with patch("neural.data_collection.kalshi.KalshiHTTPClient") as mock_client_class:
+                mock_client = AsyncMock()
+                mock_client_class.return_value = mock_client
 
-            with patch.object(collector, "get_games") as mock_fetch:
-                mock_fetch.return_value = pd.DataFrame(
-                    {"ticker": [f"KX{sport}-TEST"], "title": [f"Will {sport} team win?"]}
-                )
+                mock_response = {
+                    "markets": [
+                        {"ticker": f"KX{sport}-TEST-WIN", "title": f"Will {sport} team win?"}
+                    ]
+                }
+                mock_client.get.return_value = mock_response
 
+                collector = SportMarketCollector()
                 results[sport] = await collector.get_games(sport=sport)
 
         assert len(results) == 3

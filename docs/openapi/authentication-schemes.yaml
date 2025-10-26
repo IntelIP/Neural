@@ -1,0 +1,498 @@
+openapi: 3.0.3
+info:
+  title: Neural SDK - Authentication Schemes
+  description: |
+    Comprehensive authentication and security schemes used across the Neural SDK ecosystem.
+    This specification documents all authentication methods, security requirements,
+    and best practices for secure API access.
+    
+    ## Overview
+    
+    The Neural SDK supports multiple authentication methods depending on the API:
+    
+    - **RSA-PSS Signature**: Primary method for Kalshi APIs
+    - **Bearer Tokens**: Twitter API and external services
+    - **API Keys**: Simple key-based authentication
+    - **OAuth 2.0**: User authorization for social platforms
+    
+    ## Security Best Practices
+    
+    - Store credentials securely using environment variables
+    - Use short-lived tokens when possible
+    - Implement proper error handling for auth failures
+    - Monitor for unusual API usage patterns
+    - Rotate credentials regularly
+    
+    ## Rate Limits
+    
+    Each API has specific rate limits. The SDK includes automatic
+    rate limiting and retry logic to prevent service disruption.
+  version: 1.0.0
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+components:
+  securitySchemes:
+    KalshiRSAPSS:
+      type: apiKey
+      in: header
+      name: KALSHI-ACCESS-KEY
+      description: |
+        ## RSA-PSS Signature Authentication
+        
+        Primary authentication method for Kalshi REST and WebSocket APIs.
+        
+        ### Required Headers:
+        - `KALSHI-ACCESS-KEY`: Your API key ID
+        - `KALSHI-ACCESS-TIMESTAMP`: Unix timestamp in milliseconds
+        - `KALSHI-ACCESS-SIGNATURE`: Base64-encoded RSA-PSS signature
+        
+        ### Signature Generation:
+        ```python
+        import base64
+        import time
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import padding
+        
+        def generate_signature(private_key, method, path, timestamp=None):
+            if timestamp is None:
+                timestamp = int(time.time() * 1000)
+            
+            message = f"{timestamp}{method}{path}"
+            signature = private_key.sign(
+                message.encode(),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+            return base64.b64encode(signature).decode()
+        
+        # Usage
+        timestamp = int(time.time() * 1000)
+        signature = generate_signature(private_key, "GET", "/markets", timestamp)
+        ```
+        
+        ### Key Requirements:
+        - RSA private key with at least 2048 bits
+        - PSS padding with MGF1(SHA256)
+        - Salt length = DIGEST_LENGTH
+        - Message format: `{timestamp}{HTTP_METHOD}{PATH}`
+        
+        ### Example Headers:
+        ```
+        KALSHI-ACCESS-KEY: your_api_key_id
+        KALSHI-ACCESS-TIMESTAMP: 1701388800000
+        KALSHI-ACCESS-SIGNATURE: base64_encoded_signature_here
+        ```
+
+    TwitterBearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        ## Twitter Bearer Token Authentication
+        
+        Used for accessing Twitter API v2 endpoints for sentiment analysis
+        and social media data collection.
+        
+        ### Token Types:
+        - **App-only**: For public data access (recommended)
+        - **User Context**: For user-specific operations
+        
+        ### Header Format:
+        ```
+        Authorization: Bearer YOUR_BEARER_TOKEN
+        ```
+        
+        ### Token Management:
+        - Obtain from Twitter Developer Portal
+        - Store securely in environment variables
+        - Monitor usage to avoid rate limits
+        - Rotate tokens regularly
+        
+        ### Rate Limits:
+        - Free tier: 500,000 requests/month
+        - Basic tier: 2,000,000 requests/month
+        - Enterprise: Custom limits
+
+    ESPNApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        ## ESPN API Key Authentication
+        
+        Used for accessing ESPN sports data APIs for game information,
+        scores, and team statistics.
+        
+        ### Header Format:
+        ```
+        X-API-Key: your_espn_api_key
+        ```
+        
+        ### Usage:
+        - Required for commercial use cases
+        - Optional for development/testing
+        - Contact ESPN for API key access
+        
+        ### Rate Limits:
+        - Development: 100 requests/hour
+        - Commercial: Custom limits based on plan
+
+    OAuth2AuthorizationCode:
+      type: oauth2
+      description: |
+        ## OAuth 2.0 Authorization Code Flow
+        
+        Used for user authorization with social platforms and external services.
+        Primarily used for accessing user-specific data and posting content.
+        
+        ### Flow:
+        1. **Authorization Request**: Redirect user to authorization endpoint
+        2. **Authorization Grant**: User authorizes application
+        3. **Access Token Request**: Exchange grant for access token
+        4. **Access Token Use**: Make authenticated requests
+        5. **Token Refresh**: Refresh expired tokens
+        
+        ### Scopes:
+        - `read`: Read access to user data
+        - `write`: Write access to post content
+        - `offline_access`: Refresh token capability
+        
+        ### Token Storage:
+        - Store tokens securely
+        - Implement automatic refresh
+        - Handle token expiration gracefully
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        ## Generic API Key Authentication
+        
+        Simple key-based authentication for various external APIs and services.
+        
+        ### Header Format:
+        ```
+        X-API-Key: your_api_key
+        ```
+        
+        ### Security Considerations:
+        - Use long, random keys
+        - Rotate keys regularly
+        - Monitor for unauthorized usage
+        - Implement IP restrictions when possible
+
+    FIXSignatureAuth:
+      type: apiKey
+      in: header
+      name: FIX-Signature
+      description: |
+        ## FIX Protocol Signature Authentication
+        
+        Authentication method for FIX protocol connections using RSA-PSS signatures
+        embedded in FIX messages.
+        
+        ### Signature Location:
+        - Tag 95: RawData (signature)
+        - Tag 96: RawDataLength (signature length)
+        
+        ### Signature Payload:
+        ```
+        {SendingTime}{MsgType}{SeqNum}{SenderCompID}{TargetCompID}
+        ```
+        
+        ### Implementation:
+        ```python
+        def fix_signature(private_key, sending_time, msg_type, seq_num, sender_id, target_id):
+            message = f"{sending_time}{msg_type}{seq_num}{sender_id}{target_id}"
+            signature = private_key.sign(
+                message.encode(),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+            return base64.b64encode(signature).decode()
+        ```
+
+  schemas:
+    AuthenticationRequest:
+      type: object
+      description: Base authentication request structure
+      required:
+        - api_key_id
+        - timestamp
+        - signature
+      properties:
+        api_key_id:
+          type: string
+          description: API key identifier
+          example: "kalshi_live_123456789"
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1701388800000
+        signature:
+          type: string
+          description: Base64-encoded signature
+          example: "base64_encoded_signature_here"
+        method:
+          type: string
+          description: HTTP method
+          example: "GET"
+        path:
+          type: string
+          description: API endpoint path
+          example: "/markets"
+
+    AuthenticationResponse:
+      type: object
+      description: Authentication response
+      properties:
+        success:
+          type: boolean
+          description: Authentication success status
+          example: true
+        token:
+          type: string
+          description: Access token (if applicable)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+          example: 3600
+        refresh_token:
+          type: string
+          description: Refresh token (if applicable)
+          example: "def50200..."
+
+    OAuth2AuthorizationRequest:
+      type: object
+      description: OAuth 2.0 authorization request
+      required:
+        - client_id
+        - redirect_uri
+        - response_type
+        - scope
+      properties:
+        client_id:
+          type: string
+          description: Application client ID
+          example: "your_client_id"
+        redirect_uri:
+          type: string
+          format: uri
+          description: Redirect URI after authorization
+          example: "https://yourapp.com/callback"
+        response_type:
+          type: string
+          enum: [code]
+          description: Response type
+          example: "code"
+        scope:
+          type: string
+          description: Requested scopes
+          example: "read write offline_access"
+        state:
+          type: string
+          description: CSRF protection state
+          example: "random_state_string"
+
+    OAuth2TokenRequest:
+      type: object
+      description: OAuth 2.0 token exchange request
+      required:
+        - client_id
+        - client_secret
+        - grant_type
+        - code
+        - redirect_uri
+      properties:
+        client_id:
+          type: string
+          description: Application client ID
+          example: "your_client_id"
+        client_secret:
+          type: string
+          description: Application client secret
+          example: "your_client_secret"
+        grant_type:
+          type: string
+          enum: [authorization_code, refresh_token]
+          description: Grant type
+          example: "authorization_code"
+        code:
+          type: string
+          description: Authorization code from callback
+          example: "authorization_code_here"
+        redirect_uri:
+          type: string
+          format: uri
+          description: Redirect URI (must match original)
+          example: "https://yourapp.com/callback"
+        refresh_token:
+          type: string
+          description: Refresh token (for refresh grant type)
+          example: "refresh_token_here"
+
+    ApiCredentials:
+      type: object
+      description: API credentials configuration
+      required:
+        - api_key_id
+        - private_key
+      properties:
+        api_key_id:
+          type: string
+          description: API key identifier
+          example: "kalshi_live_123456789"
+        private_key:
+          type: string
+          description: Private key (PEM format)
+          example: "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+        environment:
+          type: string
+          enum: [prod, demo]
+          description: API environment
+          example: "prod"
+        expires_at:
+          type: string
+          format: date-time
+          description: Key expiration time
+          example: "2025-12-01T00:00:00Z"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Key permissions
+          example: ["read", "trade", "withdraw"]
+
+    AuthenticationError:
+      type: object
+      description: Authentication error response
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "invalid_signature"
+        error_description:
+          type: string
+          description: Human-readable error description
+          example: "The provided signature is invalid or expired"
+        error_code:
+          type: string
+          description: Machine-readable error code
+          example: "AUTH_001"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2024-12-01T12:00:00Z"
+        request_id:
+          type: string
+          description: Request identifier for debugging
+          example: "req_123456789"
+
+    RateLimitInfo:
+      type: object
+      description: Rate limit information
+      properties:
+        limit:
+          type: integer
+          description: Request limit per time window
+          example: 1000
+        remaining:
+          type: integer
+          description: Remaining requests in current window
+          example: 750
+        reset_time:
+          type: integer
+          format: int64
+          description: Unix timestamp when limit resets
+          example: 1701388860000
+        retry_after:
+          type: integer
+          description: Seconds to wait before retrying
+          example: 60
+
+  security:
+    - KalshiRSAPSS: []
+    - TwitterBearerAuth: []
+    - ESPNApiKeyAuth: []
+    - OAuth2AuthorizationCode: []
+    - ApiKeyAuth: []
+    - FIXSignatureAuth: []
+
+  responses:
+    AuthenticationError:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationError'
+      headers:
+        WWW-Authenticate:
+          description: Authentication challenge
+          schema:
+            type: string
+            example: 'Bearer realm="Twitter API", error="invalid_token"'
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitInfo'
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 60
+        X-RateLimit-Limit:
+          description: Request limit
+          schema:
+            type: integer
+            example: 1000
+        X-RateLimit-Remaining:
+          description: Remaining requests
+          schema:
+            type: integer
+          example: 750
+        X-RateLimit-Reset:
+          description: Reset timestamp
+          schema:
+            type: integer
+            example: 1701388860000
+
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationError'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationError'
+
+tags:
+  - name: Authentication
+    description: Authentication methods and security schemes
+  - name: Authorization
+    description: Authorization flows and permissions
+  - name: Security
+    description: Security best practices and error handling

@@ -125,8 +125,9 @@ espn_game_summary_transformer = DataTransformer(
 )
 
 
-# Register transformers
 from neural.data_collection import registry
+
+# Register transformers
 
 registry.transformers["espn_nfl_scoreboard"] = espn_scoreboard_transformer
 registry.transformers["espn_college_football_scoreboard"] = espn_scoreboard_transformer

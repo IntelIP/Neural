@@ -39,7 +39,7 @@ class DataTransformer:
     @staticmethod
     def normalize_types(data: dict[str, Any]) -> dict[str, Any]:
         """Normalize data types (e.g., strings to numbers where possible)."""
-        normalized = {}
+        normalized: dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, str):
                 try:

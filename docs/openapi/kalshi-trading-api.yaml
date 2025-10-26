@@ -1,0 +1,925 @@
+openapi: 3.0.3
+info:
+  title: Neural SDK - Kalshi Trading API
+  description: |
+    Complete API reference for the Neural SDK's integration with Kalshi's trading platform.
+    This API provides access to market data, order management, portfolio information, and 
+    historical data for algorithmic trading on prediction markets.
+    
+    ## Authentication
+    
+    All API requests require RSA-PSS signature authentication. See the Authentication section
+    for detailed setup instructions.
+    
+    ## Base URLs
+    
+    - Production: `https://api.elections.kalshi.com/trade-api/v2`
+    - Demo: `https://demo-api.elections.kalshi.com/trade-api/v2`
+  version: 2.0.0
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.elections.kalshi.com/trade-api/v2
+    description: Production environment
+  - url: https://demo-api.elections.kalshi.com/trade-api/v2
+    description: Demo environment for testing
+
+security:
+  - KalshiAuth: []
+
+paths:
+  /markets:
+    get:
+      tags:
+        - Market Data
+      summary: List Markets
+      description: |
+        Retrieve a list of markets with optional filtering. Supports pagination and various
+        search criteria to find specific markets.
+        
+        Common use cases:
+        - Find all active NFL markets
+        - Search for specific event types
+        - Get markets by status (open, closed, settled)
+      operationId: listMarkets
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of markets to return (max 1000)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: series_ticker
+          in: query
+          description: Filter by series ticker (e.g., "KXNFLGAME", "KXNBAGAME")
+          required: false
+          schema:
+            type: string
+            example: "KXNFLGAME"
+        - name: status
+          in: query
+          description: Filter by market status
+          required: false
+          schema:
+            type: string
+            enum: [open, closed, settled]
+            example: "open"
+        - name: ticker
+          in: query
+          description: Filter by specific market ticker
+          required: false
+          schema:
+            type: string
+            example: "KXNFLGAME-2024-12-01-NE-ATL"
+        - name: search
+          in: query
+          description: Search term to filter markets by title or subtitle
+          required: false
+          schema:
+            type: string
+            example: "Chiefs"
+        - name: event_ticker
+          in: query
+          description: Filter by event ticker
+          required: false
+          schema:
+            type: string
+            example: "KXNFL-2024-12-01-NE-ATL"
+        - name: cursor
+          in: query
+          description: Pagination cursor for retrieving next page
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved markets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketsResponse'
+              examples:
+                success:
+                  summary: Successful markets response
+                  value:
+                    markets:
+                      - ticker: "KXNFLGAME-2024-12-01-NE-ATL"
+                        title: "Will the Atlanta Falcons beat the New England Patriots?"
+                        subtitle: "December 1, 2024"
+                        yes_bid: 45
+                        yes_ask: 48
+                        no_bid: 52
+                        no_ask: 55
+                        volume: 150000
+                        open_interest: 75000
+                        last_price: 47
+                        status: "open"
+                    cursor: "next_page_token"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /markets/{ticker}:
+    get:
+      tags:
+        - Market Data
+      summary: Get Market Details
+      description: |
+        Retrieve detailed information for a specific market including current prices,
+        volume, and market metadata.
+      operationId: getMarket
+      parameters:
+        - name: ticker
+          in: path
+          description: Market ticker identifier
+          required: true
+          schema:
+            type: string
+            example: "KXNFLGAME-2024-12-01-NE-ATL"
+      responses:
+        '200':
+          description: Successfully retrieved market details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Market not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /markets/trades:
+    get:
+      tags:
+        - Market Data
+      summary: Get Market Trades
+      description: |
+        Retrieve historical trade data for markets. Useful for backtesting and
+        market analysis.
+      operationId: getMarketTrades
+      parameters:
+        - name: ticker
+          in: query
+          description: Filter trades by market ticker
+          required: false
+          schema:
+            type: string
+            example: "KXNFLGAME-2024-12-01-NE-ATL"
+        - name: min_ts
+          in: query
+          description: Minimum timestamp (Unix milliseconds)
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 1701388800000
+        - name: max_ts
+          in: query
+          description: Maximum timestamp (Unix milliseconds)
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 1701475200000
+        - name: limit
+          in: query
+          description: Maximum number of trades to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: cursor
+          in: query
+          description: Pagination cursor
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved trades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /portfolio/positions:
+    get:
+      tags:
+        - Portfolio
+      summary: Get Portfolio Positions
+      description: |
+        Retrieve current positions in your portfolio including size, average cost,
+        and unrealized P&L.
+      operationId: getPositions
+      responses:
+        '200':
+          description: Successfully retrieved positions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /portfolio/orders:
+    get:
+      tags:
+        - Portfolio
+      summary: Get Order History
+      description: |
+        Retrieve historical and current orders with status and execution details.
+      operationId: getOrders
+      parameters:
+        - name: status
+          in: query
+          description: Filter orders by status
+          required: false
+          schema:
+            type: string
+            enum: [open, filled, cancelled, rejected]
+            example: "filled"
+        - name: limit
+          in: query
+          description: Maximum number of orders to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Successfully retrieved orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /orders:
+    post:
+      tags:
+        - Order Management
+      summary: Create Order
+      description: |
+        Submit a new order to the market. Supports market and limit orders with
+        various time-in-force options.
+        
+        ## Order Types
+        - **market**: Execute immediately at current market price
+        - **limit**: Execute only at specified price or better
+        - **stop**: Execute when price reaches trigger level
+        
+        ## Sides
+        - **yes**: Buy YES contracts (betting on outcome)
+        - **no**: Buy NO contracts (betting against outcome)
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            examples:
+              limit_order:
+                summary: Limit order example
+                value:
+                  ticker: "KXNFLGAME-2024-12-01-NE-ATL"
+                  side: "yes"
+                  action: "buy"
+                  count: 10
+                  price: 45
+                  order_type: "limit"
+                  time_in_force: "good_til_cancelled"
+              market_order:
+                summary: Market order example
+                value:
+                  ticker: "KXNFLGAME-2024-12-01-NE-ATL"
+                  side: "no"
+                  action: "sell"
+                  count: 5
+                  order_type: "market"
+      responses:
+        '200':
+          description: Order successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /orders/{order_id}:
+    delete:
+      tags:
+        - Order Management
+      summary: Cancel Order
+      description: |
+        Cancel an existing open order. Only orders with status "open" can be cancelled.
+      operationId: cancelOrder
+      parameters:
+        - name: order_id
+          in: path
+          description: Order ID to cancel
+          required: true
+          schema:
+            type: string
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        '200':
+          description: Order successfully cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /series/{series_ticker}/markets/{ticker}/candlesticks:
+    get:
+      tags:
+        - Historical Data
+      summary: Get Series Candlesticks
+      description: |
+        Retrieve OHLCV candlestick data for a specific market within a series.
+        Useful for technical analysis and backtesting.
+      operationId: getSeriesCandlesticks
+      parameters:
+        - name: series_ticker
+          in: path
+          description: Series ticker (e.g., "KXNFLGAME")
+          required: true
+          schema:
+            type: string
+            example: "KXNFLGAME"
+        - name: ticker
+          in: path
+          description: Market ticker
+          required: true
+          schema:
+            type: string
+            example: "KXNFLGAME-2024-12-01-NE-ATL"
+        - name: start_ts
+          in: query
+          description: Start timestamp (Unix milliseconds)
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1701388800000
+        - name: end_ts
+          in: query
+          description: End timestamp (Unix milliseconds)
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1701475200000
+        - name: period_interval
+          in: query
+          description: Time interval for candlesticks
+          required: false
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 1d]
+            default: "1h"
+      responses:
+        '200':
+          description: Successfully retrieved candlesticks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandlesticksResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    KalshiAuth:
+      type: apiKey
+      in: header
+      name: KALSHI-ACCESS-KEY
+      description: |
+        ## RSA-PSS Signature Authentication
+        
+        Kalshi uses a custom RSA-PSS signature scheme for API authentication.
+        
+        ### Required Headers:
+        - `KALSHI-ACCESS-KEY`: Your API key ID
+        - `KALSHI-ACCESS-TIMESTAMP`: Unix timestamp in milliseconds
+        - `KALSHI-ACCESS-SIGNATURE`: Base64-encoded RSA-PSS signature
+        
+        ### Signature Calculation:
+        1. Create message: `{timestamp}{HTTP_METHOD}{PATH}`
+        2. Sign with RSA-PSS using SHA256
+        3. Base64 encode the signature
+        
+        ### Example:
+        ```python
+        import base64
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import padding
+        
+        message = f"{timestamp}{method}{path}"
+        signature = private_key.sign(
+            message.encode(),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        signature_b64 = base64.b64encode(signature).decode()
+        ```
+
+  schemas:
+    Market:
+      type: object
+      description: Market information with current pricing
+      properties:
+        ticker:
+          type: string
+          description: Unique market identifier
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        title:
+          type: string
+          description: Market title/question
+          example: "Will the Atlanta Falcons beat the New England Patriots?"
+        subtitle:
+          type: string
+          description: Additional market context
+          example: "December 1, 2024"
+        yes_bid:
+          type: integer
+          description: Highest bid price for YES contracts (in cents)
+          example: 45
+        yes_ask:
+          type: integer
+          description: Lowest ask price for YES contracts (in cents)
+          example: 48
+        no_bid:
+          type: integer
+          description: Highest bid price for NO contracts (in cents)
+          example: 52
+        no_ask:
+          type: integer
+          description: Lowest ask price for NO contracts (in cents)
+          example: 55
+        volume:
+          type: integer
+          description: Total traded volume
+          example: 150000
+        open_interest:
+          type: integer
+          description: Total open contracts
+          example: 75000
+        last_price:
+          type: integer
+          description: Last trade price (in cents)
+          example: 47
+        status:
+          type: string
+          enum: [open, closed, settled]
+          description: Current market status
+          example: "open"
+
+    MarketsResponse:
+      type: object
+      properties:
+        markets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Market'
+        cursor:
+          type: string
+          description: Pagination token for next page
+          nullable: true
+
+    Trade:
+      type: object
+      description: Individual trade execution
+      properties:
+        trade_id:
+          type: string
+          description: Unique trade identifier
+          example: "trade_123456789"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        created_time:
+          type: integer
+          format: int64
+          description: Trade timestamp (Unix milliseconds)
+          example: 1701388800000
+        yes_price:
+          type: integer
+          description: YES contract price (in cents)
+          example: 47
+        no_price:
+          type: integer
+          description: NO contract price (in cents)
+          example: 53
+        count:
+          type: integer
+          description: Number of contracts traded
+          example: 10
+        taker_side:
+          type: string
+          enum: [yes, no]
+          description: Which side was the taker
+          example: "yes"
+
+    TradesResponse:
+      type: object
+      properties:
+        trades:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trade'
+        cursor:
+          type: string
+          description: Pagination token
+          nullable: true
+
+    Position:
+      type: object
+      description: Current portfolio position
+      properties:
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Position side
+          example: "yes"
+        size:
+          type: integer
+          description: Number of contracts
+          example: 25
+        avg_cost:
+          type: number
+          format: float
+          description: Average cost per contract (in cents)
+          example: 46.5
+        current_price:
+          type: number
+          format: float
+          description: Current market price (in cents)
+          example: 48.0
+        market_value:
+          type: number
+          format: float
+          description: Current market value
+          example: 1200.0
+        unrealized_pnl:
+          type: number
+          format: float
+          description: Unrealized profit/loss
+          example: 37.5
+
+    PositionsResponse:
+      type: object
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+
+    Order:
+      type: object
+      description: Order information
+      properties:
+        order_id:
+          type: string
+          description: Unique order identifier
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Order side
+          example: "yes"
+        action:
+          type: string
+          enum: [buy, sell]
+          description: Order action
+          example: "buy"
+        count:
+          type: integer
+          description: Number of contracts
+          example: 10
+        price:
+          type: integer
+          description: Order price (in cents, null for market orders)
+          example: 45
+          nullable: true
+        order_type:
+          type: string
+          enum: [market, limit, stop]
+          description: Order type
+          example: "limit"
+        time_in_force:
+          type: string
+          enum: [good_til_cancelled, immediate_or_cancel, fill_or_kill]
+          description: Time in force
+          example: "good_til_cancelled"
+        status:
+          type: string
+          enum: [open, filled, cancelled, rejected]
+          description: Order status
+          example: "filled"
+        created_at:
+          type: integer
+          format: int64
+          description: Creation timestamp
+          example: 1701388800000
+        filled_count:
+          type: integer
+          description: Number of contracts filled
+          example: 10
+        avg_fill_price:
+          type: number
+          format: float
+          description: Average fill price
+          example: 46.0
+
+    OrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - ticker
+        - side
+        - action
+        - count
+        - order_type
+      properties:
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Order side
+          example: "yes"
+        action:
+          type: string
+          enum: [buy, sell]
+          description: Order action
+          example: "buy"
+        count:
+          type: integer
+          minimum: 1
+          description: Number of contracts
+          example: 10
+        price:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: Order price in cents (required for limit orders)
+          example: 45
+        order_type:
+          type: string
+          enum: [market, limit, stop]
+          description: Order type
+          example: "limit"
+        time_in_force:
+          type: string
+          enum: [good_til_cancelled, immediate_or_cancel, fill_or_kill]
+          default: "good_til_cancelled"
+          description: Time in force
+        client_order_id:
+          type: string
+          description: Optional client-defined order ID
+          example: "my_order_123"
+
+    OrderResponse:
+      type: object
+      properties:
+        order:
+          $ref: '#/components/schemas/Order'
+        message:
+          type: string
+          description: Success message
+          example: "Order created successfully"
+
+    CancelOrderResponse:
+      type: object
+      properties:
+        order_id:
+          type: string
+          description: Cancelled order ID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        status:
+          type: string
+          description: Cancellation status
+          example: "cancelled"
+        message:
+          type: string
+          description: Cancellation message
+          example: "Order cancelled successfully"
+
+    Candlestick:
+      type: object
+      description: OHLCV candlestick data
+      properties:
+        timestamp:
+          type: integer
+          format: int64
+          description: Candlestick timestamp (Unix milliseconds)
+          example: 1701388800000
+        open:
+          type: number
+          format: float
+          description: Opening price
+          example: 45.0
+        high:
+          type: number
+          format: float
+          description: Highest price
+          example: 48.0
+        low:
+          type: number
+          format: float
+          description: Lowest price
+          example: 44.0
+        close:
+          type: number
+          format: float
+          description: Closing price
+          example: 47.0
+        volume:
+          type: integer
+          description: Trading volume
+          example: 1500
+
+    CandlesticksResponse:
+      type: object
+      properties:
+        candlesticks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candlestick'
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        period_interval:
+          type: string
+          description: Time interval
+          example: "1h"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid market ticker"
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_TICKER"
+        details:
+          type: object
+          description: Additional error details
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid_params:
+              summary: Invalid parameters
+              value:
+                error: "Invalid limit parameter"
+                code: "INVALID_PARAMS"
+
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            auth_failed:
+              summary: Authentication failed
+              value:
+                error: "Invalid signature"
+                code: "AUTH_FAILED"
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rate_limited:
+              summary: Rate limited
+              value:
+                error: "Rate limit exceeded"
+                code: "RATE_LIMITED"
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 60
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            server_error:
+              summary: Server error
+              value:
+                error: "Internal server error"
+                code: "SERVER_ERROR"
+
+tags:
+  - name: Market Data
+    description: Market information and historical data
+  - name: Portfolio
+    description: Portfolio positions and order history
+  - name: Order Management
+    description: Order creation, modification, and cancellation
+  - name: Historical Data
+    description: Historical market data for analysis

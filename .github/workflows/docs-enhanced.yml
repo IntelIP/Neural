@@ -1,0 +1,599 @@
+name: Enhanced Documentation Automation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'neural/**/*.py'
+      - 'docs/**'
+      - 'examples/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'neural/**/*.py'
+      - 'docs/**'
+      - 'examples/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      deploy_preview:
+        description: 'Deploy preview to staging'
+        required: false
+        default: 'false'
+        type: boolean
+      force_deploy:
+        description: 'Force deploy to production'
+        required: false
+        default: 'false'
+        type: boolean
+      generate_openapi:
+        description: 'Regenerate OpenAPI specs'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Stage 1: Change Detection and Analysis
+  detect-changes:
+    runs-on: ubuntu-latest
+    name: Detect Changes
+    outputs:
+      code-changed: ${{ steps.changes.outputs.code }}
+      docs-changed: ${{ steps.changes.outputs.docs }}
+      examples-changed: ${{ steps.changes.outputs.examples }}
+      config-changed: ${{ steps.changes.outputs.config }}
+      version-changed: ${{ steps.version.outputs.changed }}
+      should-deploy: ${{ steps.deploy.outputs.should-deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            code:
+              - 'neural/**/*.py'
+            docs:
+              - 'docs/**'
+            examples:
+              - 'examples/**'
+            config:
+              - 'pyproject.toml'
+              - 'docs/mint.json'
+
+      - name: Check version changes
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            # Check if version in pyproject.toml changed
+            if git diff --name-only origin/main...HEAD | grep -q "pyproject.toml"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Determine deployment strategy
+        id: deploy
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "should-deploy=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "should-deploy=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
+            echo "should-deploy=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.deploy_preview }}" = "true" ]; then
+            echo "should-deploy=preview" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=none" >> $GITHUB_OUTPUT
+          fi
+
+  # Stage 2: Environment Setup
+  setup-environment:
+    runs-on: ubuntu-latest
+    name: Setup Environment
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.code-changed == 'true' || 
+      needs.detect-changes.outputs.docs-changed == 'true' || 
+      needs.detect-changes.outputs.examples-changed == 'true' ||
+      needs.detect-changes.outputs.config-changed == 'true'
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache Python dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,docs]
+
+      - name: Install Mintlify CLI
+        run: npm install -g @mintlify/cli
+
+      - name: Verify installations
+        run: |
+          python --version
+          npm --version
+          mintlify --version
+
+  # Stage 3: API Documentation Generation
+  generate-api-docs:
+    runs-on: ubuntu-latest
+    name: Generate API Documentation
+    needs: [detect-changes, setup-environment]
+    if: |
+      needs.detect-changes.outputs.code-changed == 'true' || 
+      needs.detect-changes.outputs.config-changed == 'true' ||
+      github.event.inputs.generate_openapi == 'true'
+    outputs:
+      api-docs-generated: ${{ steps.generate.outputs.generated }}
+      openapi-specs: ${{ steps.openapi.outputs.generated }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,docs]
+
+      - name: Generate API docs with mkdocstrings
+        id: generate
+        run: |
+          mkdir -p docs/api
+          python scripts/generate_api_docs.py
+          echo "generated=true" >> $GITHUB_OUTPUT
+
+      - name: Generate OpenAPI specifications
+        id: openapi
+        run: |
+          python scripts/generate_openapi_specs.py
+          echo "generated=true" >> $GITHUB_OUTPUT
+
+      - name: Validate generated API docs
+        run: |
+          python scripts/validate_api_docs.py
+
+      - name: Upload API documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-docs
+          path: |
+            docs/api/
+            docs/openapi/
+          retention-days: 7
+
+  # Stage 4: Examples Documentation
+  generate-examples-docs:
+    runs-on: ubuntu-latest
+    name: Generate Examples Documentation
+    needs: [detect-changes, setup-environment]
+    if: |
+      needs.detect-changes.outputs.examples-changed == 'true' || 
+      needs.detect-changes.outputs.code-changed == 'true'
+    outputs:
+      examples-docs-generated: ${{ steps.generate.outputs.generated }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,docs]
+
+      - name: Generate examples documentation
+        id: generate
+        run: |
+          mkdir -p docs/examples/generated
+          python scripts/generate_examples_docs.py
+          echo "generated=true" >> $GITHUB_OUTPUT
+
+      - name: Validate examples
+        run: |
+          python scripts/validate_examples.py
+
+      - name: Upload examples documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: examples-docs
+          path: docs/examples/generated/
+          retention-days: 7
+
+  # Stage 5: Documentation Quality Assurance
+  quality-assurance:
+    runs-on: ubuntu-latest
+    name: Quality Assurance
+    needs: [detect-changes, generate-api-docs, generate-examples-docs]
+    if: |
+      needs.detect-changes.outputs.docs-changed == 'true' || 
+      needs.detect-changes.outputs.code-changed == 'true' || 
+      needs.detect-changes.outputs.examples-changed == 'true'
+    outputs:
+      qa-passed: ${{ steps.validate.outputs.passed }}
+      coverage-report: ${{ steps.coverage.outputs.report }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,docs]
+
+      - name: Download all generated docs
+        uses: actions/download-artifact@v3
+        with:
+          path: temp-docs/
+
+      - name: Merge documentation
+        run: |
+          # Merge API docs
+          if [ -d "temp-docs/api-docs" ]; then
+            cp -r temp-docs/api-docs/* docs/
+          fi
+          
+          # Merge examples docs
+          if [ -d "temp-docs/examples-docs" ]; then
+            cp -r temp-docs/examples-docs/* docs/examples/
+          fi
+
+      - name: Validate documentation structure
+        id: validate
+        run: |
+          python scripts/validate_docs.py
+          if [ $? -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check documentation coverage
+        id: coverage
+        run: |
+          python scripts/check_docstring_coverage.py > coverage-report.txt
+          echo "report=coverage-report.txt" >> $GITHUB_OUTPUT
+
+      - name: Test code examples
+        run: |
+          python scripts/test_doc_examples.py
+
+      - name: Check links and references
+        run: |
+          python scripts/check_documentation_links.py
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage-report.txt
+          retention-days: 30
+
+  # Stage 6: Preview Deployment (for PRs)
+  deploy-preview:
+    runs-on: ubuntu-latest
+    name: Deploy Preview
+    needs: [detect-changes, quality-assurance]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-deploy == 'preview'
+    environment:
+      name: preview
+      url: ${{ steps.preview.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Mintlify CLI
+        run: npm install -g @mintlify/cli
+
+      - name: Download generated docs
+        uses: actions/download-artifact@v3
+        with:
+          path: temp-docs/
+
+      - name: Merge documentation
+        run: |
+          if [ -d "temp-docs/api-docs" ]; then
+            cp -r temp-docs/api-docs/* docs/
+          fi
+          if [ -d "temp-docs/examples-docs" ]; then
+            cp -r temp-docs/examples-docs/* docs/examples/
+          fi
+
+      - name: Deploy to Mintlify Preview
+        id: preview
+        run: |
+          # Create preview deployment
+          mintlify deploy --preview \
+            --team neural-sdk \
+            --key ${{ secrets.MINTLIFY_API_KEY }} \
+            --branch ${{ github.head_ref }} \
+            --pr ${{ github.event.number }}
+          
+          echo "url=https://neural-sdk.mintlify.app/preview/${{ github.head_ref }}" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR with preview link
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('📖 Documentation Preview')
+            );
+            
+            const commentBody = `## 📖 Documentation Preview
+            
+            Your documentation changes are ready for review!
+            
+            **Preview URL:** ${{ steps.preview.outputs.url }}
+            
+            This preview will be available until the PR is merged or closed.
+            
+            ---
+            *This comment is automatically generated by the documentation workflow.*`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody,
+              });
+            }
+
+  # Stage 7: Production Deployment
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [detect-changes, quality-assurance]
+    if: |
+      needs.detect-changes.outputs.should-deploy == 'production' &&
+      needs.quality-assurance.outputs.qa-passed == 'true'
+    environment:
+      name: production
+      url: https://neural-sdk.mintlify.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Mintlify CLI
+        run: npm install -g @mintlify/cli
+
+      - name: Download generated docs
+        uses: actions/download-artifact@v3
+        with:
+          path: temp-docs/
+
+      - name: Merge documentation
+        run: |
+          if [ -d "temp-docs/api-docs" ]; then
+            cp -r temp-docs/api-docs/* docs/
+          fi
+          if [ -d "temp-docs/examples-docs" ]; then
+            cp -r temp-docs/examples-docs/* docs/examples/
+          fi
+
+      - name: Create deployment backup
+        run: |
+          # Create backup of current deployment
+          mkdir -p backup
+          cp -r docs/ backup/docs-$(date +%Y%m%d-%H%M%S)/
+
+      - name: Validate documentation before deployment
+        run: |
+          # Local validation
+          mintlify dev --no-open &
+          DEV_PID=$!
+          sleep 15
+          
+          # Health check
+          if curl -f http://localhost:3000; then
+            echo "✅ Local validation passed"
+          else
+            echo "❌ Local validation failed"
+            kill $DEV_PID
+            exit 1
+          fi
+          
+          kill $DEV_PID
+
+      - name: Deploy to Mintlify Production
+        id: deploy
+        run: |
+          # Deploy to production
+          mintlify deploy \
+            --team neural-sdk \
+            --key ${{ secrets.MINTLIFY_API_KEY }}
+          
+          echo "deployment_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment
+        run: |
+          # Wait for deployment to propagate
+          sleep 30
+          
+          # Verify the deployment is accessible
+          if curl -f https://neural-sdk.mintlify.app; then
+            echo "✅ Production deployment verified"
+          else
+            echo "❌ Production deployment verification failed"
+            exit 1
+          fi
+
+      - name: Update deployment status
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.deploy.id,
+              state: 'success',
+              environment: 'production',
+              environment_url: 'https://neural-sdk.mintlify.app',
+              log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "🎉 Documentation successfully deployed to production!"
+          echo "📖 Available at: https://neural-sdk.mintlify.app"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed. Initiating rollback..."
+          # Implement rollback logic here
+          # This could involve restoring from backup or previous commit
+
+  # Stage 8: Monitoring and Health Checks
+  health-check:
+    runs-on: ubuntu-latest
+    name: Documentation Health Check
+    needs: deploy-production
+    if: always() && needs.deploy-production.result == 'success'
+    steps:
+      - name: Check documentation health
+        run: |
+          # Perform health checks on deployed documentation
+          python scripts/health_check.py --url https://neural-sdk.mintlify.app
+
+      - name: Update metrics
+        run: |
+          # Update documentation metrics and monitoring
+          python scripts/update_metrics.py
+
+      - name: Send notifications
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Send notification about health check failure
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Documentation Health Check Failed',
+              body: `The documentation health check failed for deployment at ${new Date().toISOString()}.`,
+              labels: ['documentation', 'health-check']
+            });
+
+  # Stage 9: Release Management
+  release-management:
+    runs-on: ubuntu-latest
+    name: Release Documentation
+    needs: [detect-changes, deploy-production]
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate release documentation
+        run: |
+          python scripts/generate_release_docs.py --version ${{ github.event.release.tag_name }}
+
+      - name: Update changelog
+        run: |
+          python scripts/update_changelog.py --version ${{ github.event.release.tag_name }}
+
+      - name: Commit release documentation
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md docs/
+          git commit -m "docs: update documentation for release ${{ github.event.release.tag_name }} [skip ci]"
+          git push
+
+      - name: Create release documentation archive
+        run: |
+          tar -czf documentation-${{ github.event.release.tag_name }}.tar.gz docs/
+          
+      - name: Upload documentation to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./documentation-${{ github.event.release.tag_name }}.tar.gz
+          asset_name: documentation-${{ github.event.release.tag_name }}.tar.gz
+          asset_content_type: application/gzip

@@ -44,11 +44,14 @@ async def _fetch_markets(
     api_key_id: str | None,
     private_key_pem: bytes | None,
 ) -> pd.DataFrame:
-    def _request() -> dict[str, Any]:
+    async def _request() -> dict[str, Any]:
         if use_authenticated:
             client = KalshiHTTPClient(api_key_id=api_key_id, private_key_pem=private_key_pem)
             try:
-                return client.get("/markets", params=params)
+                result = client.get("/markets", params=params)
+                if asyncio.iscoroutine(result):
+                    return await result
+                return result
             finally:
                 client.close()
         url = f"{_BASE_URL}/markets"
@@ -56,7 +59,7 @@ async def _fetch_markets(
         resp.raise_for_status()
         return dict(resp.json())
 
-    payload = await asyncio.to_thread(_request)
+    payload = await _request()
     return pd.DataFrame(payload.get("markets", []))
 
 
@@ -79,6 +82,7 @@ class KalshiMarketsSource:
         self.use_authenticated = use_authenticated
         self.api_key_id = api_key_id
         self.private_key_pem = private_key_pem
+        self.http_client: Any = None
 
     async def fetch(self) -> pd.DataFrame:
         params: dict[str, Any] = {"limit": self.limit}
@@ -92,6 +96,33 @@ class KalshiMarketsSource:
             api_key_id=self.api_key_id,
             private_key_pem=self.private_key_pem,
         )
+
+    async def fetch_market(self, ticker: str) -> pd.DataFrame:
+        """
+        Fetch a single market by ticker.
+
+        Args:
+            ticker: Market ticker to fetch
+
+        Returns:
+            DataFrame with the market data (empty if not found)
+        """
+        from neural.auth.http_client import KalshiHTTPClient
+
+        client = KalshiHTTPClient(api_key_id=self.api_key_id, private_key_pem=self.private_key_pem)
+
+        try:
+            # Use the markets endpoint with ticker filter
+            response = client.get("/markets", {"ticker": ticker, "limit": 1})
+
+            if response.get("markets") and len(response["markets"]) > 0:
+                return pd.DataFrame([response["markets"][0]])
+            else:
+                return pd.DataFrame()
+        except Exception as e:
+            # Log error but return empty DataFrame to maintain compatibility
+            print(f"Error fetching market {ticker}: {e}")
+            return pd.DataFrame()
 
     async def fetch_historical_candlesticks(
         self,
@@ -114,9 +145,7 @@ class KalshiMarketsSource:
         Returns:
             DataFrame with OHLCV data and metadata
         """
-        from datetime import datetime, timedelta
-
-        from neural.auth.http_client import KalshiHTTPClient
+        # Note: datetime and KalshiHTTPClient are already imported at module level
 
         # Set up time range
         if end_date is None:
@@ -127,8 +156,10 @@ class KalshiMarketsSource:
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
 
-        # Create HTTP client for historical data
-        client = KalshiHTTPClient(api_key_id=self.api_key_id, private_key_pem=self.private_key_pem)
+        # Use existing HTTP client or create a new one
+        client = self.http_client or KalshiHTTPClient(
+            api_key_id=self.api_key_id, private_key_pem=self.private_key_pem
+        )
 
         try:
             # Use series ticker if available, otherwise extract from market ticker
@@ -168,16 +199,25 @@ class KalshiMarketsSource:
                         return default
                     return float(value) / 100.0  # Convert cents to dollars
 
+                timestamp_value = candle.get("end_period_ts") or candle.get("ts")
                 processed_data.append(
                     {
-                        "timestamp": pd.to_datetime(candle.get("end_period_ts"), unit="s"),
-                        "open": safe_convert(price_data.get("open")),
-                        "high": safe_convert(price_data.get("high")),
-                        "low": safe_convert(price_data.get("low")),
-                        "close": safe_convert(price_data.get("close")),
+                        "timestamp": pd.to_datetime(timestamp_value, unit="s")
+                        if timestamp_value
+                        else pd.NaT,
+                        "open": safe_convert(price_data.get("open") or candle.get("open")),
+                        "high": safe_convert(price_data.get("high") or candle.get("high")),
+                        "low": safe_convert(price_data.get("low") or candle.get("low")),
+                        "close": safe_convert(price_data.get("close") or candle.get("close")),
                         "volume": candle.get("volume", 0),
-                        "yes_bid": safe_convert(yes_bid.get("close")),
-                        "yes_ask": safe_convert(yes_ask.get("close")),
+                        "yes_bid": safe_convert(
+                            (yes_bid.get("close") if isinstance(yes_bid, dict) else None)
+                            or candle.get("yes_bid")
+                        ),
+                        "yes_ask": safe_convert(
+                            (yes_ask.get("close") if isinstance(yes_ask, dict) else None)
+                            or candle.get("yes_ask")
+                        ),
                         "open_interest": candle.get("open_interest", 0),
                     }
                 )
@@ -190,9 +230,14 @@ class KalshiMarketsSource:
 
         except Exception as e:
             print(f"❌ Error fetching historical data for {market_ticker}: {e}")
+            import traceback
+
+            traceback.print_exc()
             return pd.DataFrame()
         finally:
-            client.close()
+            result = client.close()
+            if asyncio.iscoroutine(result):
+                pass
 
 
 async def get_sports_series(
@@ -521,6 +566,11 @@ async def get_nba_games(
 
         df["game_date"] = df["ticker"].apply(parse_game_date)
 
+        price_columns = ["yes_bid", "yes_ask", "no_bid", "no_ask"]
+        for col in price_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce") / 100.0
+
         # Filter for NBA games only
         nba_mask = df["ticker"].str.contains("KXNBA", na=False) | df["title"].str.contains(
             "NBA|Basketball", case=False, na=False
@@ -773,7 +823,7 @@ class SportMarketCollector:
         else:
             return pd.DataFrame()
 
-    async def get_todays_games(self, sports: list[str] = None) -> pd.DataFrame:
+    async def get_todays_games(self, sports: list[str] | None = None) -> pd.DataFrame:
         """Get all games happening today across specified sports"""
         if sports is None:
             sports = ["NFL", "NBA", "CFB"]
@@ -787,7 +837,9 @@ class SportMarketCollector:
 
         return all_games
 
-    async def get_upcoming_games(self, days: int = 7, sports: list[str] = None) -> pd.DataFrame:
+    async def get_upcoming_games(
+        self, days: int = 7, sports: list[str] | None = None
+    ) -> pd.DataFrame:
         """Get games in the next N days"""
         if sports is None:
             sports = ["NFL", "NBA", "CFB"]

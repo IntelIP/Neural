@@ -1,0 +1,892 @@
+openapi: 3.0.3
+info:
+  title: Neural SDK - FIX Protocol API
+  description: |
+    FIX (Financial Information eXchange) Protocol implementation for high-frequency trading
+    on the Kalshi platform. This specification documents the FIX 5.0 SP2 messages used by
+    the Neural SDK for low-latency order execution and market data.
+    
+    ## Connection Details
+    
+    - **Host**: `fix.elections.kalshi.com`
+    - **Port**: `8228`
+    - **Protocol**: FIX 5.0 SP2
+    - **Transport**: TCP with TLS
+    
+    ## Authentication
+    
+    Uses RSA-PSS signature authentication in Logon message (Tag 95/96).
+    
+    ## Message Flow
+    
+    1. **Logon** - Establish session with signature
+    2. **Trading** - Exchange order messages
+    3. **Market Data** - Subscribe to real-time data
+    4. **Logout** - Graceful session termination
+    
+    ## Key Features
+    
+    - **High Performance**: Sub-millisecond order execution
+    - **Real-time Data**: Live market data streaming
+    - **Reliable Delivery**: Guaranteed message ordering
+    - **Error Handling**: Comprehensive reject and business message handling
+  version: 5.0.2
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: fix://fix.elections.kalshi.com:8228
+    description: Production FIX server
+  - url: fix://demo-fix.elections.kalshi.com:8228
+    description: Demo FIX server for testing
+
+paths:
+  /fix/session:
+    post:
+      tags:
+        - Session Management
+      summary: Establish FIX Session
+      description: |
+        Establish a FIX session using the Logon message. This is the first message
+        that must be sent after establishing the TCP connection.
+        
+        The Logon message includes RSA-PSS signature authentication to verify
+        the client's identity.
+      operationId: establishSession
+      requestBody:
+        required: true
+        content:
+          application/fix:
+            schema:
+              $ref: '#/components/schemas/LogonMessage'
+            examples:
+              logon:
+                summary: Logon message with signature
+                value:
+                  MsgType: "A"
+                  MsgSeqNum: 1
+                  SenderCompID: "CLIENT1"
+                  TargetCompID: "KALSHI"
+                  SendingTime: "20241201-12:00:00.000"
+                  HeartBtInt: 30
+                  Username: "your_username"
+                  Password: "your_password"
+                  RawData: "base64_encoded_signature"
+                  RawDataLength: 256
+      responses:
+        '200':
+          description: Session established successfully
+          content:
+            application/fix:
+              schema:
+                $ref: '#/components/schemas/LogonResponse'
+        '400':
+          $ref: '#/components/responses/RejectMessage'
+        '500':
+          $ref: '#/components/responses/LogoutMessage'
+
+  /fix/orders:
+    post:
+      tags:
+        - Order Management
+      summary: Submit New Order
+      description: |
+        Submit a new single order for execution. Supports various order types
+        including market, limit, and stop orders with different time-in-force
+        instructions.
+      operationId: submitOrder
+      requestBody:
+        required: true
+        content:
+          application/fix:
+            schema:
+              $ref: '#/components/schemas/NewOrderSingle'
+            examples:
+              limit_order:
+                summary: Limit order example
+                value:
+                  MsgType: "D"
+                  ClOrdID: "ORDER123"
+                  Symbol: "KXNFLGAME-2024-12-01-NE-ATL"
+                  Side: "1"
+                  OrderQty: 10
+                  OrdType: "2"
+                  Price: 45
+                  TimeInForce: "1"
+                  TransactTime: "20241201-12:00:00.000"
+              market_order:
+                summary: Market order example
+                value:
+                  MsgType: "D"
+                  ClOrdID: "ORDER124"
+                  Symbol: "KXNFLGAME-2024-12-01-NE-ATL"
+                  Side: "2"
+                  OrderQty: 5
+                  OrdType: "1"
+                  TimeInForce: "3"
+                  TransactTime: "20241201-12:00:00.000"
+      responses:
+        '200':
+          description: Order accepted
+          content:
+            application/fix:
+              schema:
+                $ref: '#/components/schemas/ExecutionReport'
+        '400':
+          $ref: '#/components/responses/RejectMessage'
+        '500':
+          $ref: '#/components/responses/BusinessReject'
+
+  /fix/orders/cancel:
+    post:
+      tags:
+        - Order Management
+      summary: Cancel Order
+      description: |
+        Request cancellation of an existing order. The order must be in an
+        open state to be cancelled.
+      operationId: cancelOrder
+      requestBody:
+        required: true
+        content:
+          application/fix:
+            schema:
+              $ref: '#/components/schemas/OrderCancelRequest'
+            examples:
+              cancel:
+                summary: Order cancellation request
+                value:
+                  MsgType: "F"
+                  ClOrdID: "CANCEL123"
+                  OrigClOrdID: "ORDER123"
+                  Symbol: "KXNFLGAME-2024-12-01-NE-ATL"
+                  Side: "1"
+                  TransactTime: "20241201-12:00:00.000"
+      responses:
+        '200':
+          description: Cancellation accepted
+          content:
+            application/fix:
+              schema:
+                $ref: '#/components/schemas/ExecutionReport'
+        '400':
+          $ref: '#/components/responses/RejectMessage'
+        '500':
+          $ref: '#/components/responses/BusinessReject'
+
+  /fix/orders/replace:
+    post:
+      tags:
+        - Order Management
+      summary: Replace Order
+      description: |
+        Request modification of an existing order. This can be used to change
+        price, quantity, or other order parameters.
+      operationId: replaceOrder
+      requestBody:
+        required: true
+        content:
+          application/fix:
+            schema:
+              $ref: '#/components/schemas/OrderCancelReplaceRequest'
+            examples:
+              replace:
+                summary: Order replace request
+                value:
+                  MsgType: "G"
+                  ClOrdID: "REPLACE123"
+                  OrigClOrdID: "ORDER123"
+                  Symbol: "KXNFLGAME-2024-12-01-NE-ATL"
+                  Side: "1"
+                  OrderQty: 15
+                  Price: 46
+                  OrdType: "2"
+                  TransactTime: "20241201-12:00:00.000"
+      responses:
+        '200':
+          description: Replace accepted
+          content:
+            application/fix:
+              schema:
+                $ref: '#/components/schemas/ExecutionReport'
+        '400':
+          $ref: '#/components/responses/RejectMessage'
+        '500':
+          $ref: '#/components/responses/BusinessReject'
+
+  /fix/marketdata:
+    post:
+      tags:
+        - Market Data
+      summary: Subscribe to Market Data
+      description: |
+        Subscribe to real-time market data for specified symbols. Supports
+        different subscription types and market depth levels.
+      operationId: subscribeMarketData
+      requestBody:
+        required: true
+        content:
+          application/fix:
+            schema:
+              $ref: '#/components/schemas/MarketDataRequest'
+            examples:
+              subscribe:
+                summary: Market data subscription
+                value:
+                  MsgType: "V"
+                  MDReqID: "SUB123"
+                  SubscriptionRequestType: "1"
+                  MarketDepth: "0"
+                  MDUpdateType: "0"
+                  NoMDEntryTypes:
+                    - MDEntryType: "0"
+                    - MDEntryType: "1"
+                  NoRelatedSym:
+                    - Symbol: "KXNFLGAME-2024-12-01-NE-ATL"
+      responses:
+        '200':
+          description: Subscription accepted
+          content:
+            application/fix:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MarketDataSnapshotFullRefresh'
+                  - $ref: '#/components/schemas/MarketDataIncrementalRefresh'
+        '400':
+          $ref: '#/components/responses/RejectMessage'
+        '500':
+          $ref: '#/components/responses/BusinessReject'
+
+components:
+  schemas:
+    LogonMessage:
+      type: object
+      description: FIX Logon message (MsgType=A)
+      required:
+        - MsgType
+        - MsgSeqNum
+        - SenderCompID
+        - TargetCompID
+        - SendingTime
+        - HeartBtInt
+        - Username
+        - Password
+        - RawData
+        - RawDataLength
+      properties:
+        MsgType:
+          type: string
+          pattern: "^A$"
+          description: Message type (A = Logon)
+          example: "A"
+        MsgSeqNum:
+          type: integer
+          description: Message sequence number
+          example: 1
+        SenderCompID:
+          type: string
+          description: Sender company ID
+          example: "CLIENT1"
+        TargetCompID:
+          type: string
+          description: Target company ID
+          example: "KALSHI"
+        SendingTime:
+          type: string
+          pattern: "^[0-9]{8}-[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}$"
+          description: Sending time (YYYYMMDD-HH:MM:SS.sss)
+          example: "20241201-12:00:00.000"
+        HeartBtInt:
+          type: integer
+          description: Heartbeat interval in seconds
+          example: 30
+        Username:
+          type: string
+          description: Username for authentication
+          example: "your_username"
+        Password:
+          type: string
+          description: Password for authentication
+          example: "your_password"
+        RawData:
+          type: string
+          description: Base64-encoded RSA-PSS signature
+          example: "base64_encoded_signature_here"
+        RawDataLength:
+          type: integer
+          description: Length of RawData
+          example: 256
+        ResetSeqNumFlag:
+          type: string
+          enum: ["Y", "N"]
+          description: Reset sequence numbers
+          example: "N"
+
+    LogonResponse:
+      type: object
+      description: Logon response message
+      required:
+        - MsgType
+        - MsgSeqNum
+        - SenderCompID
+        - TargetCompID
+        - SendingTime
+      properties:
+        MsgType:
+          type: string
+          pattern: "^A$"
+          description: Message type (A = Logon)
+          example: "A"
+        MsgSeqNum:
+          type: integer
+          description: Message sequence number
+          example: 1
+        SenderCompID:
+          type: string
+          description: Sender company ID
+          example: "KALSHI"
+        TargetCompID:
+          type: string
+          description: Target company ID
+          example: "CLIENT1"
+        SendingTime:
+          type: string
+          description: Sending time
+          example: "20241201-12:00:00.001"
+        HeartBtInt:
+          type: integer
+          description: Heartbeat interval
+          example: 30
+        DefaultApplVerID:
+          type: string
+          description: Default application version
+          example: "9"
+
+    NewOrderSingle:
+      type: object
+      description: FIX New Order Single message (MsgType=D)
+      required:
+        - MsgType
+        - ClOrdID
+        - Symbol
+        - Side
+        - OrderQty
+        - OrdType
+        - TransactTime
+      properties:
+        MsgType:
+          type: string
+          pattern: "^D$"
+          description: Message type (D = New Order Single)
+          example: "D"
+        ClOrdID:
+          type: string
+          description: Client order ID
+          example: "ORDER123"
+        Symbol:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        Side:
+          type: string
+          enum: ["1", "2"]
+          description: Order side (1=Buy, 2=Sell)
+          example: "1"
+        OrderQty:
+          type: integer
+          minimum: 1
+          description: Order quantity
+          example: 10
+        OrdType:
+          type: string
+          enum: ["1", "2", "3"]
+          description: Order type (1=Market, 2=Limit, 3=Stop)
+          example: "2"
+        Price:
+          type: number
+          description: Order price (required for limit orders)
+          example: 45
+        TimeInForce:
+          type: string
+          enum: ["0", "1", "3"]
+          description: Time in force (0=Day, 1=Good Till Cancel, 3=Immediate or Cancel)
+          example: "1"
+        TransactTime:
+          type: string
+          description: Transaction time
+          example: "20241201-12:00:00.000"
+        ExpireTime:
+          type: string
+          description: Expiration time
+          example: "20241201-23:59:59.000"
+        MinQty:
+          type: integer
+          description: Minimum quantity
+          example: 5
+        MaxShow:
+          type: integer
+          description: Maximum quantity to show
+          example: 10
+
+    OrderCancelRequest:
+      type: object
+      description: FIX Order Cancel Request message (MsgType=F)
+      required:
+        - MsgType
+        - ClOrdID
+        - OrigClOrdID
+        - Symbol
+        - Side
+        - TransactTime
+      properties:
+        MsgType:
+          type: string
+          pattern: "^F$"
+          description: Message type (F = Order Cancel Request)
+          example: "F"
+        ClOrdID:
+          type: string
+          description: Client order ID for cancel request
+          example: "CANCEL123"
+        OrigClOrdID:
+          type: string
+          description: Original client order ID
+          example: "ORDER123"
+        Symbol:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        Side:
+          type: string
+          enum: ["1", "2"]
+          description: Order side
+          example: "1"
+        OrderID:
+          type: string
+          description: Exchange order ID (if known)
+          example: "EXCH123"
+        TransactTime:
+          type: string
+          description: Transaction time
+          example: "20241201-12:00:00.000"
+
+    OrderCancelReplaceRequest:
+      type: object
+      description: FIX Order Cancel Replace Request message (MsgType=G)
+      required:
+        - MsgType
+        - ClOrdID
+        - OrigClOrdID
+        - Symbol
+        - Side
+        - OrdType
+        - TransactTime
+      properties:
+        MsgType:
+          type: string
+          pattern: "^G$"
+          description: Message type (G = Order Cancel Replace Request)
+          example: "G"
+        ClOrdID:
+          type: string
+          description: New client order ID
+          example: "REPLACE123"
+        OrigClOrdID:
+          type: string
+          description: Original client order ID
+          example: "ORDER123"
+        Symbol:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        Side:
+          type: string
+          enum: ["1", "2"]
+          description: Order side
+          example: "1"
+        OrderQty:
+          type: integer
+          description: New order quantity
+          example: 15
+        Price:
+          type: number
+          description: New order price
+          example: 46
+        OrdType:
+          type: string
+          enum: ["1", "2", "3"]
+          description: Order type
+          example: "2"
+        TimeInForce:
+          type: string
+          enum: ["0", "1", "3"]
+          description: Time in force
+          example: "1"
+        TransactTime:
+          type: string
+          description: Transaction time
+          example: "20241201-12:00:00.000"
+
+    ExecutionReport:
+      type: object
+      description: FIX Execution Report message (MsgType=8)
+      required:
+        - MsgType
+        - MsgSeqNum
+        - SenderCompID
+        - TargetCompID
+        - SendingTime
+        - OrderID
+        - ClOrdID
+        - ExecID
+        - ExecType
+        - OrdStatus
+        - Side
+      properties:
+        MsgType:
+          type: string
+          pattern: "^8$"
+          description: Message type (8 = Execution Report)
+          example: "8"
+        MsgSeqNum:
+          type: integer
+          description: Message sequence number
+          example: 5
+        SenderCompID:
+          type: string
+          description: Sender company ID
+          example: "KALSHI"
+        TargetCompID:
+          type: string
+          description: Target company ID
+          example: "CLIENT1"
+        SendingTime:
+          type: string
+          description: Sending time
+          example: "20241201-12:00:00.001"
+        OrderID:
+          type: string
+          description: Exchange order ID
+          example: "EXCH123"
+        ClOrdID:
+          type: string
+          description: Client order ID
+          example: "ORDER123"
+        ExecID:
+          type: string
+          description: Execution ID
+          example: "EXEC123"
+        ExecType:
+          type: string
+          enum: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+          description: Execution type
+          example: "0"
+        OrdStatus:
+          type: string
+          enum: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E"]
+          description: Order status
+          example: "0"
+        Side:
+          type: string
+          enum: ["1", "2"]
+          description: Order side
+          example: "1"
+        LeavesQty:
+          type: integer
+          description: Quantity remaining
+          example: 0
+        CumQty:
+          type: integer
+          description: Cumulative quantity
+          example: 10
+        AvgPx:
+          type: number
+          description: Average execution price
+          example: 45.5
+        LastPx:
+          type: number
+          description: Last execution price
+          example: 46
+        LastQty:
+          type: integer
+          description: Last execution quantity
+          example: 10
+        Symbol:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+
+    MarketDataRequest:
+      type: object
+      description: FIX Market Data Request message (MsgType=V)
+      required:
+        - MsgType
+        - MDReqID
+        - SubscriptionRequestType
+        - MarketDepth
+        - NoMDEntryTypes
+        - NoRelatedSym
+      properties:
+        MsgType:
+          type: string
+          pattern: "^V$"
+          description: Message type (V = Market Data Request)
+          example: "V"
+        MDReqID:
+          type: string
+          description: Market data request ID
+          example: "SUB123"
+        SubscriptionRequestType:
+          type: string
+          enum: ["0", "1", "2"]
+          description: Subscription request type (0=Snapshot, 1=Snapshot+Updates, 2=Disable previous)
+          example: "1"
+        MarketDepth:
+          type: string
+          enum: ["0", "1", "2", "3", "4", "5"]
+          description: Market depth (0=Full book, 1=Top of book, etc.)
+          example: "0"
+        MDUpdateType:
+          type: string
+          enum: ["0", "1"]
+          description: Market data update type (0=Full refresh, 1=Incremental)
+          example: "0"
+        NoMDEntryTypes:
+          type: array
+          items:
+            type: object
+            properties:
+              MDEntryType:
+                type: string
+                enum: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "J", "W", "X", "Y", "Z"]
+                description: Market data entry type
+                example: "0"
+          description: Market data entry types
+        NoRelatedSym:
+          type: array
+          items:
+            type: object
+            properties:
+              Symbol:
+                type: string
+                description: Market ticker
+                example: "KXNFLGAME-2024-12-01-NE-ATL"
+          description: Related symbols
+
+    MarketDataSnapshotFullRefresh:
+      type: object
+      description: FIX Market Data Snapshot Full Refresh message (MsgType=W)
+      required:
+        - MsgType
+        - MDReqID
+        - Symbol
+        - NoMDEntries
+      properties:
+        MsgType:
+          type: string
+          pattern: "^W$"
+          description: Message type (W = Market Data Snapshot)
+          example: "W"
+        MDReqID:
+          type: string
+          description: Market data request ID
+          example: "SUB123"
+        Symbol:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        NoMDEntries:
+          type: array
+          items:
+            type: object
+            properties:
+              MDEntryType:
+                type: string
+                description: Entry type
+                example: "0"
+              MDEntryPx:
+                type: number
+                description: Entry price
+                example: 45
+              MDEntrySize:
+                type: integer
+                description: Entry size
+                example: 100
+          description: Market data entries
+
+    MarketDataIncrementalRefresh:
+      type: object
+      description: FIX Market Data Incremental Refresh message (MsgType=X)
+      required:
+        - MsgType
+        - NoMDEntries
+      properties:
+        MsgType:
+          type: string
+          pattern: "^X$"
+          description: Message type (X = Incremental Refresh)
+          example: "X"
+        NoMDEntries:
+          type: array
+          items:
+            type: object
+            properties:
+              MDUpdateAction:
+                type: string
+                enum: ["0", "1", "2"]
+                description: Update action (0=New, 1=Change, 2=Delete)
+                example: "0"
+              MDEntryType:
+                type: string
+                description: Entry type
+                example: "0"
+              MDEntryPx:
+                type: number
+                description: Entry price
+                example: 45
+              MDEntrySize:
+                type: integer
+                description: Entry size
+                example: 100
+              Symbol:
+                type: string
+                description: Market ticker
+                example: "KXNFLGAME-2024-12-01-NE-ATL"
+          description: Market data entries
+
+    RejectMessage:
+      type: object
+      description: FIX Session Level Reject message (MsgType=3)
+      required:
+        - MsgType
+        - RefSeqNum
+        - RefTagID
+        - RefMsgType
+        - SessionRejectReason
+        - Text
+      properties:
+        MsgType:
+          type: string
+          pattern: "^3$"
+          description: Message type (3 = Reject)
+          example: "3"
+        RefSeqNum:
+          type: integer
+          description: Rejected message sequence number
+          example: 2
+        RefTagID:
+          type: integer
+          description: Rejected tag ID
+          example: 55
+        RefMsgType:
+          type: string
+          description: Rejected message type
+          example: "D"
+        SessionRejectReason:
+          type: integer
+          description: Session reject reason
+          example: 1
+        Text:
+          type: string
+          description: Reject reason text
+          example: "Invalid tag number"
+
+    BusinessReject:
+      type: object
+      description: FIX Business Message Reject message (MsgType=j)
+      required:
+        - MsgType
+        - RefMsgType
+        - BusinessRejectReason
+        - Text
+      properties:
+        MsgType:
+          type: string
+          pattern: "^j$"
+          description: Message type (j = Business Reject)
+          example: "j"
+        RefMsgType:
+          type: string
+          description: Rejected message type
+          example: "D"
+        BusinessRejectReason:
+          type: integer
+          description: Business reject reason
+          example: 3
+        Text:
+          type: string
+          description: Reject reason text
+          example: "Order not authorized"
+
+    LogoutMessage:
+      type: object
+      description: FIX Logout message (MsgType=5)
+      required:
+        - MsgType
+        - MsgSeqNum
+        - SenderCompID
+        - TargetCompID
+        - SendingTime
+      properties:
+        MsgType:
+          type: string
+          pattern: "^5$"
+          description: Message type (5 = Logout)
+          example: "5"
+        MsgSeqNum:
+          type: integer
+          description: Message sequence number
+          example: 100
+        SenderCompID:
+          type: string
+          description: Sender company ID
+          example: "KALSHI"
+        TargetCompID:
+          type: string
+          description: Target company ID
+          example: "CLIENT1"
+        SendingTime:
+          type: string
+          description: Sending time
+          example: "20241201-12:30:00.000"
+        Text:
+          type: string
+          description: Logout reason text
+          example: "Normal session termination"
+
+  responses:
+    RejectMessage:
+      description: Session level reject
+      content:
+        application/fix:
+          schema:
+            $ref: '#/components/schemas/RejectMessage'
+
+    BusinessReject:
+      description: Business level reject
+      content:
+        application/fix:
+          schema:
+            $ref: '#/components/schemas/BusinessReject'
+
+    LogoutMessage:
+      description: Session termination
+      content:
+        application/fix:
+          schema:
+            $ref: '#/components/schemas/LogoutMessage'
+
+tags:
+  - name: Session Management
+    description: FIX session establishment and management
+  - name: Order Management
+    description: Order submission, modification, and cancellation
+  - name: Market Data
+    description: Real-time market data subscriptions and updates
+  - name: System Messages
+    description: System-level messages and error handling

@@ -419,8 +419,8 @@ class PositionSizer:
         self.consecutive_losses = 0
         self.total_trades = 0
         self.winning_trades = 0
-        self.total_profit = 0
-        self.total_loss = 0
+        self.total_profit = 0.0
+        self.total_loss = 0.0
 
     def calculate_size(self, method: str | None = None, **kwargs) -> int:
         """

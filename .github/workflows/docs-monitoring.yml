@@ -1,0 +1,183 @@
+name: Documentation Monitoring
+
+on:
+  schedule:
+    # Run health checks daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      check_url:
+        description: 'URL to check'
+        required: false
+        default: 'https://neural-sdk.mintlify.app'
+        type: string
+      notify_on_failure:
+        description: 'Create issue on failure'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    name: Documentation Health Check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run health check
+        id: health
+        run: |
+          python scripts/health_check.py \
+            --url "${{ github.event.inputs.check_url || 'https://neural-sdk.mintlify.app' }}" \
+            --output health-report.json
+          
+          # Check if health check passed
+          if [ $? -eq 0 ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-report
+          path: health-report.json
+          retention-days: 30
+
+      - name: Create issue on failure
+        if: |
+          steps.health.outputs.status == 'unhealthy' && 
+          (github.event.inputs.notify_on_failure == 'true' || github.event.inputs.notify_on_failure == '')
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read health report
+            const healthReport = JSON.parse(fs.readFileSync('health-report.json', 'utf8'));
+            
+            // Create issue title
+            const title = `Documentation Health Check Failed - ${new Date().toISOString().split('T')[0]}`;
+            
+            // Create issue body
+            const body = `
+            ## Documentation Health Check Failure
+            
+            **Base URL:** ${healthReport.base_url}
+            **Timestamp:** ${healthReport.timestamp}
+            **Total Issues:** ${healthReport.total_issues}
+            
+            ### Issues Found
+            
+            ${healthReport.issues.map(issue => 
+              `- **${issue.type.replace('_', ' ').toUpperCase()}:** ${issue.message}\n  URL: ${issue.url}`
+            ).join('\n\n')}
+            
+            ### Next Steps
+            
+            1. Investigate the reported issues
+            2. Fix any broken links or content problems
+            3. Verify the deployment is working correctly
+            4. Re-run the health check
+            
+            ---
+            *This issue was automatically created by the documentation monitoring workflow.*
+            `;
+            
+            // Check if similar issue already exists
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['documentation', 'health-check']
+            });
+            
+            const similarIssue = issues.find(issue => 
+              issue.title.includes('Documentation Health Check Failed') &&
+              issue.title.includes(new Date().toISOString().split('T')[0])
+            );
+            
+            if (!similarIssue) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['documentation', 'health-check', 'bug']
+              });
+              
+              console.log('Created issue for health check failure');
+            } else {
+              console.log('Similar issue already exists, skipping creation');
+            }
+
+      - name: Send Slack notification (on failure)
+        if: steps.health.outputs.status == 'unhealthy'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#documentation'
+          text: |
+            🚨 Documentation Health Check Failed!
+            
+            URL: ${{ github.event.inputs.check_url || 'https://neural-sdk.mintlify.app' }}
+            Time: ${{ github.run_number }}
+            
+            See the workflow run for details.
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Update metrics
+        if: always()
+        run: |
+          # Update documentation metrics dashboard
+          python scripts/update_metrics.py \
+            --health-report health-report.json \
+            --github-token ${{ secrets.GITHUB_TOKEN }}
+
+  metrics-dashboard:
+    runs-on: ubuntu-latest
+    name: Update Metrics Dashboard
+    needs: health-check
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests matplotlib
+
+      - name: Generate metrics dashboard
+        run: |
+          python scripts/generate_metrics_dashboard.py \
+            --output docs/metrics-dashboard.html
+
+      - name: Deploy metrics dashboard
+        if: needs.health-check.result == 'success'
+        run: |
+          # Commit and push metrics dashboard
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/metrics-dashboard.html
+          git diff --staged --quiet || git commit -m "docs: update metrics dashboard [skip ci]"
+          git push

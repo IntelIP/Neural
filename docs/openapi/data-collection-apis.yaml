@@ -1,0 +1,809 @@
+openapi: 3.0.3
+info:
+  title: Neural SDK - Data Collection APIs
+  description: |
+    External data source APIs integrated with Neural SDK for market data enrichment
+    and sentiment analysis. These APIs provide additional context for trading strategies
+    including sports data, news sentiment, and alternative data sources.
+    
+    ## Data Sources
+    
+    - **ESPN API**: Real-time sports scores, game data, and team statistics
+    - **Twitter API**: Social media sentiment analysis and news monitoring
+    - **Custom Sources**: Extensible framework for additional data providers
+    
+    ## Integration Pattern
+    
+    All data sources follow a consistent pattern:
+    1. **Authentication** - API key or OAuth setup
+    2. **Data Collection** - Polling or streaming data retrieval
+    3. **Normalization** - Standardized data format
+    4. **Enrichment** - Combining with market data
+    
+    ## Rate Limits
+    
+    Each data source has specific rate limits and usage policies. The Neural SDK
+    automatically handles rate limiting and retry logic.
+  version: 1.0.0
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://site.api.espn.com
+    description: ESPN API production server
+  - url: https://api.twitter.com
+    description: Twitter API production server
+
+paths:
+  /espn/apis/sports/{sport}/scores:
+    get:
+      tags:
+        - ESPN Sports Data
+      summary: Get Sports Scores
+      description: |
+        Retrieve current and recent sports scores for a specific sport. This data
+        provides real-time game information that can be used for market analysis
+        and trading signal generation.
+        
+        ## Supported Sports
+        - **football**: NFL and college football
+        - **basketball**: NBA and college basketball  
+        - **baseball**: MLB and minor leagues
+        - **hockey**: NHL and international leagues
+        - **soccer**: Various leagues and competitions
+        
+        ## Data Usage
+        - Game scores and status
+        - Team performance metrics
+        - Player statistics
+        - Historical game results
+      operationId: getSportsScores
+      parameters:
+        - name: sport
+          in: path
+          description: Sport identifier
+          required: true
+          schema:
+            type: string
+            enum: [football, basketball, baseball, hockey, soccer]
+            example: "football"
+        - name: dates
+          in: query
+          description: Specific dates to retrieve (YYYYMMDD format)
+          required: false
+          schema:
+            type: string
+            example: "20241201"
+        - name: limit
+          in: query
+          description: Maximum number of games to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: groups
+          in: query
+          description: Competition groups (e.g., 80 for NFL)
+          required: false
+          schema:
+            type: integer
+            example: 80
+      responses:
+        '200':
+          description: Successfully retrieved sports scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ESPNResponse'
+              examples:
+                football_scores:
+                  summary: NFL scores response
+                  value:
+                    sports:
+                      - id: 20
+                        name: "football"
+                        uid: "s:20"
+                        leagues:
+                          - id: 28
+                            name: "National Football League"
+                            uid: "s:20~l:28"
+                            season:
+                              year: 2024
+                              type: 2
+                              displayName: "2024 NFL Season"
+                            events:
+                              - id: "401612345"
+                                name: "Atlanta Falcons vs New England Patriots"
+                                shortName: "FAL @ PAT"
+                                date: "2024-12-01T19:00:00Z"
+                                competitions:
+                                  - id: "401612345"
+                                    competitors:
+                                      - team:
+                                          id: 1
+                                          name: "Atlanta Falcons"
+                                          abbreviation: "ATL"
+                                        score: 24
+                                        homeAway: "away"
+                                      - team:
+                                          id: 27
+                                          name: "New England Patriots"
+                                          abbreviation: "NE"
+                                        score: 17
+                                        homeAway: "home"
+                                    status:
+                                      type:
+                                        id: "3"
+                                        name: "Final"
+                                      period: 4
+                                      displayClock: "0:00"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /espn/apis/sports/{sport}/teams/{teamId}/schedule:
+    get:
+      tags:
+        - ESPN Sports Data
+      summary: Get Team Schedule
+      description: |
+        Retrieve the complete schedule for a specific team. This data helps
+        identify upcoming games and plan trading strategies around specific events.
+      operationId: getTeamSchedule
+      parameters:
+        - name: sport
+          in: path
+          description: Sport identifier
+          required: true
+          schema:
+            type: string
+            enum: [football, basketball, baseball, hockey, soccer]
+            example: "football"
+        - name: teamId
+          in: path
+          description: ESPN team identifier
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: season
+          in: query
+          description: Season year
+          required: false
+          schema:
+            type: integer
+            example: 2024
+      responses:
+        '200':
+          description: Successfully retrieved team schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /2/tweets/search/recent:
+    get:
+      tags:
+        - Twitter API
+      summary: Search Recent Tweets
+      description: |
+        Search for recent tweets containing specific keywords or hashtags. This data
+        is used for sentiment analysis and market sentiment indicators.
+        
+        ## Use Cases
+        - **Sentiment Analysis**: Track sentiment around teams/players
+        - **News Monitoring**: Identify breaking news that affects markets
+        - **Social Trends**: Detect emerging market narratives
+        
+        ## Rate Limits
+        - Free tier: 500,000 tweet searches per month
+        - Premium tier: 2,000,000 tweet searches per month
+      operationId: searchTweets
+      parameters:
+        - name: query
+          in: query
+          description: Search query (supports Twitter search syntax)
+          required: true
+          schema:
+            type: string
+            example: "#NFL OR #Falcons OR #Patriots -is:retweet lang:en"
+        - name: max_results
+          in: query
+          description: Maximum number of tweets to return (10-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 10
+            maximum: 100
+            default: 50
+        - name: tweet_fields
+          in: query
+          description: Tweet fields to include in response
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [created_at, author_id, public_metrics, context_annotations, entities, geo]
+            collectionFormat: multi
+            example: ["created_at", "author_id", "public_metrics"]
+        - name: user_fields
+          in: query
+          description: User fields to include in response
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [name, username, verified, public_metrics, location]
+            collectionFormat: multi
+            example: ["name", "username", "verified"]
+        - name: expansions
+          in: query
+          description: Objects to expand in response
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [author_id, geo.place_id]
+            collectionFormat: multi
+            example: ["author_id"]
+      responses:
+        '200':
+          description: Successfully retrieved tweets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwitterSearchResponse'
+              examples:
+                search_results:
+                  summary: Tweet search results
+                  value:
+                    data:
+                      - id: "1234567890123456789"
+                        text: "The Falcons are looking strong today! #NFL #Falcons"
+                        created_at: "2024-12-01T19:30:00.000Z"
+                        author_id: "987654321"
+                        public_metrics:
+                          retweet_count: 5
+                          like_count: 23
+                          reply_count: 2
+                          quote_count: 1
+                    includes:
+                      users:
+                        - id: "987654321"
+                          name: "Sports Fan"
+                          username: "sportsfan123"
+                          verified: false
+                    meta:
+                      result_count: 1
+                      next_token: "b26v89c19zqg8o3fo3u8f4r3z4w8j3e"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /2/users/by/username/{username}:
+    get:
+      tags:
+        - Twitter API
+      summary: Get User by Username
+      description: |
+        Retrieve user information for a specific Twitter username. This helps
+        identify influential accounts and track key opinion leaders.
+      operationId: getUserByUsername
+      parameters:
+        - name: username
+          in: path
+          description: Twitter username (without @)
+          required: true
+          schema:
+            type: string
+            example: "NFL"
+        - name: user_fields
+          in: query
+          description: User fields to include
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [name, username, verified, public_metrics, description, location, created_at]
+            collectionFormat: multi
+            example: ["name", "username", "verified", "public_metrics"]
+      responses:
+        '200':
+          description: Successfully retrieved user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwitterUserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    TwitterBearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        ## Twitter Bearer Token Authentication
+        
+        Use a Twitter Bearer Token for API access. Tokens can be obtained from
+        the Twitter Developer Portal.
+        
+        ### Header Format:
+        ```
+        Authorization: Bearer YOUR_BEARER_TOKEN
+        ```
+        
+        ### Token Types:
+        - **App-only**: For public data access
+        - **User context**: For user-specific operations (requires OAuth 2.0)
+
+    ESPNApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        ## ESPN API Key Authentication
+        
+        Some ESPN endpoints may require an API key for commercial use.
+        
+        ### Header Format:
+        ```
+        X-API-Key: your_espn_api_key
+        ```
+
+  schemas:
+    ESPNResponse:
+      type: object
+      description: ESPN API response wrapper
+      properties:
+        sports:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sport'
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-12-01T19:30:00Z"
+
+    Sport:
+      type: object
+      description: Sport information and leagues
+      properties:
+        id:
+          type: integer
+          description: Sport identifier
+          example: 20
+        name:
+          type: string
+          description: Sport name
+          example: "football"
+        uid:
+          type: string
+          description: Unique sport identifier
+          example: "s:20"
+        leagues:
+          type: array
+          items:
+            $ref: '#/components/schemas/League'
+
+    League:
+      type: object
+      description: League information and events
+      properties:
+        id:
+          type: integer
+          description: League identifier
+          example: 28
+        name:
+          type: string
+          description: League name
+          example: "National Football League"
+        uid:
+          type: string
+          description: Unique league identifier
+          example: "s:20~l:28"
+        season:
+          $ref: '#/components/schemas/Season'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+
+    Season:
+      type: object
+      description: Season information
+      properties:
+        year:
+          type: integer
+          description: Season year
+          example: 2024
+        type:
+          type: integer
+          description: Season type (1=preseason, 2=regular, 3=postseason)
+          example: 2
+        displayName:
+          type: string
+          description: Season display name
+          example: "2024 NFL Season"
+
+    Event:
+      type: object
+      description: Sports event/game information
+      properties:
+        id:
+          type: string
+          description: Event identifier
+          example: "401612345"
+        name:
+          type: string
+          description: Event name
+          example: "Atlanta Falcons vs New England Patriots"
+        shortName:
+          type: string
+          description: Short event name
+          example: "FAL @ PAT"
+        date:
+          type: string
+          format: date-time
+          description: Event date and time
+          example: "2024-12-01T19:00:00Z"
+        competitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competition'
+
+    Competition:
+      type: object
+      description: Competition details and scores
+      properties:
+        id:
+          type: string
+          description: Competition identifier
+          example: "401612345"
+        competitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
+        status:
+          $ref: '#/components/schemas/CompetitionStatus'
+
+    Competitor:
+      type: object
+      description: Team/competitor information
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        score:
+          type: integer
+          description: Current score
+          example: 24
+        homeAway:
+          type: string
+          enum: [home, away]
+          description: Home or away designation
+          example: "away"
+
+    Team:
+      type: object
+      description: Team information
+      properties:
+        id:
+          type: integer
+          description: Team identifier
+          example: 1
+        name:
+          type: string
+          description: Team name
+          example: "Atlanta Falcons"
+        abbreviation:
+          type: string
+          description: Team abbreviation
+          example: "ATL"
+
+    CompetitionStatus:
+      type: object
+      description: Competition status information
+      properties:
+        type:
+          $ref: '#/components/schemas/StatusType'
+        period:
+          type: integer
+          description: Current period
+          example: 4
+        displayClock:
+          type: string
+          description: Clock display
+          example: "0:00"
+
+    StatusType:
+      type: object
+      description: Status type information
+      properties:
+        id:
+          type: string
+          description: Status identifier
+          example: "3"
+        name:
+          type: string
+          description: Status name
+          example: "Final"
+
+    TeamScheduleResponse:
+      type: object
+      description: Team schedule response
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        season:
+          $ref: '#/components/schemas/Season'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+
+    TwitterSearchResponse:
+      type: object
+      description: Twitter search response
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tweet'
+        includes:
+          $ref: '#/components/schemas/Includes'
+        meta:
+          $ref: '#/components/schemas/SearchMeta'
+
+    Tweet:
+      type: object
+      description: Tweet object
+      properties:
+        id:
+          type: string
+          description: Tweet ID
+          example: "1234567890123456789"
+        text:
+          type: string
+          description: Tweet text content
+          example: "The Falcons are looking strong today! #NFL #Falcons"
+        created_at:
+          type: string
+          format: date-time
+          description: Tweet creation time
+          example: "2024-12-01T19:30:00.000Z"
+        author_id:
+          type: string
+          description: Tweet author ID
+          example: "987654321"
+        public_metrics:
+          $ref: '#/components/schemas/PublicMetrics'
+        context_annotations:
+          type: array
+          items:
+            type: object
+          description: Context annotations
+        entities:
+          $ref: '#/components/schemas/Entities'
+
+    PublicMetrics:
+      type: object
+      description: Tweet public metrics
+      properties:
+        retweet_count:
+          type: integer
+          description: Number of retweets
+          example: 5
+        like_count:
+          type: integer
+          description: Number of likes
+          example: 23
+        reply_count:
+          type: integer
+          description: Number of replies
+          example: 2
+        quote_count:
+          type: integer
+          description: Number of quote tweets
+          example: 1
+
+    Entities:
+      type: object
+      description: Tweet entities (hashtags, mentions, etc.)
+      properties:
+        hashtags:
+          type: array
+          items:
+            type: object
+            properties:
+              tag:
+                type: string
+                example: "NFL"
+          description: Hashtags in tweet
+        mentions:
+          type: array
+          items:
+            type: object
+            properties:
+              username:
+                type: string
+                example: "NFL"
+          description: User mentions
+
+    Includes:
+      type: object
+      description: Expanded objects
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        places:
+          type: array
+          items:
+            type: object
+          description: Place objects
+
+    User:
+      type: object
+      description: Twitter user object
+      properties:
+        id:
+          type: string
+          description: User ID
+          example: "987654321"
+        name:
+          type: string
+          description: Display name
+          example: "Sports Fan"
+        username:
+          type: string
+          description: Username
+          example: "sportsfan123"
+        verified:
+          type: boolean
+          description: Verification status
+          example: false
+        public_metrics:
+          $ref: '#/components/schemas/UserMetrics'
+        description:
+          type: string
+          description: User bio
+          example: "Sports enthusiast and data analyst"
+        location:
+          type: string
+          description: User location
+          example: "Atlanta, GA"
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation date
+          example: "2020-01-15T12:00:00.000Z"
+
+    UserMetrics:
+      type: object
+      description: User public metrics
+      properties:
+        followers_count:
+          type: integer
+          description: Number of followers
+          example: 1500
+        following_count:
+          type: integer
+          description: Number of following
+          example: 500
+        tweet_count:
+          type: integer
+          description: Number of tweets
+          example: 2500
+
+    SearchMeta:
+      type: object
+      description: Search metadata
+      properties:
+        result_count:
+          type: integer
+          description: Number of results returned
+          example: 1
+        next_token:
+          type: string
+          description: Token for next page
+          example: "b26v89c19zqg8o3fo3u8f4r3z4w8j3e"
+
+    TwitterUserResponse:
+      type: object
+      description: Twitter user response
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    Error:
+      type: object
+      description: Error response
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid parameters"
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_PARAMS"
+        details:
+          type: object
+          description: Additional error details
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 900
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+tags:
+  - name: ESPN Sports Data
+    description: Real-time sports scores and team information from ESPN API
+  - name: Twitter API
+    description: Social media data and sentiment analysis from Twitter API

@@ -243,7 +243,9 @@ class ESPNGameCastSource(DataSource):
 
         return final_score, direction
 
-    def _process_play(self, play: dict[str, Any], drive_info: dict[str, Any] = None) -> PlayData:
+    def _process_play(
+        self, play: dict[str, Any], drive_info: dict[str, Any] | None = None
+    ) -> PlayData:
         """Process raw play data into structured format."""
         play_id = play.get("id", str(play.get("sequenceNumber", 0)))
         description = play.get("text", "")
@@ -269,7 +271,9 @@ class ESPNGameCastSource(DataSource):
             raw_data=play,
         )
 
-    def _update_game_state(self, game_data: dict[str, Any], plays: list[PlayData]) -> GameState:
+    def _update_game_state(
+        self, game_data: dict[str, Any], plays: list[PlayData]
+    ) -> GameState | None:
         """Update game state with latest data."""
         header = game_data.get("header", {})
         competitions = header.get("competitions", [{}])
@@ -278,8 +282,12 @@ class ESPNGameCastSource(DataSource):
             competition = competitions[0]
             competitors = competition.get("competitors", [])
 
-            home_team = next((c for c in competitors if c.get("homeAway") == "home"), {})
-            away_team = next((c for c in competitors if c.get("homeAway") == "away"), {})
+            home_team: dict[str, Any] = next(
+                (c for c in competitors if c.get("homeAway") == "home"), {}
+            )
+            away_team: dict[str, Any] = next(
+                (c for c in competitors if c.get("homeAway") == "away"), {}
+            )
 
             # Calculate running momentum
             recent_plays = (
@@ -526,7 +534,9 @@ class ESPNSentimentSource(ESPNGameCastSource):
                         "sentiment_trend": (
                             "positive"
                             if avg_sentiment > 0.1
-                            else "negative" if avg_sentiment < -0.1 else "neutral"
+                            else "negative"
+                            if avg_sentiment < -0.1
+                            else "neutral"
                         ),
                         "play_count": len(recent_plays),
                     }
@@ -565,7 +575,9 @@ if __name__ == "__main__":
     async def example():
         # Example game ID (would be from actual ESPN)
         game_source = create_gamecast_source(
-            game_id="401547439", sport="football/nfl", poll_interval=10.0  # Example NFL game ID
+            game_id="401547439",
+            sport="football/nfl",
+            poll_interval=10.0,  # Example NFL game ID
         )
 
         async with game_source:

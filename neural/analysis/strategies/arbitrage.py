@@ -135,9 +135,9 @@ class ArbitrageStrategy(Strategy):
             if size > 0:
                 # Return composite signal for both sides
                 return Signal(
-                    type=SignalType.BUY_YES,  # Special handling needed
-                    ticker=ticker,
-                    size=size,
+                    signal_type=SignalType.BUY_YES,  # Special handling needed
+                    market_id=ticker,
+                    recommended_size=size,
                     confidence=self.execution_confidence,
                     entry_price=yes_price,
                     metadata={
@@ -241,9 +241,9 @@ class ArbitrageStrategy(Strategy):
                 )
                 if size > 0:
                     return Signal(
-                        type=SignalType.BUY_YES,
-                        ticker=ticker2,  # Buy the cheaper implied bet
-                        size=size,
+                        signal_type=SignalType.BUY_YES,
+                        market_id=str(ticker2),  # Buy cheaper implied bet
+                        recommended_size=size,
                         confidence=self.execution_confidence,
                         entry_price=yes_price2,
                         metadata={
@@ -407,9 +407,9 @@ class HighSpeedArbitrageStrategy(ArbitrageStrategy):
                 size = self.fixed_size if self.pre_calculate_size else 100
 
                 return Signal(
-                    type=SignalType.BUY_YES,
-                    ticker=latest["ticker"],
-                    size=size,
+                    signal_type=SignalType.BUY_YES,
+                    market_id=str(latest["ticker"]),
+                    recommended_size=size,
                     confidence=1.0,
                     entry_price=latest["yes_ask"],
                     metadata={

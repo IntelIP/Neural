@@ -172,7 +172,7 @@ class MeanReversionStrategy(Strategy):
 
         # Calculate weighted average
         if fair_values:
-            return np.average(fair_values, weights=weights)
+            return float(np.average(fair_values, weights=weights))
 
         return None
 
@@ -184,10 +184,10 @@ class MeanReversionStrategy(Strategy):
         # Use last N periods
         recent = market_data.tail(self.lookback_periods)
         if "yes_ask" in recent.columns and "volume" in recent.columns:
-            prices = recent["yes_ask"].values
-            volumes = recent["volume"].values
-            if volumes.sum() > 0:
-                return np.sum(prices * volumes) / volumes.sum()
+            prices = recent["yes_ask"].values.astype(float)
+            volumes = recent["volume"].values.astype(float)
+            if float(np.sum(volumes)) > 0:
+                return float(np.sum(prices * volumes) / np.sum(volumes))
 
         return None
 
@@ -384,6 +384,6 @@ class SportsbookArbitrageStrategy(MeanReversionStrategy):
                 valid_lines.append(prob)
 
         if len(valid_lines) >= self.min_sportsbook_sources:
-            return np.median(valid_lines)  # Use median to reduce outlier impact
+            return float(np.median(valid_lines))  # Use median to reduce outlier impact
 
         return None

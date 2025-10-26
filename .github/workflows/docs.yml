@@ -1,0 +1,296 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'neural/**/*.py'
+      - 'docs/**'
+      - 'examples/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'neural/**/*.py'
+      - 'docs/**'
+      - 'examples/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to production'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  generate-api-docs:
+    runs-on: ubuntu-latest
+    name: Generate API Documentation
+    outputs:
+      docs-changed: ${{ steps.changes.outputs.docs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            docs:
+              - 'neural/**/*.py'
+              - 'docs/**'
+              - 'examples/**'
+              - 'README.md'
+              - 'CHANGELOG.md'
+
+      - name: Set up Python
+        if: steps.changes.outputs.docs == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,docs]
+
+      - name: Generate API docs with mkdocstrings
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          mkdir -p docs/api
+          python -c "
+          import mkdocs.config
+          import mkdocs.structure.files
+          from mkdocstrings.handlers.python import PythonHandler
+          import inspect
+          import neural
+          from pathlib import Path
+          
+          # Generate API documentation structure
+          api_dir = Path('docs/api')
+          api_dir.mkdir(exist_ok=True)
+          
+          # Create index file
+          with open(api_dir / 'overview.mdx', 'w') as f:
+              f.write('''---
+title: API Reference
+description: Complete API documentation for the Neural SDK
+---
+              
+# API Reference
+
+This section contains automatically generated documentation for all Neural SDK modules.
+
+## Modules
+
+{modules}
+              ''')
+          
+          # Generate module documentation
+          modules_to_doc = [
+              'neural.auth',
+              'neural.data_collection', 
+              'neural.trading',
+              'neural.analysis',
+              'neural.analysis.strategies',
+              'neural.analysis.risk',
+              'neural.analysis.execution'
+          ]
+          
+          modules_list = []
+          for module_name in modules_to_doc:
+              try:
+                  module = __import__(module_name, fromlist=[''])
+                  modules_list.append(f'- [{module_name}](api/{module_name.replace(\".\", \"/\")})')
+                  
+                  # Create module doc file
+                  module_path = api_dir / module_name.replace('.', '/')
+                  module_path.mkdir(parents=True, exist_ok=True)
+                  
+                  with open(module_path / 'index.mdx', 'w') as f:
+                      f.write(f'''---
+title: {module_name}
+description: API documentation for {module_name}
+---
+
+# {module_name}
+
+```python
+{inspect.getsource(module) if hasattr(module, '__file__') else '# Module documentation'}
+```
+                      ''')
+              except ImportError:
+                  pass
+          
+          # Update index with module list
+          with open(api_dir / 'overview.mdx', 'r') as f:
+              content = f.read()
+          content = content.replace('{modules}', '\\n'.join(modules_list))
+          with open(api_dir / 'overview.mdx', 'w') as f:
+              f.write(content)
+          "
+
+      - name: Generate examples documentation
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          mkdir -p docs/examples/generated
+          python scripts/generate_examples_docs.py
+
+      - name: Validate documentation links
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          # Check for broken internal links
+          find docs -name "*.mdx" -exec grep -l "\[.*\](.*.mdx)" {} \; | while read file; do
+            echo "Checking links in $file"
+            grep -o "\[.*\](.*.mdx)" "$file" | while read link; do
+              target=$(echo "$link" | sed 's/.*(\(.*\))/\1/')
+              if [ ! -f "docs/$target" ] && [ ! -f "$target" ]; then
+                echo "Broken link found: $target in $file"
+                exit 1
+              fi
+            done
+          done
+
+      - name: Check documentation quality
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          # Check for required sections in documentation
+          python scripts/validate_docs.py
+
+      - name: Upload generated docs
+        if: steps.changes.outputs.docs == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-docs
+          path: docs/
+          retention-days: 7
+
+  validate-examples:
+    runs-on: ubuntu-latest
+    name: Validate Examples
+    if: needs.generate-api-docs.outputs.docs-changed == 'true'
+    needs: generate-api-docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Test examples syntax
+        run: |
+          for example in examples/*.py; do
+            echo "Checking syntax of $example"
+            python -m py_compile "$example"
+          done
+
+      - name: Validate example imports
+        run: |
+          python -c "
+          import ast
+          import sys
+          from pathlib import Path
+          
+          examples_dir = Path('examples')
+          for py_file in examples_dir.glob('*.py'):
+              try:
+                  with open(py_file) as f:
+                      ast.parse(f.read())
+                  print(f'✓ {py_file.name}: Valid syntax')
+              except SyntaxError as e:
+                  print(f'✗ {py_file.name}: Syntax error - {e}')
+                  sys.exit(1)
+          "
+
+  validate-docs:
+    runs-on: ubuntu-latest
+    name: Validate Documentation
+    needs: [generate-api-docs, validate-examples]
+    if: needs.generate-api-docs.outputs.docs-changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download generated docs
+        uses: actions/download-artifact@v3
+        with:
+          name: generated-docs
+          path: docs/
+
+      - name: Install Mintlify CLI
+        run: npm install -g @mintlify/cli
+
+      - name: Validate Mintlify configuration
+        run: |
+          # Check mint.json syntax
+          cat docs/mint.json | jq . > /dev/null || exit 1
+          
+          # Preview documentation to catch errors
+          timeout 30s mintlify dev --no-open --port 3000 || {
+            echo "Documentation preview failed"
+            exit 1
+          }
+
+      - name: Documentation Summary
+        run: |
+          echo "## 📚 Documentation Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Mint.json configuration valid" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ $(find docs -name '*.mdx' | wc -l) MDX files found" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ All examples validated" >> $GITHUB_STEP_SUMMARY
+          echo "- 📝 Manual deployment required via Mintlify dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Visit [Mintlify Dashboard](https://mintlify.com/dashboard)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Select project: neural-sdk" >> $GITHUB_STEP_SUMMARY
+          echo "3. Click 'Deploy' to publish changes" >> $GITHUB_STEP_SUMMARY
+
+  update-changelog:
+    runs-on: ubuntu-latest
+    name: Update Changelog
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install gitpython
+
+      - name: Auto-update changelog
+        run: |
+          python scripts/update_changelog.py
+
+      - name: Commit changelog updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: auto-update changelog [skip ci]"
+            git push
+          fi

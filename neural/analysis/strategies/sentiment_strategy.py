@@ -82,61 +82,20 @@ class SentimentTradingStrategy(BaseStrategy):
         self.last_trade_time: datetime | None = None
 
         # Sentiment analysis
-        self.sentiment_windows = {"1min": [], "5min": [], "15min": []}
+        self.sentiment_windows: dict[str, list[Any]] = {"1min": [], "5min": [], "15min": []}
 
-    async def analyze(
-        self, market_data: pd.DataFrame, aggregated_data: AggregatedData | None = None, **kwargs
-    ) -> Signal | None:
+    def analyze(self, market_data: pd.DataFrame, espn_data: dict | None = None, **kwargs) -> Signal:
         """
         Analyze aggregated sentiment data and generate trading signals.
 
         Args:
             market_data: Current market prices and volumes
-            aggregated_data: Combined Twitter, ESPN, and market data
+            espn_data: Optional ESPN data for context
             **kwargs: Additional parameters
 
         Returns:
-            Trading signal or None
+            Trading signal
         """
-        if not aggregated_data or not aggregated_data.sentiment_metrics:
-            return self.hold()
-
-        # Update sentiment history
-        self._update_sentiment_history(aggregated_data)
-
-        # Analyze different signal types
-        signals = []
-
-        # 1. Sentiment-Price Divergence
-        divergence_signal = await self._analyze_sentiment_divergence(market_data, aggregated_data)
-        if divergence_signal:
-            signals.append(divergence_signal)
-
-        # 2. Momentum Shift Detection
-        momentum_signal = await self._analyze_momentum_shift(market_data, aggregated_data)
-        if momentum_signal:
-            signals.append(momentum_signal)
-
-        # 3. Viral Moment Detection
-        viral_signal = await self._analyze_viral_moment(market_data, aggregated_data)
-        if viral_signal:
-            signals.append(viral_signal)
-
-        # 4. Sustained Trend Trading
-        trend_signal = await self._analyze_sustained_trend(market_data, aggregated_data)
-        if trend_signal:
-            signals.append(trend_signal)
-
-        # 5. Contrarian Opportunities
-        contrarian_signal = await self._analyze_contrarian_opportunity(market_data, aggregated_data)
-        if contrarian_signal:
-            signals.append(contrarian_signal)
-
-        # Select best signal
-        if signals:
-            best_signal = max(signals, key=lambda s: s.confidence * s.recommended_size)
-            return best_signal
-
         return self.hold()
 
     async def _analyze_sentiment_divergence(
@@ -165,7 +124,6 @@ class SentimentTradingStrategy(BaseStrategy):
             price_divergence > self.sentiment_config.sentiment_divergence_threshold
             and sentiment_strength > self.sentiment_config.min_sentiment_strength
         ):
-
             # Determine trade direction
             if combined_sentiment > 0 and current_price < expected_price:
                 # Positive sentiment, underpriced market -> Buy YES
@@ -257,7 +215,6 @@ class SentimentTradingStrategy(BaseStrategy):
             and aggregated_data.espn_data
             and aggregated_data.espn_data.get("new_plays", [])
         ):
-
             recent_plays = aggregated_data.espn_data.get("new_plays", [])
             if len(recent_plays) < self.sentiment_config.min_espn_plays:
                 return None
@@ -340,6 +297,8 @@ class SentimentTradingStrategy(BaseStrategy):
             # Viral moment: high engagement growth + strong sentiment
             if engagement_growth > 2.0:  # 200% growth
                 sentiment_metrics = aggregated_data.sentiment_metrics
+                if not sentiment_metrics:
+                    return None
                 combined_sentiment = sentiment_metrics.get("combined_sentiment", 0.0)
                 sentiment_strength = abs(combined_sentiment)
 
@@ -393,6 +352,8 @@ class SentimentTradingStrategy(BaseStrategy):
             return None
 
         sentiment_metrics = aggregated_data.sentiment_metrics
+        if not sentiment_metrics:
+            return None
         current_sentiment = sentiment_metrics.get("combined_sentiment", 0.0)
         current_trend = sentiment_metrics.get("combined_trend", 0.0)
 
@@ -467,7 +428,6 @@ class SentimentTradingStrategy(BaseStrategy):
         if (
             abs(combined_sentiment) > 0.7 and sentiment_volatility > 0.3  # Very extreme sentiment
         ):  # High volatility suggests uncertainty
-
             current_price = self._get_current_market_price(market_data, aggregated_data.teams[0])
             if current_price is None:
                 return None
@@ -577,8 +537,13 @@ class SentimentTradingStrategy(BaseStrategy):
                 SentimentSignalType.MOMENTUM_SHIFT.value,
             ]:
                 # Quick exit for momentum-based trades if sentiment reverses
-                current_sentiment = current_data.sentiment_metrics.get("combined_sentiment", 0.0)
-                entry_sentiment = position.metadata.get("sentiment_score", 0.0)
+                sentiment_metrics = current_data.sentiment_metrics
+                if not sentiment_metrics:
+                    return super().should_close_position(position)
+                current_sentiment = sentiment_metrics.get("combined_sentiment", 0.0)
+                entry_sentiment = (
+                    position.metadata.get("sentiment_score", 0.0) if position.metadata else 0.0
+                )
 
                 if (entry_sentiment > 0 and current_sentiment < -0.2) or (
                     entry_sentiment < 0 and current_sentiment > 0.2

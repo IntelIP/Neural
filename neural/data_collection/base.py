@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
@@ -66,7 +67,7 @@ class DataSource(ABC):
         pass
 
     @abstractmethod
-    async def collect(self):
+    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
         """Collect data from the source. Should yield data."""
         pass
 
