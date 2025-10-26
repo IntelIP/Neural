@@ -534,9 +534,7 @@ class ESPNSentimentSource(ESPNGameCastSource):
                         "sentiment_trend": (
                             "positive"
                             if avg_sentiment > 0.1
-                            else "negative"
-                            if avg_sentiment < -0.1
-                            else "neutral"
+                            else "negative" if avg_sentiment < -0.1 else "neutral"
                         ),
                         "play_count": len(recent_plays),
                     }
