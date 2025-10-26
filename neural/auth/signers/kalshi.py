@@ -22,7 +22,10 @@ class KalshiSigner:
 
     @staticmethod
     def _load_private_key(pem: bytes) -> rsa.RSAPrivateKey:
-        return serialization.load_pem_private_key(pem, password=None)
+        key = serialization.load_pem_private_key(pem, password=None)
+        if not isinstance(key, rsa.RSAPrivateKey):
+            raise ValueError("Only RSA private keys are supported")
+        return key
 
     def headers(self, method: str, path: str) -> dict[str, str]:
         ts = self._now_ms()

@@ -19,6 +19,8 @@ __license__ = "MIT"
 import warnings
 from typing import Set  # noqa: UP035
 
+from neural import analysis, auth, data_collection, trading
+
 # Track which experimental features have been used
 _experimental_features_used: set[str] = set()
 
@@ -56,8 +58,6 @@ def _warn_beta() -> None:
 
 # Issue beta warning on import
 _warn_beta()
-
-from neural import analysis, auth, data_collection, trading
 
 __all__ = [
     "__version__",

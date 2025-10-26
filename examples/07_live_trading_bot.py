@@ -211,7 +211,10 @@ class TradingBot:
                     from neural.analysis.strategies.base import Signal, SignalType
 
                     close_signal = Signal(
-                        type=SignalType.CLOSE, ticker=ticker, size=0, confidence=1.0
+                        signal_type=SignalType.CLOSE,
+                        market_id=ticker,
+                        recommended_size=0,
+                        confidence=1.0,
                     )
                     await self.order_manager.execute_signal(close_signal)
 
@@ -224,9 +227,9 @@ class TradingBot:
 
     async def run_cycle(self):
         """Run one complete trading cycle"""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"🔄 Trading Cycle - {datetime.now().strftime('%H:%M:%S')}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Scan markets
         markets_df = await self.scan_markets()
@@ -277,7 +280,7 @@ class TradingBot:
 
         portfolio = self.order_manager.get_portfolio_summary()
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("📊 Bot Status:")
         print(f"  Runtime: {runtime:.1f} minutes")
         print(f"  Mode: {'SIMULATION' if self.dry_run else 'LIVE'}")

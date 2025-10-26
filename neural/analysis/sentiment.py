@@ -99,7 +99,7 @@ class TimeSeries:
         recent_values = [self.values[i] for i in recent_indices]
         x = np.arange(len(recent_values))
         coefficients = np.polyfit(x, recent_values, 1)
-        return coefficients[0]  # Slope indicates trend
+        return float(coefficients[0])  # Slope indicates trend
 
     def get_volatility(self, minutes: int = 5) -> float:
         """Calculate sentiment volatility over last N minutes."""
@@ -111,7 +111,7 @@ class TimeSeries:
         if len(recent_values) < 2:
             return 0.0
 
-        return np.std(recent_values)
+        return float(np.std(recent_values))
 
 
 class SentimentAnalyzer:
@@ -248,11 +248,20 @@ class SentimentAnalyzer:
             return {"compound": 0.0, "pos": 0.0, "neu": 1.0, "neg": 0.0}
 
         compound = np.mean(scores)
-        positive = np.mean([s for s in scores if s > 0]) if any(s > 0 for s in scores) else 0.0
-        negative = abs(np.mean([s for s in scores if s < 0])) if any(s < 0 for s in scores) else 0.0
+        positive = (
+            float(np.mean([s for s in scores if s > 0])) if any(s > 0 for s in scores) else 0.0
+        )
+        negative = (
+            float(abs(np.mean([s for s in scores if s < 0]))) if any(s < 0 for s in scores) else 0.0
+        )
         neutral = 1.0 - (positive + negative)
 
-        return {"compound": compound, "pos": positive, "neu": max(0.0, neutral), "neg": negative}
+        return {
+            "compound": float(compound),
+            "pos": positive,
+            "neu": max(0.0, neutral),
+            "neg": negative,
+        }
 
     def analyze_text(self, text: str) -> SentimentScore:
         """
@@ -316,7 +325,7 @@ class SentimentAnalyzer:
                 compounds.append(custom_scores["compound"])
 
             if compounds:
-                compound = np.average(compounds, weights=weights)
+                compound = float(np.average(compounds, weights=weights))
             else:
                 compound = 0.0
 
@@ -406,13 +415,13 @@ class SentimentAnalyzer:
         scores = self.analyze_batch(texts)
 
         if weights and len(weights) == len(scores):
-            overall = np.average([s.overall_score for s in scores], weights=weights)
-            confidence = np.average([s.confidence for s in scores], weights=weights)
-            magnitude = np.average([s.magnitude for s in scores], weights=weights)
+            overall = float(np.average([s.overall_score for s in scores], weights=weights))
+            confidence = float(np.average([s.confidence for s in scores], weights=weights))
+            magnitude = float(np.average([s.magnitude for s in scores], weights=weights))
         else:
-            overall = np.mean([s.overall_score for s in scores])
-            confidence = np.mean([s.confidence for s in scores])
-            magnitude = np.mean([s.magnitude for s in scores])
+            overall = float(np.mean([s.overall_score for s in scores]))
+            confidence = float(np.mean([s.confidence for s in scores]))
+            magnitude = float(np.mean([s.magnitude for s in scores]))
 
         # Determine aggregate strength
         if overall >= 0.5:
@@ -430,11 +439,11 @@ class SentimentAnalyzer:
             overall_score=overall,
             confidence=confidence,
             strength=strength,
-            positive=np.mean([s.positive for s in scores]),
-            negative=np.mean([s.negative for s in scores]),
-            neutral=np.mean([s.neutral for s in scores]),
+            positive=float(np.mean([s.positive for s in scores])),
+            negative=float(np.mean([s.negative for s in scores])),
+            neutral=float(np.mean([s.neutral for s in scores])),
             compound=overall,
-            subjectivity=np.mean([s.subjectivity for s in scores]),
+            subjectivity=float(np.mean([s.subjectivity for s in scores])),
             magnitude=magnitude,
             engine_used=self.engine,
             metadata={

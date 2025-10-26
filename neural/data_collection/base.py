@@ -66,7 +66,7 @@ class DataSource(ABC):
         pass
 
     @abstractmethod
-    async def collect(self):
+    async def collect(self) -> Any:
         """Collect data from the source. Should yield data."""
         pass
 

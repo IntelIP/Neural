@@ -7,7 +7,6 @@ in trading algorithms. It uses Twitter-API.io for simplified API access.
 
 import asyncio
 import os
-from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -24,8 +23,8 @@ class TwitterConfig:
     api_key: str
     query: str = ""
     max_results: int = 100
-    tweet_fields: list[str] = None
-    user_fields: list[str] = None
+    tweet_fields: list[str] | None = None
+    user_fields: list[str] | None = None
     poll_interval: float = 30.0
 
     def __post_init__(self):
@@ -96,8 +95,8 @@ class TwitterAPISource(DataSource):
         params = {
             "query": query,
             "max_results": min(max_results, 100),
-            "tweet.fields": ",".join(self.config.tweet_fields),
-            "user.fields": ",".join(self.config.user_fields),
+            "tweet.fields": ",".join(self.config.tweet_fields or []),
+            "user.fields": ",".join(self.config.user_fields or []),
             "expansions": "author_id",
         }
 
@@ -119,7 +118,9 @@ class TwitterAPISource(DataSource):
                 error_text = await response.text()
                 raise RuntimeError(f"Twitter API error {response.status}: {error_text}")
 
-    async def get_game_tweets(self, teams: list[str], hashtags: list[str] = None) -> dict[str, Any]:
+    async def get_game_tweets(
+        self, teams: list[str], hashtags: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get tweets related to a specific game.
 
@@ -147,7 +148,7 @@ class TwitterAPISource(DataSource):
 
         return await self.search_tweets(query, self.config.max_results)
 
-    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
+    async def collect(self) -> Any:
         """
         Continuously collect Twitter data.
 
@@ -245,7 +246,7 @@ class GameTwitterSource(TwitterAPISource):
         self,
         api_key: str,
         teams: list[str],
-        hashtags: list[str] = None,
+        hashtags: list[str] | None = None,
         poll_interval: float = 15.0,
     ):
         # Build game-specific query
@@ -277,9 +278,9 @@ class GameTwitterSource(TwitterAPISource):
 # Factory function for easy setup
 def create_twitter_source(
     api_key: str | None = None,
-    teams: list[str] = None,
-    hashtags: list[str] = None,
-    query: str = None,
+    teams: list[str] | None = None,
+    hashtags: list[str] | None = None,
+    query: str | None = None,
     poll_interval: float = 30.0,
 ) -> TwitterAPISource:
     """

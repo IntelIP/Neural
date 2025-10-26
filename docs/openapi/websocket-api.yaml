@@ -1,0 +1,618 @@
+asyncapi: 2.6.0
+info:
+  title: Neural SDK - WebSocket API
+  description: |
+    Real-time WebSocket API for the Neural SDK's integration with Kalshi's trading platform.
+    Provides live market data, order updates, position tracking, and trade execution notifications.
+    
+    ## Connection
+    
+    Connect to `wss://api.elections.kalshi.com/trade-api/ws/v2` with RSA-PSS signature authentication
+    in the initial HTTP upgrade headers.
+    
+    ## Message Flow
+    
+    1. **Connect** with authentication headers
+    2. **Subscribe** to desired channels
+    3. **Receive** real-time updates
+    4. **Unsubscribe** when done
+    
+    ## Channels
+    
+    - `orderbook_delta` - Real-time order book updates
+    - `trades` - Trade execution notifications  
+    - `positions` - Position P&L updates
+    - `order_updates` - Order status changes
+  version: 2.0.0
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+
+servers:
+  production:
+    url: wss://api.elections.kalshi.com/trade-api/ws/v2
+    protocol: ws
+    description: Production WebSocket server
+  demo:
+    url: wss://demo-api.elections.kalshi.com/trade-api/ws/v2
+    protocol: ws
+    description: Demo WebSocket server for testing
+
+channels:
+  orderbook_delta:
+    description: Real-time order book updates for subscribed markets
+    subscribe:
+      summary: Subscribe to order book updates
+      description: |
+        Subscribe to receive real-time order book delta updates for specific markets.
+        Each message contains changes to the bid/ask spreads.
+      operationId: subscribeOrderbookDelta
+      message:
+        $ref: '#/components/messages/OrderbookDeltaSubscription'
+    publish:
+      summary: Receive order book updates
+      description: Real-time order book delta messages
+      message:
+        $ref: '#/components/messages/OrderbookDelta'
+
+  trades:
+    description: Real-time trade execution notifications
+    subscribe:
+      summary: Subscribe to trade updates
+      description: |
+        Subscribe to receive notifications when trades execute in subscribed markets.
+        Useful for monitoring market activity and execution.
+      operationId: subscribeTrades
+      message:
+        $ref: '#/components/messages/TradesSubscription'
+    publish:
+      summary: Receive trade notifications
+      description: Real-time trade execution messages
+      message:
+        $ref: '#/components/messages/Trade'
+
+  positions:
+    description: Real-time position and P&L updates
+    subscribe:
+      summary: Subscribe to position updates
+      description: |
+        Subscribe to receive updates to your positions including unrealized P&L
+        changes as market prices move.
+      operationId: subscribePositions
+      message:
+        $ref: '#/components/messages/PositionsSubscription'
+    publish:
+      summary: Receive position updates
+      description: Real-time position and P&L messages
+      message:
+        $ref: '#/components/messages/Position'
+
+  order_updates:
+    description: Real-time order status updates
+    subscribe:
+      summary: Subscribe to order updates
+      description: |
+        Subscribe to receive status updates for your orders including fills,
+        cancellations, and rejections.
+      operationId: subscribeOrderUpdates
+      message:
+        $ref: '#/components/messages/OrderUpdatesSubscription'
+    publish:
+      summary: Receive order status updates
+      description: Real-time order status change messages
+      message:
+        $ref: '#/components/messages/OrderUpdate'
+
+components:
+  messages:
+    OrderbookDeltaSubscription:
+      name: orderbook_delta_subscription
+      title: Orderbook Delta Subscription
+      summary: Subscribe to order book updates
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - id
+          - cmd
+          - params
+        properties:
+          id:
+            type: integer
+            description: Message ID for request/response correlation
+            example: 1
+          cmd:
+            type: string
+            enum: [subscribe]
+            description: Command type
+            example: "subscribe"
+          params:
+            type: object
+            required:
+              - channels
+              - market_tickers
+            properties:
+              channels:
+                type: array
+                items:
+                  type: string
+                  enum: [orderbook_delta]
+                description: Channel to subscribe to
+                example: ["orderbook_delta"]
+              market_tickers:
+                type: array
+                items:
+                  type: string
+                description: Market tickers to subscribe to
+                example: ["KXNFLGAME-2024-12-01-NE-ATL", "KXNFLGAME-2024-12-01-KC-BUF"]
+
+    OrderbookDelta:
+      name: orderbook_delta
+      title: Orderbook Delta Update
+      summary: Real-time order book delta update
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - data
+        properties:
+          type:
+            type: string
+            enum: [orderbook_delta]
+            description: Message type
+            example: "orderbook_delta"
+          data:
+            type: object
+            required:
+              - ticker
+              - timestamp
+              - yes_bid
+              - yes_ask
+              - no_bid
+              - no_ask
+            properties:
+              ticker:
+                type: string
+                description: Market ticker
+                example: "KXNFLGAME-2024-12-01-NE-ATL"
+              timestamp:
+                type: integer
+                format: int64
+                description: Update timestamp (Unix milliseconds)
+                example: 1701388800000
+              yes_bid:
+                type: integer
+                description: Current YES bid price (in cents)
+                example: 45
+              yes_ask:
+                type: integer
+                description: Current YES ask price (in cents)
+                example: 48
+              no_bid:
+                type: integer
+                description: Current NO bid price (in cents)
+                example: 52
+              no_ask:
+                type: integer
+                description: Current NO ask price (in cents)
+                example: 55
+              volume:
+                type: integer
+                description: Total traded volume
+                example: 150000
+
+    TradesSubscription:
+      name: trades_subscription
+      title: Trades Subscription
+      summary: Subscribe to trade updates
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - id
+          - cmd
+          - params
+        properties:
+          id:
+            type: integer
+            description: Message ID
+            example: 2
+          cmd:
+            type: string
+            enum: [subscribe]
+            description: Command type
+            example: "subscribe"
+          params:
+            type: object
+            required:
+              - channels
+              - market_tickers
+            properties:
+              channels:
+                type: array
+                items:
+                  type: string
+                  enum: [trades]
+                description: Channel to subscribe to
+                example: ["trades"]
+              market_tickers:
+                type: array
+                items:
+                  type: string
+                description: Market tickers to subscribe to
+                example: ["KXNFLGAME-2024-12-01-NE-ATL"]
+
+    Trade:
+      name: trade
+      title: Trade Execution
+      summary: Real-time trade execution notification
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - data
+        properties:
+          type:
+            type: string
+            enum: [trade]
+            description: Message type
+            example: "trade"
+          data:
+            type: object
+            required:
+              - ticker
+              - timestamp
+              - price
+              - count
+              - side
+            properties:
+              ticker:
+                type: string
+                description: Market ticker
+                example: "KXNFLGAME-2024-12-01-NE-ATL"
+              timestamp:
+                type: integer
+                format: int64
+                description: Trade timestamp (Unix milliseconds)
+                example: 1701388800000
+              price:
+                type: integer
+                description: Trade price (in cents)
+                example: 47
+              count:
+                type: integer
+                description: Number of contracts traded
+                example: 10
+              side:
+                type: string
+                enum: [yes, no]
+                description: Trade side
+                example: "yes"
+              trade_id:
+                type: string
+                description: Unique trade identifier
+                example: "trade_123456789"
+
+    PositionsSubscription:
+      name: positions_subscription
+      title: Positions Subscription
+      summary: Subscribe to position updates
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - id
+          - cmd
+          - params
+        properties:
+          id:
+            type: integer
+            description: Message ID
+            example: 3
+          cmd:
+            type: string
+            enum: [subscribe]
+            description: Command type
+            example: "subscribe"
+          params:
+            type: object
+            required:
+              - channels
+            properties:
+              channels:
+                type: array
+                items:
+                  type: string
+                  enum: [positions]
+                description: Channel to subscribe to
+                example: ["positions"]
+
+    Position:
+      name: position
+      title: Position Update
+      summary: Real-time position and P&L update
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - data
+        properties:
+          type:
+            type: string
+            enum: [position]
+            description: Message type
+            example: "position"
+          data:
+            type: object
+            required:
+              - ticker
+              - side
+              - size
+              - unrealized_pnl
+            properties:
+              ticker:
+                type: string
+                description: Market ticker
+                example: "KXNFLGAME-2024-12-01-NE-ATL"
+              side:
+                type: string
+                enum: [yes, no]
+                description: Position side
+                example: "yes"
+              size:
+                type: integer
+                description: Number of contracts
+                example: 25
+              avg_cost:
+                type: number
+                format: float
+                description: Average cost per contract (in cents)
+                example: 46.5
+              current_price:
+                type: number
+                format: float
+                description: Current market price (in cents)
+                example: 48.0
+              unrealized_pnl:
+                type: number
+                format: float
+                description: Unrealized profit/loss
+                example: 37.5
+              market_value:
+                type: number
+                format: float
+                description: Current market value
+                example: 1200.0
+
+    OrderUpdatesSubscription:
+      name: order_updates_subscription
+      title: Order Updates Subscription
+      summary: Subscribe to order status updates
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - id
+          - cmd
+          - params
+        properties:
+          id:
+            type: integer
+            description: Message ID
+            example: 4
+          cmd:
+            type: string
+            enum: [subscribe]
+            description: Command type
+            example: "subscribe"
+          params:
+            type: object
+            required:
+              - channels
+            properties:
+              channels:
+                type: array
+                items:
+                  type: string
+                  enum: [order_updates]
+                description: Channel to subscribe to
+                example: ["order_updates"]
+
+    OrderUpdate:
+      name: order_update
+      title: Order Status Update
+      summary: Real-time order status change notification
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - data
+        properties:
+          type:
+            type: string
+            enum: [order_update]
+            description: Message type
+            example: "order_update"
+          data:
+            type: object
+            required:
+              - order_id
+              - status
+            properties:
+              order_id:
+                type: string
+                description: Order identifier
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              status:
+                type: string
+                enum: [open, filled, cancelled, rejected]
+                description: New order status
+                example: "filled"
+              filled_count:
+                type: integer
+                description: Number of contracts filled
+                example: 10
+              avg_fill_price:
+                type: number
+                format: float
+                description: Average fill price (in cents)
+                example: 46.0
+              remaining_count:
+                type: integer
+                description: Number of contracts remaining
+                example: 0
+              timestamp:
+                type: integer
+                format: int64
+                description: Status update timestamp
+                example: 1701388800000
+              reject_reason:
+                type: string
+                description: Reason for rejection (if applicable)
+                example: "Insufficient balance"
+
+  schemas:
+    WebSocketMessage:
+      type: object
+      description: Base WebSocket message structure
+      required:
+        - id
+        - cmd
+      properties:
+        id:
+          type: integer
+          description: Message ID for request/response correlation
+          example: 1
+        cmd:
+          type: string
+          enum: [subscribe, unsubscribe, update_subscription]
+          description: Command type
+          example: "subscribe"
+        params:
+          type: object
+          description: Command parameters
+          nullable: true
+
+    SubscriptionParams:
+      type: object
+      required:
+        - channels
+      properties:
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [orderbook_delta, trades, positions, order_updates]
+          description: Channels to subscribe to
+          example: ["orderbook_delta", "trades"]
+        market_tickers:
+          type: array
+          items:
+            type: string
+          description: Market tickers (required for market-specific channels)
+          example: ["KXNFLGAME-2024-12-01-NE-ATL"]
+        sids:
+          type: array
+          items:
+            type: integer
+          description: Subscription IDs (for unsubscribe/update operations)
+          example: [1, 2]
+
+    UnsubscribeParams:
+      type: object
+      required:
+        - sids
+      properties:
+        sids:
+          type: array
+          items:
+            type: integer
+          description: Subscription IDs to unsubscribe
+          example: [1, 2]
+
+    UpdateSubscriptionParams:
+      type: object
+      required:
+        - sid
+        - action
+      properties:
+        sid:
+          type: integer
+          description: Subscription ID to update
+          example: 1
+        action:
+          type: string
+          enum: [add, remove]
+          description: Update action
+          example: "add"
+        market_tickers:
+          type: array
+          items:
+            type: string
+          description: Market tickers to add/remove
+          example: ["KXNFLGAME-2024-12-01-KC-BUF"]
+
+    ErrorResponse:
+      type: object
+      description: Error response message
+      required:
+        - type
+        - error
+      properties:
+        type:
+          type: string
+          enum: [error]
+          description: Message type
+          example: "error"
+        error:
+          type: string
+          description: Error message
+          example: "Invalid subscription parameters"
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_PARAMS"
+        id:
+          type: integer
+          description: Original message ID (if applicable)
+          example: 1
+
+  securitySchemes:
+    KalshiAuth:
+      type: apiKey
+      in: header
+      name: KALSHI-ACCESS-KEY
+      description: |
+        ## WebSocket Authentication
+        
+        WebSocket connections use the same RSA-PSS signature authentication as REST APIs,
+        but the headers are included in the initial HTTP upgrade request.
+        
+        ### Required Headers:
+        - `KALSHI-ACCESS-KEY`: Your API key ID
+        - `KALSHI-ACCESS-TIMESTAMP`: Unix timestamp in milliseconds
+        - `KALSHI-ACCESS-SIGNATURE`: Base64-encoded RSA-PSS signature
+        
+        ### Connection Example:
+        ```javascript
+        const ws = new WebSocket('wss://api.elections.kalshi.com/trade-api/ws/v2', [], {
+          headers: {
+            'KALSHI-ACCESS-KEY': 'your_api_key_id',
+            'KALSHI-ACCESS-TIMESTAMP': '1701388800000',
+            'KALSHI-ACCESS-SIGNATURE': 'base64_signature'
+          }
+        });
+        ```
+
+tags:
+  - name: Market Data
+    description: Real-time market data channels
+  - name: Trading
+    description: Order and position update channels
+  - name: System
+    description: System messages and errors

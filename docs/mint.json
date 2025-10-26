@@ -2,12 +2,12 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "Neural",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "dark": "https://g896wg0qvt.ufs.sh/f/eIE9oLuYL4sGMfeD5727fntoASgYhLjvm3E2cwkPyZsIM9Ku",
+    "light": "https://g896wg0qvt.ufs.sh/f/eIE9oLuYL4sGMfeD5727fntoASgYhLjvm3E2cwkPyZsIM9Ku"
   },
-  "favicon": "/favicon.svg",
+  
   "colors": {
-    "primary": "#0D9373",
+    "primary": "#01BD65",
     "light": "#07C983",
     "dark": "#0D9373",
     "anchors": {
@@ -15,6 +15,7 @@
       "to": "#07C983"
     }
   },
+  "favicon": "/favicon.png",
   "topbarLinks": [
     {
       "name": "Support",
@@ -54,16 +55,18 @@
   ],
   "navigation": [
     {
-      "group": "Basics",
+      "group": "Getting Started",
       "pages": [
         "architecture/start-here",
+        "architecture/overview",
         "getting-started",
+        "auth/credentials",
         "basics/infrastructure",
         "README"
       ]
     },
     {
-      "group": "Data",
+      "group": "Data Collection",
       "pages": [
         "data-collection/overview",
         "data-collection/sources",
@@ -87,7 +90,7 @@
       ]
     },
     {
-      "group": "Execution",
+      "group": "Trading",
       "pages": [
         "trading/overview",
         "trading/quickstart",

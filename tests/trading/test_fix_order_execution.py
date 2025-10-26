@@ -150,7 +150,6 @@ class OrderExecutionTester:
         """Handle order cancel rejection"""
         cl_order_id = msg.get(11)
         reason = msg.get(102)  # CxlRejReason
-        msg.get(434)  # CxlRejResponseTo
 
         reason_map = {
             "1": "Unknown order",
@@ -358,18 +357,18 @@ async def main():
     print("  2. FIX API access enabled")
     print("  3. Some balance in your account\n")
 
-    response = input("Continue with order execution test? (yes/no): ").strip().lower()
+    # For automated testing, skip interactive prompt
+    # In manual testing, uncomment the following lines:
+    # response = input("Continue with order execution test? (yes/no): ").strip().lower()
+    # if response == "yes":
 
-    if response == "yes":
-        # Test order placement
-        await test_order_placement()
+    # Test order placement
+    await test_order_placement()
 
-        # Test order status
-        await test_order_status()
+    # Test order status
+    await test_order_status()
 
-        print("\n✅ FIX order execution test complete!")
-    else:
-        print("\n⏹️ Test cancelled by user")
+    print("\n✅ FIX order execution test complete!")
 
 
 if __name__ == "__main__":

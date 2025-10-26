@@ -11,7 +11,7 @@ import sys
 # Add the neural package to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from neural.data_collection import DataTransformer, RestApiSource, register_source
+from neural.data_collection import DataTransformer, RestApiSource, register_source, registry
 
 
 # Custom ESPN data sources
@@ -126,7 +126,6 @@ espn_game_summary_transformer = DataTransformer(
 
 
 # Register transformers
-from neural.data_collection import registry
 
 registry.transformers["espn_nfl_scoreboard"] = espn_scoreboard_transformer
 registry.transformers["espn_college_football_scoreboard"] = espn_scoreboard_transformer

@@ -11,7 +11,7 @@ from typing import Any
 
 import simplefix
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from neural.auth.env import get_api_key_id, get_private_key_material
@@ -68,7 +68,10 @@ class KalshiFIXClient:
             raise ValueError("sender_comp_id (FIX API key) must be provided")
 
         pem = private_key_pem or get_private_key_material()
-        self._private_key = load_pem_private_key(pem, password=None)
+        key = load_pem_private_key(pem, password=None)
+        if not isinstance(key, rsa.RSAPrivateKey):
+            raise ValueError("Only RSA private keys are supported for FIX signing")
+        self._private_key = key
 
         self.on_message = on_message
         self._loop = loop or asyncio.get_event_loop()
@@ -227,15 +230,14 @@ class KalshiFIXClient:
             self.on_message(message)
 
     def _sign_logon_payload(self, sending_time: str, msg_type: str, seq_num: int) -> str:
-        payload = "\x01".join(
-            [
-                sending_time,
-                msg_type,
-                str(seq_num),
-                self.config.sender_comp_id,
-                self.config.target_comp_id,
-            ]
-        )
+        payload_parts = [
+            sending_time,
+            msg_type,
+            str(seq_num),
+            self.config.sender_comp_id or "",
+            self.config.target_comp_id,
+        ]
+        payload = "\x01".join(payload_parts)
         signature = self._private_key.sign(
             payload.encode("utf-8"),
             padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),

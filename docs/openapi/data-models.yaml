@@ -1,0 +1,1025 @@
+openapi: 3.0.3
+info:
+  title: Neural SDK - Data Models & Schemas
+  description: |
+    Comprehensive data models and schemas used throughout the Neural SDK ecosystem.
+    This specification defines all common data structures, enums, and validation
+    rules for consistent data handling across trading, analysis, and data collection.
+    
+    ## Data Model Categories
+    
+    - **Core Models**: Fundamental data structures used across the SDK
+    - **Trading Models**: Order, position, and execution data
+    - **Market Data Models**: Price, volume, and market information
+    - **Analysis Models**: Strategy, signal, and backtest data
+    - **Collection Models**: External data source structures
+    - **Utility Models**: Common utilities and helpers
+    
+    ## Design Principles
+    
+    - **Type Safety**: Strong typing with validation
+    - **Serialization**: JSON/BSON compatible
+    - **Validation**: Pydantic models for runtime validation
+    - **Extensibility**: Optional fields for future enhancements
+    - **Consistency**: Standardized field names and formats
+  version: 1.0.0
+  contact:
+    name: Neural SDK Support
+    email: support@neural-sdk.com
+    url: https://github.com/IntelIP/Neural
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+components:
+  schemas:
+    # Core Models
+    Timestamp:
+      type: object
+      description: Timestamp with timezone information
+      properties:
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1701388800000
+        timezone:
+          type: string
+          description: Timezone identifier
+          example: "UTC"
+        iso_format:
+          type: string
+          format: date-time
+          description: ISO 8601 formatted timestamp
+          example: "2024-12-01T12:00:00Z"
+
+    Money:
+      type: object
+      description: Monetary value with currency
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Monetary amount
+          example: 1234.56
+        currency:
+          type: string
+          enum: [USD, EUR, GBP]
+          description: Currency code
+          example: "USD"
+        cents:
+          type: integer
+          description: Amount in cents (for precision)
+          example: 123456
+
+    Identifier:
+      type: object
+      description: Unique identifier with type information
+      properties:
+        id:
+          type: string
+          description: Unique identifier
+          example: "order_123456789"
+        type:
+          type: string
+          enum: [order, trade, position, market, user, strategy]
+          description: Identifier type
+          example: "order"
+        source:
+          type: string
+          description: Source system
+          example: "kalshi"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2024-12-01T12:00:00Z"
+
+    # Trading Models
+    Order:
+      type: object
+      description: Order information and status
+      required:
+        - order_id
+        - ticker
+        - side
+        - action
+        - count
+        - order_type
+        - status
+        - created_at
+      properties:
+        order_id:
+          type: string
+          description: Unique order identifier
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        client_order_id:
+          type: string
+          description: Client-defined order ID
+          example: "client_order_123"
+        exchange_order_id:
+          type: string
+          description: Exchange-assigned order ID
+          example: "EXCH123456"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Order side (YES = bet on outcome, NO = bet against)
+          example: "yes"
+        action:
+          type: string
+          enum: [buy, sell]
+          description: Order action
+          example: "buy"
+        count:
+          type: integer
+          minimum: 1
+          description: Number of contracts
+          example: 10
+        price:
+          type: number
+          format: double
+          description: Order price (null for market orders)
+          example: 45.5
+          nullable: true
+        order_type:
+          type: string
+          enum: [market, limit, stop, stop_limit]
+          description: Order type
+          example: "limit"
+        time_in_force:
+          type: string
+          enum: [good_til_cancelled, immediate_or_cancel, fill_or_kill, day]
+          description: Time in force instruction
+          example: "good_til_cancelled"
+        status:
+          type: string
+          enum: [pending, open, partially_filled, filled, cancelled, rejected, expired]
+          description: Order status
+          example: "filled"
+        filled_count:
+          type: integer
+          minimum: 0
+          description: Number of contracts filled
+          example: 10
+        remaining_count:
+          type: integer
+          minimum: 0
+          description: Number of contracts remaining
+          example: 0
+        avg_fill_price:
+          type: number
+          format: double
+          description: Average fill price
+          example: 46.0
+        total_cost:
+          type: number
+          format: double
+          description: Total cost including fees
+          example: 460.50
+        fees:
+          type: number
+          format: double
+          description: Trading fees
+          example: 0.50
+        created_at:
+          type: string
+          format: date-time
+          description: Order creation time
+          example: "2024-12-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update time
+          example: "2024-12-01T12:00:05Z"
+        expires_at:
+          type: string
+          format: date-time
+          description: Order expiration time
+          example: "2024-12-01T23:59:59Z"
+          nullable: true
+        metadata:
+          type: object
+          description: Additional order metadata
+          example:
+            strategy_id: "mean_reversion_v1"
+            source: "automated"
+
+    Position:
+      type: object
+      description: Portfolio position information
+      required:
+        - position_id
+        - ticker
+        - side
+        - size
+        - avg_cost
+        - current_price
+        - market_value
+        - unrealized_pnl
+        - created_at
+      properties:
+        position_id:
+          type: string
+          description: Unique position identifier
+          example: "pos_123456789"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Position side
+          example: "yes"
+        size:
+          type: integer
+          description: Number of contracts (positive = long, negative = short)
+          example: 25
+        avg_cost:
+          type: number
+          format: double
+          description: Average cost per contract
+          example: 46.5
+        current_price:
+          type: number
+          format: double
+          description: Current market price
+          example: 48.0
+        market_value:
+          type: number
+          format: double
+          description: Current market value
+          example: 1200.0
+        unrealized_pnl:
+          type: number
+          format: double
+          description: Unrealized profit/loss
+          example: 37.5
+        realized_pnl:
+          type: number
+          format: double
+          description: Realized profit/loss
+          example: 15.0
+        total_pnl:
+          type: number
+          format: double
+          description: Total profit/loss
+          example: 52.5
+        cost_basis:
+          type: number
+          format: double
+          description: Total cost basis
+          example: 1162.5
+        created_at:
+          type: string
+          format: date-time
+          description: Position creation time
+          example: "2024-12-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update time
+          example: "2024-12-01T12:30:00Z"
+        metadata:
+          type: object
+          description: Additional position metadata
+          example:
+            strategy_id: "mean_reversion_v1"
+            entry_reason: "signal_triggered"
+
+    Trade:
+      type: object
+      description: Trade execution information
+      required:
+        - trade_id
+        - order_id
+        - ticker
+        - side
+        - count
+        - price
+        - executed_at
+      properties:
+        trade_id:
+          type: string
+          description: Unique trade identifier
+          example: "trade_123456789"
+        order_id:
+          type: string
+          description: Parent order ID
+          example: "order_123456789"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        side:
+          type: string
+          enum: [yes, no]
+          description: Trade side
+          example: "yes"
+        count:
+          type: integer
+          minimum: 1
+          description: Number of contracts traded
+          example: 10
+        price:
+          type: number
+          format: double
+          description: Execution price
+          example: 46.0
+        notional:
+          type: number
+          format: double
+          description: Trade notional value
+          example: 460.0
+        fees:
+          type: number
+          format: double
+          description: Trading fees
+          example: 0.50
+        liquidity:
+          type: string
+          enum: [maker, taker]
+          description: Liquidity provision
+          example: "taker"
+        venue:
+          type: string
+          description: Execution venue
+          example: "kalshi"
+        executed_at:
+          type: string
+          format: date-time
+          description: Execution timestamp
+          example: "2024-12-01T12:00:05Z"
+        settlement_date:
+          type: string
+          format: date
+          description: Settlement date
+          example: "2024-12-02"
+          nullable: true
+        metadata:
+          type: object
+          description: Additional trade metadata
+          example:
+            match_id: "match_123456"
+
+    # Market Data Models
+    Market:
+      type: object
+      description: Market information and current state
+      required:
+        - ticker
+        - title
+        - status
+        - yes_bid
+        - yes_ask
+        - no_bid
+        - no_ask
+        - last_price
+        - volume
+        - open_interest
+      properties:
+        ticker:
+          type: string
+          description: Unique market identifier
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        title:
+          type: string
+          description: Market title/question
+          example: "Will the Atlanta Falcons beat the New England Patriots?"
+        subtitle:
+          type: string
+          description: Additional market context
+          example: "December 1, 2024 at 1:00 PM EST"
+        category:
+          type: string
+          description: Market category
+          example: "NFL"
+        subcategory:
+          type: string
+          description: Market subcategory
+          example: "Game Winner"
+        status:
+          type: string
+          enum: [scheduled, open, closed, settled, cancelled]
+          description: Market status
+          example: "open"
+        yes_bid:
+          type: number
+          format: double
+          description: Highest bid price for YES contracts
+          example: 45.0
+        yes_ask:
+          type: number
+          format: double
+          description: Lowest ask price for YES contracts
+          example: 48.0
+        no_bid:
+          type: number
+          format: double
+          description: Highest bid price for NO contracts
+          example: 52.0
+        no_ask:
+          type: number
+          format: double
+          description: Lowest ask price for NO contracts
+          example: 55.0
+        last_price:
+          type: number
+          format: double
+          description: Last trade price
+          example: 47.0
+        volume:
+          type: integer
+          description: Total traded volume
+          example: 150000
+        open_interest:
+          type: integer
+          description: Total open contracts
+          example: 75000
+        implied_probability:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Implied probability from last price
+          example: 0.47
+        spread:
+          type: number
+          format: double
+          description: Bid-ask spread
+          example: 3.0
+        liquidity_score:
+          type: number
+          format: double
+          description: Market liquidity score (0-100)
+          example: 85.5
+        event_time:
+          type: string
+          format: date-time
+          description: Event start time
+          example: "2024-12-01T18:00:00Z"
+        settlement_time:
+          type: string
+          format: date-time
+          description: Expected settlement time
+          example: "2024-12-01T21:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          description: Market creation time
+          example: "2024-11-15T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update time
+          example: "2024-12-01T12:00:00Z"
+
+    Candlestick:
+      type: object
+      description: OHLCV candlestick data
+      required:
+        - timestamp
+        - open
+        - high
+        - low
+        - close
+        - volume
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Candlestick timestamp
+          example: "2024-12-01T12:00:00Z"
+        open:
+          type: number
+          format: double
+          description: Opening price
+          example: 45.0
+        high:
+          type: number
+          format: double
+          description: Highest price
+          example: 48.0
+        low:
+          type: number
+          format: double
+          description: Lowest price
+          example: 44.0
+        close:
+          type: number
+          format: double
+          description: Closing price
+          example: 47.0
+        volume:
+          type: integer
+          description: Trading volume
+          example: 1500
+        vwap:
+          type: number
+          format: double
+          description: Volume-weighted average price
+          example: 46.2
+        trades:
+          type: integer
+          description: Number of trades
+          example: 125
+        period:
+          type: string
+          description: Time period
+          example: "1h"
+
+    # Analysis Models
+    Signal:
+      type: object
+      description: Trading signal information
+      required:
+        - signal_id
+        - ticker
+        - signal_type
+        - strength
+        - confidence
+        - generated_at
+      properties:
+        signal_id:
+          type: string
+          description: Unique signal identifier
+          example: "signal_123456789"
+        strategy_id:
+          type: string
+          description: Strategy that generated the signal
+          example: "mean_reversion_v1"
+        ticker:
+          type: string
+          description: Market ticker
+          example: "KXNFLGAME-2024-12-01-NE-ATL"
+        signal_type:
+          type: string
+          enum: [buy, sell, hold, close]
+          description: Signal type
+          example: "buy"
+        strength:
+          type: number
+          format: double
+          minimum: -1
+          maximum: 1
+          description: Signal strength (-1 to 1)
+          example: 0.75
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Signal confidence (0 to 1)
+          example: 0.85
+        recommended_size:
+          type: number
+          format: double
+          description: Recommended position size
+          example: 10.5
+        recommended_price:
+          type: number
+          format: double
+          description: Recommended entry price
+          example: 46.0
+        stop_loss:
+          type: number
+          format: double
+          description: Recommended stop loss price
+          example: 44.0
+        take_profit:
+          type: number
+          format: double
+          description: Recommended take profit price
+          example: 48.0
+        time_horizon:
+          type: string
+          enum: [intraday, daily, weekly, monthly]
+          description: Expected holding period
+          example: "intraday"
+        reasoning:
+          type: string
+          description: Signal reasoning
+          example: "Price deviation detected from moving average"
+        generated_at:
+          type: string
+          format: date-time
+          description: Signal generation time
+          example: "2024-12-01T12:00:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          description: Signal expiration time
+          example: "2024-12-01T12:30:00Z"
+        metadata:
+          type: object
+          description: Additional signal metadata
+          example:
+            indicators:
+              rsi: 35.2
+              moving_avg: 48.5
+            data_points: 100
+
+    Backtest:
+      type: object
+      description: Backtest results and configuration
+      required:
+        - backtest_id
+        - strategy_id
+        - start_date
+        - end_date
+        - initial_capital
+        - final_capital
+        - total_return
+        - max_drawdown
+        - sharpe_ratio
+      properties:
+        backtest_id:
+          type: string
+          description: Unique backtest identifier
+          example: "backtest_123456789"
+        strategy_id:
+          type: string
+          description: Strategy identifier
+          example: "mean_reversion_v1"
+        start_date:
+          type: string
+          format: date
+          description: Backtest start date
+          example: "2024-01-01"
+        end_date:
+          type: string
+          format: date
+          description: Backtest end date
+          example: "2024-11-30"
+        initial_capital:
+          type: number
+          format: double
+          description: Starting capital
+          example: 10000.0
+        final_capital:
+          type: number
+          format: double
+          description: Ending capital
+          example: 12500.0
+        total_return:
+          type: number
+          format: double
+          description: Total return percentage
+          example: 0.25
+        annualized_return:
+          type: number
+          format: double
+          description: Annualized return
+          example: 0.27
+        max_drawdown:
+          type: number
+          format: double
+          description: Maximum drawdown percentage
+          example: -0.08
+        sharpe_ratio:
+          type: number
+          format: double
+          description: Sharpe ratio
+          example: 1.45
+        sortino_ratio:
+          type: number
+          format: double
+          description: Sortino ratio
+          example: 2.1
+        win_rate:
+          type: number
+          format: double
+          description: Win rate percentage
+          example: 0.62
+        profit_factor:
+          type: number
+          format: double
+          description: Profit factor
+          example: 1.85
+        total_trades:
+          type: integer
+          description: Total number of trades
+          example: 156
+        winning_trades:
+          type: integer
+          description: Number of winning trades
+          example: 97
+        losing_trades:
+          type: integer
+          description: Number of losing trades
+          example: 59
+        avg_win:
+          type: number
+          format: double
+          description: Average winning trade
+          example: 85.5
+        avg_loss:
+          type: number
+          format: double
+          description: Average losing trade
+          example: -42.3
+        largest_win:
+          type: number
+          format: double
+          description: Largest winning trade
+          example: 525.0
+        largest_loss:
+          type: number
+          format: double
+          description: Largest losing trade
+          example: -185.0
+        created_at:
+          type: string
+          format: date-time
+          description: Backtest creation time
+          example: "2024-12-01T12:00:00Z"
+        configuration:
+          type: object
+          description: Backtest configuration parameters
+          example:
+            commission: 0.001
+            slippage: 0.01
+            position_sizing: "fixed"
+            max_position_size: 1000
+
+    # Collection Models
+    DataSource:
+      type: object
+      description: Data source configuration and status
+      required:
+        - source_id
+        - source_type
+        - name
+        - status
+      properties:
+        source_id:
+          type: string
+          description: Unique source identifier
+          example: "espn_nfl"
+        source_type:
+          type: string
+          enum: [api, websocket, file, database]
+          description: Source type
+          example: "api"
+        name:
+          type: string
+          description: Source name
+          example: "ESPN NFL API"
+        description:
+          type: string
+          description: Source description
+          example: "Real-time NFL scores and game data"
+        url:
+          type: string
+          format: uri
+          description: Source endpoint URL
+          example: "https://site.api.espn.com/apis/sports/football/scores"
+        status:
+          type: string
+          enum: [active, inactive, error, maintenance]
+          description: Source status
+          example: "active"
+        last_update:
+          type: string
+          format: date-time
+          description: Last successful update
+          example: "2024-12-01T12:00:00Z"
+        rate_limit:
+          type: object
+          description: Rate limiting information
+          properties:
+            requests_per_hour:
+              type: integer
+              description: Hourly request limit
+              example: 1000
+            current_usage:
+              type: integer
+              description: Current hourly usage
+              example: 250
+            reset_time:
+              type: string
+              format: date-time
+              description: Rate limit reset time
+              example: "2024-12-01T13:00:00Z"
+        authentication:
+          type: object
+          description: Authentication configuration
+          properties:
+            type:
+              type: string
+              enum: [api_key, bearer, oauth2, none]
+              description: Authentication type
+              example: "api_key"
+            configured:
+              type: boolean
+              description: Authentication configured
+              example: true
+        configuration:
+          type: object
+          description: Source-specific configuration
+          example:
+            timeout: 30
+            retry_attempts: 3
+            data_format: "json"
+
+    # Utility Models
+    Pagination:
+      type: object
+      description: Pagination information
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Items per page
+          example: 100
+        total_items:
+          type: integer
+          minimum: 0
+          description: Total number of items
+          example: 1250
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+          example: 13
+        has_next:
+          type: boolean
+          description: Has next page
+          example: true
+        has_previous:
+          type: boolean
+          description: Has previous page
+          example: false
+        next_cursor:
+          type: string
+          description: Cursor for next page (cursor-based pagination)
+          example: "next_page_token_123"
+          nullable: true
+
+    Error:
+      type: object
+      description: Standard error response
+      required:
+        - error
+        - code
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Invalid market ticker"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "INVALID_TICKER"
+        category:
+          type: string
+          enum: [validation, authentication, authorization, rate_limit, server, network]
+          description: Error category
+          example: "validation"
+        details:
+          type: object
+          description: Additional error details
+          example:
+            field: "ticker"
+            value: "INVALID_TICKER"
+            expected_format: "KXNFLGAME-YYYY-MM-DD-TEAM1-TEAM2"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2024-12-01T12:00:00Z"
+        request_id:
+          type: string
+          description: Request identifier for debugging
+          example: "req_123456789"
+        retry_after:
+          type: integer
+          description: Seconds to wait before retrying
+          example: 60
+          nullable: true
+
+    HealthCheck:
+      type: object
+      description: System health check response
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall system status
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: Check timestamp
+          example: "2024-12-01T12:00:00Z"
+        version:
+          type: string
+          description: System version
+          example: "1.2.3"
+        uptime:
+          type: integer
+          description: Uptime in seconds
+          example: 86400
+        checks:
+          type: object
+          description: Individual component checks
+          properties:
+            database:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail, warn]
+                  example: "pass"
+                response_time:
+                  type: number
+                  format: double
+                  example: 15.5
+                message:
+                  type: string
+                  example: "Database responding normally"
+            api:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail, warn]
+                  example: "pass"
+                response_time:
+                  type: number
+                  format: double
+                  example: 45.2
+                message:
+                  type: string
+                  example: "API endpoints responding"
+            websocket:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail, warn]
+                  example: "pass"
+                connections:
+                  type: integer
+                  example: 150
+                message:
+                  type: string
+                  example: "WebSocket connections stable"
+
+    # Enums
+    OrderSide:
+      type: string
+      enum: [yes, no]
+      description: Order side enumeration
+
+    OrderAction:
+      type: string
+      enum: [buy, sell]
+      description: Order action enumeration
+
+    OrderType:
+      type: string
+      enum: [market, limit, stop, stop_limit]
+      description: Order type enumeration
+
+    OrderStatus:
+      type: string
+      enum: [pending, open, partially_filled, filled, cancelled, rejected, expired]
+      description: Order status enumeration
+
+    TimeInForce:
+      type: string
+      enum: [good_til_cancelled, immediate_or_cancel, fill_or_kill, day]
+      description: Time in force enumeration
+
+    MarketStatus:
+      type: string
+      enum: [scheduled, open, closed, settled, cancelled]
+      description: Market status enumeration
+
+    SignalType:
+      type: string
+      enum: [buy, sell, hold, close]
+      description: Signal type enumeration
+
+    DataSourceType:
+      type: string
+      enum: [api, websocket, file, database]
+      description: Data source type enumeration
+
+    ErrorCategory:
+      type: string
+      enum: [validation, authentication, authorization, rate_limit, server, network]
+      description: Error category enumeration

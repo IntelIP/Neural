@@ -1,8 +1,8 @@
 # Contributing to Neural SDK
 
-Thank you for your interest in contributing to Neural SDK! This document provides guidelines and instructions for contributing.
+This document provides guidelines and instructions for contributing to Neural SDK.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
@@ -13,11 +13,11 @@ Thank you for your interest in contributing to Neural SDK! This document provide
 - [Testing Guidelines](#testing-guidelines)
 - [Documentation](#documentation)
 
-## 🤝 Code of Conduct
+## Code of Conduct
 
 This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to contributors@neural-sdk.dev.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -57,7 +57,7 @@ This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participatin
    pre-commit install
    ```
 
-## 🔨 Making Changes
+## Making Changes
 
 ### Branch Naming Convention
 
@@ -125,7 +125,7 @@ git merge upstream/main
 git push origin main
 ```
 
-## 🎯 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting
 
@@ -176,7 +176,7 @@ git push origin main
 - Once approved, maintainers will merge
 - Don't force push after review starts
 
-## 📝 Code Standards
+## Code Standards
 
 ### Python Style
 
@@ -244,7 +244,7 @@ def calculate_position_size(
     return int(capital * edge * kelly_fraction)
 ```
 
-## 🧪 Testing Guidelines
+## Testing Guidelines
 
 ### Writing Tests
 
@@ -304,7 +304,7 @@ pytest -v
 pytest -x
 ```
 
-## 📚 Documentation
+## Documentation
 
 ### Adding Documentation
 
@@ -343,11 +343,10 @@ The Kelly Criterion determines optimal position size based on edge and capital.
 ```python
 from neural.risk import calculate_position_size
 
-# Calculate position size
 size = calculate_position_size(
     capital=10000,
     edge=0.05,
-    kelly_fraction=0.25  # Quarter Kelly for safety
+    kelly_fraction=0.25
 )
 
 print(f"Suggested position: {size} contracts")
@@ -366,7 +365,7 @@ print(f"Suggested position: {size} contracts")
 3. Consider correlation across positions
 ```
 
-## 🐛 Reporting Bugs
+## Reporting Bugs
 
 ### Before Reporting
 
@@ -407,7 +406,7 @@ from neural import ...
 Any other relevant information.
 ```
 
-## 💡 Feature Requests
+## Feature Requests
 
 We welcome feature ideas! Open an issue with:
 
@@ -416,23 +415,21 @@ We welcome feature ideas! Open an issue with:
 3. **Alternatives** - What other solutions did you consider?
 4. **Additional context** - Anything else we should know?
 
-## 📜 License
+## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
-## 🙏 Recognition
+## Recognition
 
 Contributors are recognized in:
 - GitHub contributors page
 - Release notes
 - Project README (for significant contributions)
 
-## 📞 Questions?
+## Questions?
 
 - **Documentation**: https://neural-sdk.mintlify.app
 - **Discussions**: https://github.com/IntelIP/Neural/discussions
 - **Email**: contributors@neural-sdk.dev
 
----
-
-Thank you for contributing to Neural SDK! 🚀
+Thank you for contributing to Neural SDK!

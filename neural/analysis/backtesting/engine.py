@@ -47,7 +47,7 @@ class BacktestResult:
     def __str__(self) -> str:
         return f"""
 Backtest Results: {self.strategy_name}
-{'='*50}
+{"=" * 50}
 Period: {self.start_date.date()} to {self.end_date.date()}
 Initial Capital: ${self.initial_capital:,.2f}
 Final Capital: ${self.final_capital:,.2f}
@@ -155,8 +155,8 @@ class Backtester:
         self, strategy, market_data: pd.DataFrame, espn_data: dict | None
     ) -> list[dict]:
         """Run backtest sequentially"""
-        trades = []
-        positions = {}
+        trades: list[dict] = []
+        positions: dict[str, Any] = {}
         equity_curve = [self.initial_capital]
 
         # Group by timestamp for synchronized processing
@@ -170,7 +170,7 @@ class Backtester:
 
             # Process each market at this timestamp
             for _, market in current_data.iterrows():
-                ticker = market["ticker"]
+                ticker = str(market["ticker"])
 
                 # Update existing positions
                 if ticker in positions:
@@ -182,7 +182,7 @@ class Backtester:
                     # Check exit conditions
                     if strategy.should_close_position(position):
                         # Close position
-                        exit_price = self._apply_slippage(position.current_price, "sell")
+                        exit_price = self._apply_slippage(float(position.current_price), "sell")
                         pnl = self._calculate_pnl(position, exit_price)
                         fees = self._calculate_fees(exit_price, position.size)
                         net_pnl = pnl - fees
@@ -212,7 +212,7 @@ class Backtester:
                     # Open new position
                     side = "yes" if signal.type.value == "buy_yes" else "no"
                     entry_price = self._apply_slippage(
-                        market["yes_ask"] if side == "yes" else market["no_ask"], "buy"
+                        float(market["yes_ask"] if side == "yes" else market["no_ask"]), "buy"
                     )
                     fees = self._calculate_fees(entry_price, signal.size)
 
@@ -290,7 +290,9 @@ class Backtester:
         # Process chunks in parallel
         futures = []
         for chunk in chunks:
-            future = self.executor.submit(self._run_sequential_backtest, strategy, chunk, espn_data)
+            future = self.executor.submit(
+                self._run_sequential_backtest, strategy, pd.DataFrame(chunk), espn_data
+            )
             futures.append(future)
 
         # Combine results
@@ -411,12 +413,14 @@ class Backtester:
 
         # Win/loss statistics
         completed_trades = trades_df[trades_df["action"] == "close"]
+        wins = pd.DataFrame()
+        losses = pd.DataFrame()
         if len(completed_trades) > 0:
             wins = completed_trades[completed_trades["pnl"] > 0]
             losses = completed_trades[completed_trades["pnl"] <= 0]
             win_rate = len(wins) / len(completed_trades)
-            avg_win = wins["pnl"].mean() if len(wins) > 0 else 0
-            avg_loss = losses["pnl"].mean() if len(losses) > 0 else 0
+            avg_win = float(wins["pnl"].mean()) if len(wins) > 0 else 0
+            avg_loss = float(losses["pnl"].mean()) if len(losses) > 0 else 0
             profit_factor = (
                 abs(wins["pnl"].sum() / losses["pnl"].sum())
                 if len(losses) > 0 and losses["pnl"].sum() != 0
@@ -458,8 +462,8 @@ class Backtester:
             max_drawdown_pct=max_drawdown_pct,
             win_rate=win_rate,
             total_trades=len(completed_trades),
-            winning_trades=len(wins) if "wins" in locals() else 0,
-            losing_trades=len(losses) if "losses" in locals() else 0,
+            winning_trades=len(wins),
+            losing_trades=len(losses),
             avg_win=avg_win,
             avg_loss=avg_loss,
             profit_factor=profit_factor,

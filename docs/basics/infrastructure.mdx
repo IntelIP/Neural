@@ -14,7 +14,7 @@ Summarize the external services Neural touches (REST, WebSocket, FIX), their lat
 | FIX API | `fix.elections.kalshi.com:8228` | Ultra-low-latency order entry and execution reports | ✅ operational |
 | WebSocket | `/trade-api/ws/v2` | Real-time market data stream | ⚠️ requires Kalshi approval |
 
-Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes <100 ms once enabled.
+Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes \<100 ms once enabled.
 
 ## Quick smoke tests
 
@@ -51,7 +51,6 @@ REST polling (baseline) ─┬─> Strategy / Aggregator ──> TradingClient
 - **403 on WebSocket** – request streaming permissions from Kalshi support or keep using REST polling.
 - **FIX handshake fails** – verify FIX-specific keys (different from REST key ID) and check firewall rules for port 8228.
 - **REST rate limiting (429)** – the SDK retries automatically; still, back off to 2–5s polling during off-peak or when testing.
-```
 
 ## Next
 

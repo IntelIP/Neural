@@ -1,4 +1,7 @@
+import base64
 from typing import Any
+
+import pytest
 
 from neural.trading.client import TradingClient
 
@@ -27,11 +30,6 @@ class DummyClient:
         self.portfolio = DummyApi()
         self.markets = DummyApi()
         self.exchange = DummyApi()
-
-
-import base64
-
-import pytest
 
 
 def _fake_creds(monkeypatch: pytest.MonkeyPatch) -> None:
