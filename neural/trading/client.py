@@ -163,8 +163,9 @@ class TradingClient:
             # Register with risk manager if provided
             if self.risk_manager and stop_loss_config:
                 try:
-                    from neural.analysis.risk import Position
                     import time
+
+                    from neural.analysis.risk import Position
 
                     position = Position(
                         market_id=market_id,

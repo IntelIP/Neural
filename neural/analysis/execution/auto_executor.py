@@ -256,7 +256,7 @@ class AutoExecutor(RiskEventHandler):
         _LOG.critical("EMERGENCY STOP ACTIVATED")
 
         # Cancel all active orders
-        for order_id, order_info in self.active_orders.items():
+        for order_id, _order_info in self.active_orders.items():
             try:
                 if hasattr(self.trading_client, "cancel_order"):
                     self.trading_client.cancel_order(order_id)

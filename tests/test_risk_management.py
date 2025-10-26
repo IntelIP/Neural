@@ -4,7 +4,7 @@ Tests for Risk Management System
 Tests stop-loss functionality, risk monitoring, and automated execution.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

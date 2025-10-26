@@ -21,7 +21,8 @@ _LOG = logging.getLogger(__name__)
 
 # Import risk management types if available
 try:
-    from neural.analysis.risk import Position as RiskPosition, StopLossConfig, StopLossType
+    from neural.analysis.risk import Position as RiskPosition
+    from neural.analysis.risk import StopLossConfig, StopLossType
 
     RISK_MODULE_AVAILABLE = True
 except ImportError:
@@ -322,9 +323,11 @@ class Backtester:
                             entry_price=entry_price,
                             current_price=entry_price,
                             entry_time=timestamp,
-                            stop_loss=StopLossConfig(type=StopLossType.PERCENTAGE, value=0.05)
-                            if strategy.stop_loss
-                            else None,  # Default 5% stop-loss
+                            stop_loss=(
+                                StopLossConfig(type=StopLossType.PERCENTAGE, value=0.05)
+                                if strategy.stop_loss
+                                else None
+                            ),  # Default 5% stop-loss
                         )
                         self.risk_manager.add_position(risk_position)
 

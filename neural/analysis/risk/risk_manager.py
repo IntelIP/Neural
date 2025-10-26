@@ -282,10 +282,11 @@ class RiskManager:
         return {
             "portfolio_value": self.portfolio_value,
             "peak_portfolio_value": self.peak_portfolio_value,
-            "drawdown_pct": (self.peak_portfolio_value - self.portfolio_value)
-            / self.peak_portfolio_value
-            if self.peak_portfolio_value > 0
-            else 0,
+            "drawdown_pct": (
+                (self.peak_portfolio_value - self.portfolio_value) / self.peak_portfolio_value
+                if self.peak_portfolio_value > 0
+                else 0
+            ),
             "daily_pnl": self.daily_pnl,
             "total_pnl": total_pnl,
             "open_positions": len(self.positions),
@@ -412,12 +413,16 @@ class StopLossEngine:
             position.current_price,
             position.side,
             strategy=self._map_stop_type_to_strategy(position.stop_loss.type),
-            stop_pct=position.stop_loss.value
-            if position.stop_loss.type == StopLossType.PERCENTAGE
-            else 0.05,
-            trail_pct=position.stop_loss.value
-            if position.stop_loss.type == StopLossType.TRAILING
-            else 0.03,
+            stop_pct=(
+                position.stop_loss.value
+                if position.stop_loss.type == StopLossType.PERCENTAGE
+                else 0.05
+            ),
+            trail_pct=(
+                position.stop_loss.value
+                if position.stop_loss.type == StopLossType.TRAILING
+                else 0.03
+            ),
             volatility=market_volatility,
             time_held=current_time - position.entry_time,
         )

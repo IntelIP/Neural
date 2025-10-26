@@ -8,17 +8,18 @@ Tests for:
 - Moneyline filtering utilities
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
+
 import pandas as pd
+import pytest
 
 from neural.data_collection.kalshi import (
     KalshiMarketsSource,
-    get_nba_games,
+    SportMarketCollector,
     filter_moneyline_markets,
     get_moneyline_markets,
-    SportMarketCollector,
+    get_nba_games,
 )
 
 

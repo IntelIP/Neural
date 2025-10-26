@@ -114,7 +114,7 @@ class KalshiMarketsSource:
         Returns:
             DataFrame with OHLCV data and metadata
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         from neural.auth.http_client import KalshiHTTPClient
 

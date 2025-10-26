@@ -9,17 +9,16 @@ and automated execution for live trading operations.
 import asyncio
 import logging
 import time
-from typing import Dict, Any
 
+from neural.analysis.execution import AutoExecutor, ExecutionConfig
 from neural.analysis.risk import (
+    RiskLimits,
     RiskManager,
     StopLossConfig,
-    StopLossType,
-    RiskLimits,
     StopLossEngine,
+    StopLossType,
 )
-from neural.analysis.execution import AutoExecutor, ExecutionConfig
-from neural.trading import TradingClient, KalshiWebSocketClient
+from neural.trading import KalshiWebSocketClient, TradingClient
 
 # Configure logging
 logging.basicConfig(
@@ -148,7 +147,6 @@ class RiskManagementDemo:
                 break  # Stop-loss triggered
 
             # Show current metrics
-            metrics = self.risk_manager.get_risk_metrics()
             logger.info(
                 "Current P&L: $%.2f (%.2f%%)", position.unrealized_pnl, position.pnl_percentage
             )
