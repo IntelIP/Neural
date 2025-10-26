@@ -7,7 +7,6 @@ in trading algorithms. It uses Twitter-API.io for simplified API access.
 
 import asyncio
 import os
-from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -149,7 +148,7 @@ class TwitterAPISource(DataSource):
 
         return await self.search_tweets(query, self.config.max_results)
 
-    async def collect(self) -> AsyncGenerator[dict[str, Any], None]:
+    async def collect(self) -> Any:
         """
         Continuously collect Twitter data.
 
