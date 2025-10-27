@@ -55,12 +55,13 @@ if not df.empty:
     if not sea_data.empty:
         print("\n🏈 Seattle Seahawks:")
         print(f"  Data points: {len(sea_data)}")
-        print(
-            f"  Starting price: ${sea_data.iloc[0]['yes_mid']:.3f} ({sea_data.iloc[0]['implied_prob']:.1f}%)"
-        )
-        print(
-            f"  Ending price: ${sea_data.iloc[-1]['yes_mid']:.3f} ({sea_data.iloc[-1]['implied_prob']:.1f}%)"
-        )
+        start_price = sea_data.iloc[0]["yes_mid"]
+        start_prob = sea_data.iloc[0]["implied_prob"]
+        print(f"  Starting price: ${start_price:.3f} ({start_prob:.1f}%)")
+
+        end_price = sea_data.iloc[-1]["yes_mid"]
+        end_prob = sea_data.iloc[-1]["implied_prob"]
+        print(f"  Ending price: ${end_price:.3f} ({end_prob:.1f}%)")
         print(f"  Min price: ${sea_data['yes_mid'].min():.3f}")
         print(f"  Max price: ${sea_data['yes_mid'].max():.3f}")
         print(f"  Avg spread: ${sea_data['yes_spread'].mean():.3f}")
@@ -68,19 +69,21 @@ if not df.empty:
         price_change = sea_data.iloc[-1]["yes_mid"] - sea_data.iloc[0]["yes_mid"]
         if abs(price_change) > 0.001:
             direction = "📈" if price_change > 0 else "📉"
-            print(f"  Movement: {direction} ${abs(price_change):.3f} ({price_change*100:+.1f}¢)")
+            movement_cents = price_change * 100
+        print(f"  Movement: {direction} ${abs(price_change):.3f} ({movement_cents:+.1f}¢)")
 
     # Analyze Arizona data
     ari_data = df[df["ticker"].str.contains("ARI")]
     if not ari_data.empty:
         print("\n🏈 Arizona Cardinals:")
         print(f"  Data points: {len(ari_data)}")
-        print(
-            f"  Starting price: ${ari_data.iloc[0]['yes_mid']:.3f} ({ari_data.iloc[0]['implied_prob']:.1f}%)"
-        )
-        print(
-            f"  Ending price: ${ari_data.iloc[-1]['yes_mid']:.3f} ({ari_data.iloc[-1]['implied_prob']:.1f}%)"
-        )
+        ari_start_price = ari_data.iloc[0]["yes_mid"]
+        ari_start_prob = ari_data.iloc[0]["implied_prob"]
+        print(f"  Starting price: ${ari_start_price:.3f} ({ari_start_prob:.1f}%)")
+
+        ari_end_price = ari_data.iloc[-1]["yes_mid"]
+        ari_end_prob = ari_data.iloc[-1]["implied_prob"]
+        print(f"  Ending price: ${ari_end_price:.3f} ({ari_end_prob:.1f}%)")
         print(f"  Min price: ${ari_data['yes_mid'].min():.3f}")
         print(f"  Max price: ${ari_data['yes_mid'].max():.3f}")
         print(f"  Avg spread: ${ari_data['yes_spread'].mean():.3f}")
@@ -88,7 +91,8 @@ if not df.empty:
         price_change = ari_data.iloc[-1]["yes_mid"] - ari_data.iloc[0]["yes_mid"]
         if abs(price_change) > 0.001:
             direction = "📈" if price_change > 0 else "📉"
-            print(f"  Movement: {direction} ${abs(price_change):.3f} ({price_change*100:+.1f}¢)")
+            movement_cents = price_change * 100
+        print(f"  Movement: {direction} ${abs(price_change):.3f} ({movement_cents:+.1f}¢)")
 
     # Combined analysis
     if not sea_data.empty and not ari_data.empty:
@@ -99,9 +103,10 @@ if not df.empty:
 
         print(f"  Total probability: {total:.1f}%")
         if total < 98:
-            print(f"  💰 ARBITRAGE OPPORTUNITY: {100-total:.1f}% profit potential")
+            arbitrage_profit = 100 - total
+            print(f"  💰 ARBITRAGE OPPORTUNITY: {arbitrage_profit:.1f}% profit potential")
         elif total > 102:
-            print(f"  ⚠️ OVERPRICED: Total exceeds 100% by {total-100:.1f}%")
+            print(f"  ⚠️ OVERPRICED: Total exceeds 100% by {total - 100:.1f}%")
 
         # Volume comparison
         sea_vol = sea_data.iloc[-1]["volume"]

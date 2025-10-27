@@ -56,7 +56,8 @@ class KalshiHistoricalDataSource(BaseDataSource):
 
         # Initialize HTTP client for API access
         self.http_client = KalshiHTTPClient(
-            api_key_id=api_key, private_key_pem=None  # Will use env/file defaults
+            api_key_id=api_key,
+            private_key_pem=None,  # Will use env/file defaults
         )
 
         logger.info(f"Initialized KalshiHistoricalDataSource: {config.name}")

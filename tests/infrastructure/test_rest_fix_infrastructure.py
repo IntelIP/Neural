@@ -114,7 +114,7 @@ class HybridTradingInfrastructure:
                         signal_type="ARBITRAGE",
                         action="BUY_BOTH",
                         price=sea_snap.yes_ask,
-                        reason=f"Arbitrage opportunity: ${profit/100:.3f} profit",
+                        reason=f"Arbitrage opportunity: ${profit / 100:.3f} profit",
                         confidence=0.95,
                     )
                     self._generate_signal(signal)
@@ -297,7 +297,8 @@ async def run_hybrid_infrastructure():
     # Create REST client for market data
     print("\n📡 Connecting REST API for market data...")
     rest_client = RESTStreamingClient(
-        on_market_update=infra.handle_market_update, poll_interval=1.0  # Poll every second
+        on_market_update=infra.handle_market_update,
+        poll_interval=1.0,  # Poll every second
     )
 
     # Create FIX client for execution

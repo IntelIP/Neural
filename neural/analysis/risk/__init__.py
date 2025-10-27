@@ -16,6 +16,16 @@ from .position_sizing import (
     risk_parity,
     volatility_adjusted,
 )
+from .risk_manager import (
+    Position,
+    RiskEvent,
+    RiskEventHandler,
+    RiskLimits,
+    RiskManager,
+    StopLossConfig,
+    StopLossEngine,
+    StopLossType,
+)
 
 __all__ = [
     "kelly_criterion",
@@ -28,4 +38,12 @@ __all__ = [
     "optimal_f",
     "risk_parity",
     "PositionSizer",
+    "RiskManager",
+    "StopLossEngine",
+    "StopLossConfig",
+    "StopLossType",
+    "RiskLimits",
+    "Position",
+    "RiskEvent",
+    "RiskEventHandler",
 ]

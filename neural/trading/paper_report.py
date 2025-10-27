@@ -396,7 +396,7 @@ class PaperTradingReporter:
             <body>
                 <div class="header">
                     <h1>📊 Paper Trading Performance Report</h1>
-                    <p>Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p>Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
                 </div>
 
                 <h2>📈 Performance Summary</h2>
@@ -406,29 +406,29 @@ class PaperTradingReporter:
                 html_content += f"""
                 <div class="metric-box">
                     <h3>Total Trades</h3>
-                    <p><strong>{performance['trade_metrics']['total_trades']}</strong></p>
+                    <p><strong>{performance["trade_metrics"]["total_trades"]}</strong></p>
                 </div>
                 <div class="metric-box">
                     <h3>Win Rate</h3>
-                    <p><strong>{performance['trade_metrics']['win_rate']:.1f}%</strong></p>
+                    <p><strong>{performance["trade_metrics"]["win_rate"]:.1f}%</strong></p>
                 </div>
                 <div class="metric-box">
                     <h3>Total P&L</h3>
-                    <p class="{'positive' if performance['pnl_metrics']['total_realized_pnl'] >= 0 else 'negative'}">
-                        <strong>${performance['pnl_metrics']['total_realized_pnl']:.2f}</strong>
+                    <p class="{"positive" if performance["pnl_metrics"]["total_realized_pnl"] >= 0 else "negative"}">
+                        <strong>${performance["pnl_metrics"]["total_realized_pnl"]:.2f}</strong>
                     </p>
                 </div>
                 <div class="metric-box">
                     <h3>Profit Factor</h3>
-                    <p><strong>{performance['pnl_metrics']['profit_factor']:.2f}</strong></p>
+                    <p><strong>{performance["pnl_metrics"]["profit_factor"]:.2f}</strong></p>
                 </div>
                 """
 
             if "error" not in sentiment_analysis:
                 html_content += f"""
                 <h2>🎯 Sentiment Analysis</h2>
-                <p>Correlation between sentiment and P&L: <strong>{sentiment_analysis.get('correlation_sentiment_pnl', 0):.3f}</strong></p>
-                <p>Correlation between confidence and P&L: <strong>{sentiment_analysis.get('correlation_confidence_pnl', 0):.3f}</strong></p>
+                <p>Correlation between sentiment and P&L: <strong>{sentiment_analysis.get("correlation_sentiment_pnl", 0):.3f}</strong></p>
+                <p>Correlation between confidence and P&L: <strong>{sentiment_analysis.get("correlation_confidence_pnl", 0):.3f}</strong></p>
                 """
 
             html_content += """

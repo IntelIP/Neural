@@ -22,7 +22,7 @@ HAS_CREDS = bool(
 
 pytestmark = pytest.mark.skipif(
     not HAS_CREDS,
-    reason="Kalshi credentials not configured; set KALSHI_API_KEY_ID and private key envs",
+    reason=("Kalshi credentials not configured; set KALSHI_API_KEY_ID and private key envs"),
 )
 
 

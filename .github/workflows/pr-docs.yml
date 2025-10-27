@@ -46,10 +46,10 @@ jobs:
         run: |
           python scripts/check_docstring_coverage.py
 
-      - name: Validate example documentation
-        if: steps.changes.outputs.examples == 'true'
-        run: |
-          python scripts/validate_example_docs.py
+       - name: Validate example documentation
+         if: steps.changes.outputs.examples == 'true'
+         run: |
+           python scripts/validate_examples.py
 
       - name: Check for API documentation updates
         if: steps.changes.outputs.code == 'true'

@@ -8,6 +8,7 @@ Provides comprehensive backtesting capabilities with support for:
 - Detailed performance metrics
 """
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,6 +16,21 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+_LOG = logging.getLogger(__name__)
+
+# Import risk management types if available
+try:
+    from neural.analysis.risk import Position as RiskPosition
+    from neural.analysis.risk import StopLossConfig, StopLossType
+
+    RISK_MODULE_AVAILABLE = True
+except Exception as e:
+    _LOG.warning(f"Risk module not available: {e}")
+    RISK_MODULE_AVAILABLE = False
+    RiskPosition = None
+    StopLossConfig = None
+    StopLossType = None
 
 
 @dataclass
@@ -85,6 +101,7 @@ class Backtester:
         commission: float = 0.0,  # Additional commission if any
         initial_capital: float = 1000.0,
         max_workers: int = 4,
+        risk_manager: Any = None,  # Optional risk manager for stop-loss simulation
     ):
         """
         Initialize backtesting engine.
@@ -97,6 +114,7 @@ class Backtester:
             commission: Additional commission per trade
             initial_capital: Starting capital for backtest
             max_workers: Number of parallel workers
+            risk_manager: Optional RiskManager for stop-loss and risk simulation
         """
         self.data_source = data_source
         self.espn_source = espn_source
@@ -105,7 +123,12 @@ class Backtester:
         self.commission = commission
         self.initial_capital = initial_capital
         self.max_workers = max_workers
+        self.risk_manager = risk_manager
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
+
+        # Initialize risk manager if provided
+        if self.risk_manager:
+            self.risk_manager.portfolio_value = self.initial_capital
 
     def backtest(
         self,
@@ -175,12 +198,49 @@ class Backtester:
                 # Update existing positions
                 if ticker in positions:
                     position = positions[ticker]
+                    old_price = position.current_price
                     position.current_price = (
                         market["yes_ask"] if position.side == "yes" else market["no_ask"]
                     )
 
+                    # Update risk manager and check for stop-loss triggers
+                    risk_events = []
+                    if (
+                        self.risk_manager
+                        and RISK_MODULE_AVAILABLE
+                        and ticker in self.risk_manager.positions
+                    ):
+                        risk_events = self.risk_manager.update_position_price(
+                            ticker, position.current_price
+                        )
+                        if any(event.value == "stop_loss_triggered" for event in risk_events):
+                            # Force close position due to stop-loss
+                            _LOG.info(f"Stop-loss triggered for {ticker} during backtest")
+
                     # Check exit conditions
-                    if strategy.should_close_position(position):
+                    should_close = strategy.should_close_position(position)
+                    if self.risk_manager and RISK_MODULE_AVAILABLE:
+                        should_close = should_close or any(
+                            event.value == "stop_loss_triggered" for event in risk_events
+                        )
+
+                    if should_close:
+                        risk_events = self.risk_manager.update_position_price(
+                            ticker, position.current_price
+                        )
+                        if any(event.value == "stop_loss_triggered" for event in risk_events):
+                            # Force close position due to stop-loss
+                            _LOG.info(f"Stop-loss triggered for {ticker} during backtest")
+                            # Continue to close logic below
+
+                    # Check exit conditions
+                    if strategy.should_close_position(position) or (
+                        self.risk_manager
+                        and RISK_MODULE_AVAILABLE
+                        and any(event.value == "stop_loss_triggered" for event in risk_events)
+                        if "risk_events" in locals()
+                        else False
+                    ):
                         # Close position
                         exit_price = self._apply_slippage(float(position.current_price), "sell")
                         pnl = self._calculate_pnl(position, exit_price)
@@ -204,11 +264,35 @@ class Backtester:
                         strategy.update_capital(net_pnl)
                         del positions[ticker]
 
+                        # Update risk manager
+                        if self.risk_manager and RISK_MODULE_AVAILABLE:
+                            self.risk_manager.remove_position(ticker)
+                            self.risk_manager.portfolio_value = strategy.current_capital
+
                 # Generate new signal
                 signal = strategy.analyze(current_data, espn_data=current_espn)
 
                 # Process signal
                 if signal.type.value in ["buy_yes", "buy_no"] and strategy.can_open_position():
+                    # Check risk limits if risk manager is available
+                    if self.risk_manager:
+                        # Check max positions limit
+                        if (
+                            len(self.risk_manager.positions)
+                            >= self.risk_manager.limits.max_positions
+                        ):
+                            continue  # Skip opening new position
+
+                        # Check position size limit (estimate based on current portfolio value)
+                        estimated_position_value = (
+                            signal.size * market["yes_ask"]
+                            if signal.type.value == "buy_yes"
+                            else signal.size * market["no_ask"]
+                        )
+                        position_pct = estimated_position_value / self.risk_manager.portfolio_value
+                        if position_pct > self.risk_manager.limits.max_position_size_pct:
+                            continue  # Skip oversized position
+
                     # Open new position
                     side = "yes" if signal.type.value == "buy_yes" else "no"
                     entry_price = self._apply_slippage(
@@ -230,6 +314,31 @@ class Backtester:
 
                     positions[ticker] = position
                     strategy.positions.append(position)
+
+                    # Add to risk manager if available
+                    if (
+                        self.risk_manager
+                        and RISK_MODULE_AVAILABLE
+                        and RiskPosition
+                        and StopLossConfig
+                        and StopLossType
+                    ):
+                        risk_position = RiskPosition(
+                            market_id=ticker,
+                            side=side,
+                            quantity=signal.size,
+                            entry_price=entry_price,
+                            current_price=entry_price,
+                            entry_time=timestamp,
+                            stop_loss=(
+                                StopLossConfig(type=StopLossType.PERCENTAGE, value=0.05)
+                                if strategy.stop_loss
+                                else None
+                            ),  # Default 5% stop-loss
+                            trailing_high=entry_price if side == "yes" else 0.0,
+                            trailing_low=entry_price if side == "no" else float("inf"),
+                        )
+                        self.risk_manager.add_position(risk_position)
 
                     trades.append(
                         {

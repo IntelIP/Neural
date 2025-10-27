@@ -91,8 +91,8 @@ class MarketDataHandler:
         if symbol:
             print(f"[{timestamp}] 💹 MARKET DATA for {symbol}:")
             if bid_price and ask_price:
-                print(f"    Bid: ${float(bid_price)/100:.2f} x {bid_size}")
-                print(f"    Ask: ${float(ask_price)/100:.2f} x {ask_size}")
+                print(f"    Bid: ${float(bid_price) / 100:.2f} x {bid_size}")
+                print(f"    Ask: ${float(ask_price) / 100:.2f} x {ask_size}")
                 spread = (float(ask_price) - float(bid_price)) / 100
                 print(f"    Spread: ${spread:.2f}")
 
@@ -125,8 +125,8 @@ class MarketDataHandler:
             print("\n📈 Latest Market Snapshot:")
             latest = self.market_updates[-1]
             print(f"  Symbol: {latest['symbol']}")
-            print(f"  Bid: ${float(latest['bid'])/100:.2f} x {latest['bid_size']}")
-            print(f"  Ask: ${float(latest['ask'])/100:.2f} x {latest['ask_size']}")
+            print(f"  Bid: ${float(latest['bid']) / 100:.2f} x {latest['bid_size']}")
+            print(f"  Ask: ${float(latest['ask']) / 100:.2f} x {latest['ask_size']}")
 
 
 async def test_fix_connection():
@@ -204,7 +204,8 @@ async def test_order_flow():
 
     handler = MarketDataHandler()
     config = FIXConnectionConfig(
-        sender_comp_id=api_key, cancel_on_disconnect=True  # Cancel orders on disconnect
+        sender_comp_id=api_key,
+        cancel_on_disconnect=True,  # Cancel orders on disconnect
     )
 
     client = KalshiFIXClient(config=config, on_message=handler.on_message)

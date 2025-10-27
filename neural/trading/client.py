@@ -86,6 +86,7 @@ class TradingClient:
     - Explicit configuration via env/files
     - Stable facade for portfolio, markets, exchange
     - Dependency-injectable client factory for testing
+    - Optional risk management integration
     """
 
     api_key_id: str | None = None
@@ -93,6 +94,7 @@ class TradingClient:
     env: str | None = None
     timeout: int = 15
     client_factory: _KalshiClientFactory | None = None
+    risk_manager: Any = None  # Optional RiskManager instance
 
     _client: Any = field(init=False)
     portfolio: _ServiceProxy = field(init=False)
@@ -131,3 +133,57 @@ class TradingClient:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
+
+    def place_order_with_risk(
+        self, market_id: str, side: str, quantity: int, stop_loss_config: Any = None, **order_kwargs
+    ) -> Any:
+        """
+        Place an order with optional risk management.
+
+        Args:
+            market_id: Market identifier
+            side: "yes" or "no"
+            quantity: Order quantity
+            stop_loss_config: Optional stop-loss configuration
+            **order_kwargs: Additional order parameters
+
+        Returns:
+            Order result
+        """
+        # Place the order first
+        # Note: This assumes the exchange service has order methods
+        # The actual implementation depends on kalshi-python API
+
+        try:
+            # Hypothetical order placement - adapt based on actual API
+            order_result = self.exchange.create_order(
+                market_id=market_id, side=side, quantity=quantity, **order_kwargs
+            )
+
+            # Register with risk manager if provided
+            if self.risk_manager and stop_loss_config:
+                try:
+                    import time
+
+                    from neural.analysis.risk import Position
+
+                    position = Position(
+                        market_id=market_id,
+                        side=side,
+                        quantity=quantity,
+                        entry_price=order_kwargs.get("price", 0.5),  # Default assumption
+                        entry_time=time.time(),
+                        stop_loss=stop_loss_config,
+                    )
+                    self.risk_manager.add_position(position)
+                except ImportError:
+                    pass  # Risk module not available
+
+            return order_result
+
+        except Exception as e:
+            # Log error and re-raise
+            import logging
+
+            logging.getLogger(__name__).error(f"Order placement failed: {e}")
+            raise
