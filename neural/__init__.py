@@ -12,14 +12,14 @@ This package provides tools for:
 modules (sentiment analysis, FIX streaming) are experimental.
 """
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 __author__ = "Neural Contributors"
 __license__ = "MIT"
 
 import warnings
 from typing import Set  # noqa: UP035
 
-from neural import analysis, auth, data_collection, trading
+from neural import analysis, auth, data_collection, deployment, trading
 
 # Track which experimental features have been used
 _experimental_features_used: set[str] = set()
@@ -65,5 +65,6 @@ __all__ = [
     "data_collection",
     "analysis",
     "trading",
+    "deployment",  # v0.4.0: Docker deployment module (experimental)
     "_warn_experimental",  # For internal use by modules
 ]
