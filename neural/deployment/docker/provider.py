@@ -6,6 +6,7 @@ trading bots in containers.
 """
 
 import asyncio
+import concurrent.futures
 import json
 import logging
 import os
@@ -29,6 +30,7 @@ from neural.deployment.config import (
 from neural.deployment.docker.compose import write_compose_file
 from neural.deployment.docker.templates import render_dockerfile, render_dockerignore
 from neural.deployment.exceptions import (
+    ConfigurationError,
     ContainerNotFoundError,
     DeploymentError,
     ImageBuildError,
@@ -78,6 +80,7 @@ class DockerDeploymentProvider(DeploymentProvider):
 
         self.project_root = Path(project_root or os.getcwd())
         self.active_deployments: dict[str, dict[str, Any]] = {}
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
     async def deploy(self, config: DeploymentConfig) -> DeploymentResult:
         """Deploy a trading bot to Docker container.
@@ -109,9 +112,12 @@ class DockerDeploymentProvider(DeploymentProvider):
                 config, image_tag, container_name, env_vars
             )
 
-            # Create and start container
-            container = self.docker_client.containers.create(**container_config)
-            container.start()
+            # Create and start container (run in executor to avoid blocking event loop)
+            loop = asyncio.get_event_loop()
+            container = await loop.run_in_executor(
+                self._executor, lambda: self.docker_client.containers.create(**container_config)
+            )
+            await loop.run_in_executor(self._executor, container.start)
 
             # Store deployment info
             deployment_info = {
@@ -161,9 +167,12 @@ class DockerDeploymentProvider(DeploymentProvider):
         deployment = self.active_deployments[deployment_id]
 
         try:
-            container = self.docker_client.containers.get(deployment["container_id"])
-            container.stop(timeout=30)
-            container.remove()
+            loop = asyncio.get_event_loop()
+            container = await loop.run_in_executor(
+                self._executor, self.docker_client.containers.get, deployment["container_id"]
+            )
+            await loop.run_in_executor(self._executor, lambda: container.stop(timeout=30))
+            await loop.run_in_executor(self._executor, container.remove)
 
             del self.active_deployments[deployment_id]
             logger.info(f"Stopped deployment: {deployment_id}")
@@ -194,15 +203,20 @@ class DockerDeploymentProvider(DeploymentProvider):
         deployment = self.active_deployments[deployment_id]
 
         try:
-            container = self.docker_client.containers.get(deployment["container_id"])
-            container.reload()  # Refresh container info
+            loop = asyncio.get_event_loop()
+            container = await loop.run_in_executor(
+                self._executor, self.docker_client.containers.get, deployment["container_id"]
+            )
+            await loop.run_in_executor(self._executor, container.reload)
 
             # Calculate uptime
             created_at = deployment["created_at"]
             uptime = (datetime.now() - created_at).total_seconds()
 
-            # Get container stats (async)
-            stats = container.stats(stream=False)
+            # Get container stats (run in executor to avoid blocking)
+            stats = await loop.run_in_executor(
+                self._executor, lambda: container.stats(stream=False)
+            )
 
             return DeploymentStatus(
                 deployment_id=deployment_id,
@@ -237,8 +251,13 @@ class DockerDeploymentProvider(DeploymentProvider):
         deployment = self.active_deployments[deployment_id]
 
         try:
-            container = self.docker_client.containers.get(deployment["container_id"])
-            logs = container.logs(tail=tail, timestamps=True).decode("utf-8")
+            loop = asyncio.get_event_loop()
+            container = await loop.run_in_executor(
+                self._executor, self.docker_client.containers.get, deployment["container_id"]
+            )
+            logs = await loop.run_in_executor(
+                self._executor, lambda: container.logs(tail=tail, timestamps=True).decode("utf-8")
+            )
             return logs.strip().split("\n") if logs else []
 
         except NotFound:
@@ -253,11 +272,14 @@ class DockerDeploymentProvider(DeploymentProvider):
             List of DeploymentInfo for all active deployments
         """
         deployments = []
+        loop = asyncio.get_event_loop()
 
         for dep_id, deployment in self.active_deployments.items():
             try:
-                container = self.docker_client.containers.get(deployment["container_id"])
-                container.reload()
+                container = await loop.run_in_executor(
+                    self._executor, self.docker_client.containers.get, deployment["container_id"]
+                )
+                await loop.run_in_executor(self._executor, container.reload)
 
                 deployments.append(
                     DeploymentInfo(
@@ -305,10 +327,14 @@ class DockerDeploymentProvider(DeploymentProvider):
             dockerfile_path = build_dir / "Dockerfile"
             dockerfile_path.write_text(dockerfile_content)
 
-            # Build image
+            # Build image (run in executor - can take several minutes)
             logger.info(f"Building Docker image: {image_tag}")
-            image, build_logs = self.docker_client.images.build(
-                path=str(self.project_root), dockerfile=str(dockerfile_path), tag=image_tag, rm=True
+            loop = asyncio.get_event_loop()
+            image, build_logs = await loop.run_in_executor(
+                self._executor,
+                lambda: self.docker_client.images.build(
+                    path=str(self.project_root), dockerfile=str(dockerfile_path), tag=image_tag, rm=True
+                ),
             )
 
             logger.info(f"Image built successfully: {image_tag}")
@@ -339,12 +365,25 @@ class DockerDeploymentProvider(DeploymentProvider):
         env_vars: dict[str, str],
     ) -> dict[str, Any]:
         """Create Docker container configuration."""
+        # Validate secrets directory exists
+        secrets_path = self.project_root / "secrets"
+        if not secrets_path.exists():
+            raise ConfigurationError(
+                f"Secrets directory not found: {secrets_path}\n"
+                f"Please create the secrets directory with your Kalshi API credentials:\n"
+                f"  mkdir -p {secrets_path}\n"
+                f"  echo 'KALSHI_API_KEY=your_key' > {secrets_path}/.env"
+            )
+
+        if not secrets_path.is_dir():
+            raise ConfigurationError(f"Secrets path exists but is not a directory: {secrets_path}")
+
         container_config: dict[str, Any] = {
             "image": image_tag,
             "name": container_name,
             "environment": env_vars,
             "volumes": {
-                str(self.project_root / "secrets"): {"bind": "/secrets", "mode": "ro"},
+                str(secrets_path): {"bind": "/secrets", "mode": "ro"},
                 f"{container_name}_data": {"bind": "/app/data", "mode": "rw"},
             },
             "restart_policy": {"Name": "unless-stopped"},
@@ -402,3 +441,22 @@ class DockerDeploymentProvider(DeploymentProvider):
             return 0.0
         except Exception:
             return 0.0
+
+    async def cleanup(self) -> None:
+        """Cleanup resources including the thread pool executor.
+
+        This should be called when the provider is no longer needed
+        to ensure proper shutdown of background threads.
+
+        Example:
+            ```python
+            provider = DockerDeploymentProvider()
+            try:
+                # Use provider...
+                pass
+            finally:
+                await provider.cleanup()
+            ```
+        """
+        logger.info("Shutting down deployment provider executor")
+        self._executor.shutdown(wait=True)

@@ -4,7 +4,7 @@ Database schema for Neural SDK deployment module.
 SQLAlchemy models for storing deployment, trade, and performance data.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import JSON, Column, DateTime, Integer, Numeric, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -20,14 +20,14 @@ class Trade(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     deployment_id = Column(String(255), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     ticker = Column(String(255), nullable=False)
     side = Column(String(10), nullable=False)  # 'buy' or 'sell'
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
     pnl = Column(Numeric(10, 2))
     strategy = Column(String(255))
-    metadata = Column(JSON)
+    trade_metadata = Column(JSON)
 
 
 class Position(Base):
@@ -42,7 +42,7 @@ class Position(Base):
     entry_price = Column(Numeric(10, 2), nullable=False)
     current_price = Column(Numeric(10, 2))
     unrealized_pnl = Column(Numeric(10, 2))
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Performance(Base):
@@ -52,7 +52,7 @@ class Performance(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     deployment_id = Column(String(255), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     total_pnl = Column(Numeric(10, 2))
     daily_pnl = Column(Numeric(10, 2))
     sharpe_ratio = Column(Numeric(10, 4))
@@ -71,7 +71,7 @@ class Deployment(Base):
     strategy_type = Column(String(255))
     environment = Column(String(50))
     status = Column(String(50))
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     config = Column(JSON)
     container_id = Column(String(255))
     sandbox_id = Column(String(255))
