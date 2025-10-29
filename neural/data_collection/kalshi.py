@@ -14,7 +14,9 @@ from neural.auth.http_client import KalshiHTTPClient
 _BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 _SPORT_SERIES_MAP = {
     "NFL": "KXNFLGAME",
-    "NBA": "KXNBA",
+    "NBA": "KXNBAGAME",
+    "NBA_CHAMPIONSHIP": "KXNBA",
+    "WNBA": "KXWNBAGAME",
     "MLB": "KXMLB",
     "NHL": "KXNHL",
     "NCAAF": "KXNCAAFGAME",
