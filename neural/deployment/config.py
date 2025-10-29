@@ -5,7 +5,7 @@ This module provides Pydantic models for configuring trading bot deployments,
 including Docker containers, resource limits, and deployment parameters.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
@@ -124,7 +124,9 @@ class DeploymentResult(BaseModel):
     status: str = Field(..., description="Deployment status")
     container_id: str | None = Field(None, description="Docker container ID")
     container_name: str | None = Field(None, description="Container name")
-    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp"
+    )
     endpoints: dict[str, str] = Field(default_factory=dict, description="Service endpoints")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
