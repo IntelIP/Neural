@@ -26,7 +26,7 @@ jobs:
       - name: Install pip-audit
         run: |
           python -m pip install --upgrade pip
-          pip install pip-audit
+          pip install -e .[dev] pip-audit
 
       - name: Run pip-audit
         id: pip_audit
@@ -36,34 +36,42 @@ jobs:
 
       - name: Summarize dependency findings
         if: always()
+        env:
+          PIP_AUDIT_OUTCOME: ${{ steps.pip_audit.outcome }}
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           summary = Path("pip-audit-summary.md")
           report_path = Path("pip-audit.json")
+          audit_outcome = os.getenv("PIP_AUDIT_OUTCOME", "unknown")
           if not report_path.exists():
-              summary.write_text("pip-audit did not produce a report.\n")
+              summary.write_text(
+                  "## Dependency Audit (Advisory)\n\n"
+                  f"- pip-audit step outcome: **{audit_outcome}**\n"
+                  "- Report missing: pip-audit did not produce `pip-audit.json`.\n"
+              )
               print("pip-audit report missing")
-              raise SystemExit(0)
+          else:
+              report = json.loads(report_path.read_text())
+              findings = []
+              for dep in report.get("dependencies", []):
+                  for vuln in dep.get("vulns", []):
+                      findings.append((dep["name"], dep["version"], vuln.get("id", "UNKNOWN")))
 
-          report = json.loads(report_path.read_text())
-          findings = []
-          for dep in report.get("dependencies", []):
-              for vuln in dep.get("vulns", []):
-                  findings.append((dep["name"], dep["version"], vuln.get("id", "UNKNOWN")))
-
-          with summary.open("w", encoding="utf-8") as f:
-              f.write("## Dependency Audit (Advisory)\n\n")
-              f.write(f"- Vulnerabilities found: **{len(findings)}**\n\n")
-              if findings:
-                  f.write("| Package | Version | Vulnerability |\n")
-                  f.write("|---|---|---|\n")
-                  for pkg, ver, vuln in findings[:25]:
-                      f.write(f"| {pkg} | {ver} | {vuln} |\n")
-              else:
-                  f.write("No known vulnerabilities found.\n")
+              with summary.open("w", encoding="utf-8") as f:
+                  f.write("## Dependency Audit (Advisory)\n\n")
+                  f.write(f"- pip-audit step outcome: **{audit_outcome}**\n")
+                  f.write(f"- Vulnerabilities found: **{len(findings)}**\n\n")
+                  if findings:
+                      f.write("| Package | Version | Vulnerability |\n")
+                      f.write("|---|---|---|\n")
+                      for pkg, ver, vuln in findings[:25]:
+                          f.write(f"| {pkg} | {ver} | {vuln} |\n")
+                  else:
+                      f.write("No known vulnerabilities found.\n")
 
           PY
           cat pip-audit-summary.md >> "$GITHUB_STEP_SUMMARY"
@@ -103,34 +111,42 @@ jobs:
 
       - name: Summarize Bandit findings
         if: always()
+        env:
+          BANDIT_OUTCOME: ${{ steps.bandit.outcome }}
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           report_path = Path("bandit.json")
           summary = Path("bandit-summary.md")
+          bandit_outcome = os.getenv("BANDIT_OUTCOME", "unknown")
           if not report_path.exists():
-              summary.write_text("Bandit did not produce a report.\n")
+              summary.write_text(
+                  "## Static Security Scan (Bandit, Advisory)\n\n"
+                  f"- Bandit step outcome: **{bandit_outcome}**\n"
+                  "- Report missing: Bandit did not produce `bandit.json`.\n"
+              )
               print("Bandit report missing")
-              raise SystemExit(0)
-
-          report = json.loads(report_path.read_text())
-          results = report.get("results", [])
-          with summary.open("w", encoding="utf-8") as f:
-              f.write("## Static Security Scan (Bandit, Advisory)\n\n")
-              f.write(f"- Findings: **{len(results)}**\n\n")
-              if results:
-                  f.write("| Severity | File | Test ID | Message |\n")
-                  f.write("|---|---|---|---|\n")
-                  for finding in results[:25]:
-                      sev = finding.get("issue_severity", "UNKNOWN")
-                      path = finding.get("filename", "unknown")
-                      test_id = finding.get("test_id", "UNKNOWN")
-                      text = finding.get("issue_text", "").replace("|", "\\|")
-                      f.write(f"| {sev} | {path} | {test_id} | {text} |\n")
-              else:
-                  f.write("No Bandit findings detected.\n")
+          else:
+              report = json.loads(report_path.read_text())
+              results = report.get("results", [])
+              with summary.open("w", encoding="utf-8") as f:
+                  f.write("## Static Security Scan (Bandit, Advisory)\n\n")
+                  f.write(f"- Bandit step outcome: **{bandit_outcome}**\n")
+                  f.write(f"- Findings: **{len(results)}**\n\n")
+                  if results:
+                      f.write("| Severity | File | Test ID | Message |\n")
+                      f.write("|---|---|---|---|\n")
+                      for finding in results[:25]:
+                          sev = finding.get("issue_severity", "UNKNOWN")
+                          path = finding.get("filename", "unknown")
+                          test_id = finding.get("test_id", "UNKNOWN")
+                          text = finding.get("issue_text", "").replace("|", "\\|")
+                          f.write(f"| {sev} | {path} | {test_id} | {text} |\n")
+                  else:
+                      f.write("No Bandit findings detected.\n")
           PY
           cat bandit-summary.md >> "$GITHUB_STEP_SUMMARY"
 
