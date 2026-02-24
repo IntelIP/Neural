@@ -204,7 +204,7 @@ jobs:
           fi
 
       - name: Upload API documentation
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: api-docs
           path: |
@@ -248,7 +248,7 @@ jobs:
           python scripts/validate_examples.py
 
       - name: Upload examples documentation
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: examples-docs
           path: docs/examples/generated/
@@ -281,7 +281,7 @@ jobs:
           pip install -e .[dev,docs]
 
       - name: Download all generated docs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: temp-docs/
 
@@ -323,7 +323,7 @@ jobs:
           python scripts/check_documentation_links.py
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage-report.txt
@@ -353,7 +353,7 @@ jobs:
         run: npm install -g @mintlify/cli
 
       - name: Download generated docs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: temp-docs/
 
@@ -444,7 +444,7 @@ jobs:
         run: npm install -g @mintlify/cli
 
       - name: Download generated docs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: temp-docs/
 
