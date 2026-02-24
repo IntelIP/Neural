@@ -16,7 +16,6 @@ Usage:
 """
 
 import asyncio
-import os
 
 from neural.deployment import (
     DeploymentConfig,
@@ -51,7 +50,7 @@ async def basic_deployment_example():
         monitoring_enabled=True,
     )
 
-    print(f"📋 Configuration:")
+    print("📋 Configuration:")
     print(f"   Bot Name: {config.bot_name}")
     print(f"   Strategy: {config.strategy_type}")
     print(f"   Environment: {config.environment}")
@@ -63,7 +62,7 @@ async def basic_deployment_example():
     # Deploy with context manager (auto-cleanup)
     print("🚀 Deploying trading bot...")
     async with deploy(provider, config) as deployment:
-        print(f"✅ Deployed successfully!")
+        print("✅ Deployed successfully!")
         print(f"   Deployment ID: {deployment.deployment_id}")
         print(f"   Container ID: {deployment.container_id[:12]}...")
         print(f"   Container Name: {deployment.container_name}")
@@ -143,7 +142,7 @@ async def main():
 
     # Check if Docker is available
     try:
-        provider = DockerDeploymentProvider()
+        DockerDeploymentProvider()
         print("✅ Docker is available\n")
     except Exception as e:
         print(f"❌ Docker is not available: {e}")
