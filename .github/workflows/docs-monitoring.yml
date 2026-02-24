@@ -178,13 +178,12 @@ jobs:
               --output docs/metrics-dashboard.html
           else
             echo "generate_metrics_dashboard.py not found; creating placeholder dashboard"
-            cat > docs/metrics-dashboard.html <<'HTML'
-            <!doctype html>
-            <html lang="en">
-            <head><meta charset="utf-8"><title>Documentation Metrics</title></head>
-            <body><h1>Documentation Metrics</h1><p>No metrics generator script is configured.</p></body>
-            </html>
-            HTML
+            printf '%s\n' \
+              '<!doctype html>' \
+              '<html lang="en">' \
+              '<head><meta charset="utf-8"><title>Documentation Metrics</title></head>' \
+              '<body><h1>Documentation Metrics</h1><p>No metrics generator script is configured.</p></body>' \
+              '</html>' > docs/metrics-dashboard.html
           fi
 
       - name: Deploy metrics dashboard
