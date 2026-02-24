@@ -61,13 +61,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev,docs]
 
-       - name: Generate API docs with mkdocstrings
-         if: steps.changes.outputs.docs == 'true'
-         run: |
-           mkdir -p docs/api
-           echo "API documentation generation skipped for beta release"
-           # TODO: Re-enable API doc generation in stable release
-           # python -c "... complex doc generation code ..."
+      - name: Generate API docs with mkdocstrings
+        if: steps.changes.outputs.docs == 'true'
+        run: |
+          mkdir -p docs/api
+          echo "API documentation generation skipped for beta release"
+          # TODO: Re-enable API doc generation in stable release
+          # python -c "... complex doc generation code ..."
 
       - name: Generate examples documentation
         if: steps.changes.outputs.docs == 'true'
