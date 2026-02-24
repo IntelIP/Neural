@@ -178,7 +178,7 @@ jobs:
               --output docs/metrics-dashboard.html
           else
             echo "generate_metrics_dashboard.py not found; creating placeholder dashboard"
-          python - <<'PY'
+            python - <<'PY'
           from pathlib import Path
 
           Path("docs").mkdir(parents=True, exist_ok=True)
