@@ -5,6 +5,11 @@ on:
     branches: [ main ]
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   docs-check:
     runs-on: ubuntu-latest
@@ -58,6 +63,7 @@ jobs:
 
       - name: Comment on PR
         if: always()
+        continue-on-error: true
         uses: actions/github-script@v6
         with:
           script: |
