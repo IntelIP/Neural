@@ -17,9 +17,19 @@ __author__ = "Neural Contributors"
 __license__ = "MIT"
 
 import warnings
+from types import ModuleType
 from typing import Set  # noqa: UP035
 
-from neural import analysis, auth, data_collection, deployment, trading
+from . import analysis, auth, data_collection, trading
+
+deployment: ModuleType | None
+try:
+    from . import deployment as deployment
+except ModuleNotFoundError as exc:
+    # Keep package importable when optional deployment deps (docker SDK) are absent.
+    if exc.name != "docker":
+        raise
+    deployment = None
 
 # Track which experimental features have been used
 _experimental_features_used: set[str] = set()

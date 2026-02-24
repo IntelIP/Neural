@@ -8,7 +8,12 @@ allowing extensibility to support Docker, E2B, cloud providers, etc.
 from abc import ABC, abstractmethod
 from typing import Any
 
-from neural.deployment.config import DeploymentConfig, DeploymentInfo, DeploymentResult, DeploymentStatus
+from neural.deployment.config import (
+    DeploymentConfig,
+    DeploymentInfo,
+    DeploymentResult,
+    DeploymentStatus,
+)
 
 
 class DeploymentProvider(ABC):
@@ -120,8 +125,8 @@ class DeploymentProvider(ABC):
         Raises:
             DeploymentError: If restart fails
         """
-        # Get current config from status
-        status_info = await self.status(deployment_id)
+        # Ensure deployment exists before attempting stop/restart.
+        await self.status(deployment_id)
 
         # Stop the deployment
         await self.stop(deployment_id)
@@ -133,6 +138,7 @@ class DeploymentProvider(ABC):
             "Providers should override this method."
         )
 
+    @abstractmethod
     async def cleanup(self) -> None:
         """Clean up provider resources.
 

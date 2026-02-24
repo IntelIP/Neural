@@ -10,7 +10,6 @@ import concurrent.futures
 import json
 import logging
 import os
-import subprocess
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,16 +24,13 @@ from neural.deployment.config import (
     DeploymentInfo,
     DeploymentResult,
     DeploymentStatus,
-    DockerConfig,
 )
-from neural.deployment.docker.compose import write_compose_file
-from neural.deployment.docker.templates import render_dockerfile, render_dockerignore
+from neural.deployment.docker.templates import render_dockerfile
 from neural.deployment.exceptions import (
     ConfigurationError,
     ContainerNotFoundError,
     DeploymentError,
     ImageBuildError,
-    ResourceLimitExceededError,
 )
 
 logger = logging.getLogger(__name__)
@@ -178,9 +174,9 @@ class DockerDeploymentProvider(DeploymentProvider):
             logger.info(f"Stopped deployment: {deployment_id}")
             return True
 
-        except NotFound:
+        except NotFound as e:
             del self.active_deployments[deployment_id]
-            raise ContainerNotFoundError(f"Container not found: {deployment_id}")
+            raise ContainerNotFoundError(f"Container not found: {deployment_id}") from e
         except DockerException as e:
             logger.error(f"Failed to stop deployment {deployment_id}: {e}")
             raise DeploymentError(f"Failed to stop deployment: {e}") from e
@@ -227,8 +223,8 @@ class DockerDeploymentProvider(DeploymentProvider):
                 metrics=self._extract_metrics(stats),
             )
 
-        except NotFound:
-            raise ContainerNotFoundError(f"Container not found: {deployment_id}")
+        except NotFound as e:
+            raise ContainerNotFoundError(f"Container not found: {deployment_id}") from e
         except DockerException as e:
             raise DeploymentError(f"Failed to get status: {e}") from e
 
@@ -260,8 +256,8 @@ class DockerDeploymentProvider(DeploymentProvider):
             )
             return logs.strip().split("\n") if logs else []
 
-        except NotFound:
-            raise ContainerNotFoundError(f"Container not found: {deployment_id}")
+        except NotFound as e:
+            raise ContainerNotFoundError(f"Container not found: {deployment_id}") from e
         except DockerException as e:
             raise DeploymentError(f"Failed to get logs: {e}") from e
 
@@ -409,7 +405,6 @@ class DockerDeploymentProvider(DeploymentProvider):
     def _extract_metrics(self, stats: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from container stats."""
         try:
-            cpu_stats = stats.get("cpu_stats", {})
             memory_stats = stats.get("memory_stats", {})
 
             return {
