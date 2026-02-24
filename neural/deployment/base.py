@@ -134,7 +134,8 @@ class DeploymentProvider(ABC):
         # This is a simplified implementation - in practice, you'd need to
         # store the original config or retrieve it from the deployment metadata
         raise NotImplementedError(
-            "Restart requires storing deployment configs. Providers should override this method."
+            "Restart requires storing deployment configs. "
+            "Providers should override this method."
         )
 
     @abstractmethod

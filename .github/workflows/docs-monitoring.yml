@@ -178,7 +178,19 @@ jobs:
               --output docs/metrics-dashboard.html
           else
             echo "generate_metrics_dashboard.py not found; creating placeholder dashboard"
-            python -c "from pathlib import Path; Path('docs').mkdir(parents=True, exist_ok=True); Path('docs/metrics-dashboard.html').write_text('<!doctype html>\\n<html lang=\"en\">\\n<head><meta charset=\"utf-8\"><title>Documentation Metrics</title></head>\\n<body><h1>Documentation Metrics</h1><p>No metrics generator script is configured.</p></body>\\n</html>\\n', encoding='utf-8')"
+          python - <<'PY'
+          from pathlib import Path
+
+          Path("docs").mkdir(parents=True, exist_ok=True)
+          Path("docs/metrics-dashboard.html").write_text(
+              "<!doctype html>\n"
+              "<html lang=\"en\">\n"
+              "<head><meta charset=\"utf-8\"><title>Documentation Metrics</title></head>\n"
+              "<body><h1>Documentation Metrics</h1><p>No metrics generator script is configured.</p></body>\n"
+              "</html>\n",
+              encoding="utf-8",
+          )
+          PY
           fi
 
       - name: Deploy metrics dashboard
