@@ -329,7 +329,10 @@ class DockerDeploymentProvider(DeploymentProvider):
             image, build_logs = await loop.run_in_executor(
                 self._executor,
                 lambda: self.docker_client.images.build(
-                    path=str(self.project_root), dockerfile=str(dockerfile_path), tag=image_tag, rm=True
+                    path=str(self.project_root),
+                    dockerfile=str(dockerfile_path),
+                    tag=image_tag,
+                    rm=True,
                 ),
             )
 
