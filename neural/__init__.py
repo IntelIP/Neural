@@ -27,7 +27,7 @@ try:
     from . import deployment as deployment
 except ModuleNotFoundError as exc:
     # Keep package importable when optional deployment deps (docker SDK) are absent.
-    if exc.name != "docker":
+    if getattr(exc, "name", None) != "docker":
         raise
     deployment = None
 
