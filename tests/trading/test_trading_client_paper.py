@@ -36,6 +36,15 @@ class _FakePaperClient:
         return {"success": True, "market_id": market_id, "side": side, "quantity": quantity}
 
 
+class _FakeLiveAdapter:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def place_order(self, order: Any, *, policy: Any = None) -> dict[str, Any]:
+        self.calls.append({"order": order, "policy": policy})
+        return {"success": True, "order_id": "LIVE-1"}
+
+
 def _fake_creds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("KALSHI_API_KEY_ID", "abc123")
     monkeypatch.setenv("KALSHI_PRIVATE_KEY_BASE64", base64.b64encode(b"KEY").decode())
@@ -77,3 +86,18 @@ def test_paper_buy_async_works_inside_running_event_loop(monkeypatch: pytest.Mon
     out = asyncio.run(_call_async_api())
     assert out["success"] is True
     assert out["quantity"] == 2
+
+
+def test_place_order_async_passes_policy_keyword(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_creds(monkeypatch)
+    client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=False)
+    live_adapter = _FakeLiveAdapter()
+    client._adapter = live_adapter
+
+    async def _call_async_api() -> dict[str, Any]:
+        return await client.place_order_async(market_id="MKT-3", side="buy_yes", quantity=1, paper=False)
+
+    out = asyncio.run(_call_async_api())
+    assert out["success"] is True
+    assert live_adapter.calls
+    assert live_adapter.calls[0]["policy"] is client.trading_policy

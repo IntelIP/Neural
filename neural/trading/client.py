@@ -237,7 +237,7 @@ class TradingClient:
         result = await asyncio.to_thread(
             self._adapter.place_order,
             order,
-            policy or self.trading_policy,
+            policy=policy or self.trading_policy,
         )
         return serialize_value(result)
 
