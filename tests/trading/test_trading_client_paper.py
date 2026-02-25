@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+import neural.trading.client as trading_client_module
 from neural.trading.client import TradingClient
 
 
@@ -67,3 +68,24 @@ def test_paper_buy_works_inside_running_event_loop(monkeypatch: pytest.MonkeyPat
     out = asyncio.run(_call_sync_api())
     assert out["success"] is True
     assert out["quantity"] == 2
+
+
+def test_run_coro_sync_uses_non_daemon_thread_inside_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, Any] = {}
+
+    real_thread_cls = trading_client_module.threading.Thread
+
+    class _RecordingThread(real_thread_cls):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            seen["daemon"] = kwargs.get("daemon")
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(trading_client_module.threading, "Thread", _RecordingThread)
+
+    async def _call_sync_bridge() -> int:
+        return trading_client_module._run_coro_sync(asyncio.sleep(0, result=7))
+
+    assert asyncio.run(_call_sync_bridge()) == 7
+    assert seen["daemon"] in (None, False)

@@ -50,7 +50,7 @@ class _CompatMarkets:
         limit = int(kwargs.get("limit", 100))
         sports_only = bool(kwargs.get("sports_only", True))
         markets = self._client.list_markets(sport=sport, limit=limit, sports_only=sports_only)
-        return {"markets": [serialize_value(m) for m in markets]}
+        return {"markets": markets}
 
 
 class _CompatPortfolio:
@@ -58,8 +58,7 @@ class _CompatPortfolio:
         self._client = client
 
     def get_positions(self) -> dict[str, Any]:
-        rows = [serialize_value(p) for p in self._client.get_positions()]
-        return {"positions": rows}
+        return {"positions": self._client.get_positions()}
 
 
 class _CompatExchange:
@@ -297,7 +296,7 @@ def _run_coro_sync(coro: Any) -> Any:
         except BaseException as exc:
             error["exc"] = exc
 
-    thread = threading.Thread(target=_runner, daemon=True)
+    thread = threading.Thread(target=_runner)
     thread.start()
     thread.join()
 
