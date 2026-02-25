@@ -54,14 +54,26 @@ def test_paper_sell_uses_requested_quantity(monkeypatch: pytest.MonkeyPatch) -> 
     assert fake_paper.close_calls == [{"market_id": "MKT-1", "side": "yes", "quantity": 3}]
 
 
-def test_paper_buy_works_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_paper_buy_sync_raises_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake_creds(monkeypatch)
     client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=True)
     client._paper_client = _FakePaperClient()
 
-    async def _call_sync_api() -> dict[str, Any]:
-        return client.place_order(market_id="MKT-2", side="buy_yes", quantity=2, paper=True)
+    async def _call_sync_api() -> None:
+        with pytest.raises(RuntimeError, match="place_order_async"):
+            client.place_order(market_id="MKT-2", side="buy_yes", quantity=2, paper=True)
 
-    out = asyncio.run(_call_sync_api())
+    asyncio.run(_call_sync_api())
+
+
+def test_paper_buy_async_works_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_creds(monkeypatch)
+    client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=True)
+    client._paper_client = _FakePaperClient()
+
+    async def _call_async_api() -> dict[str, Any]:
+        return await client.place_order_async(market_id="MKT-2", side="buy_yes", quantity=2, paper=True)
+
+    out = asyncio.run(_call_async_api())
     assert out["success"] is True
     assert out["quantity"] == 2

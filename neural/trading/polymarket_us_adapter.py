@@ -391,6 +391,7 @@ class PolymarketUSWebSocketBase:
         if self._conn is not None:
             await self._conn.close()
             self._conn = None
+        self._last_seq_by_key.clear()
 
     async def send(self, payload: dict[str, Any]) -> None:
         if self._conn is None:

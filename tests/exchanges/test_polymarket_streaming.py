@@ -84,6 +84,38 @@ async def test_reconnect_restores_subscriptions() -> None:
     assert conn2.sent_values
 
 
+async def test_reconnect_resets_sequence_tracking() -> None:
+    conn1 = FakeConnection(
+        recv_values=[
+            '{"channel":"markets","market_id":"MKT-1","sequence":5,"price":0.60}',
+            RuntimeError("dropped"),
+        ]
+    )
+    conn2 = FakeConnection(
+        recv_values=['{"channel":"markets","market_id":"MKT-1","sequence":1,"price":0.61}']
+    )
+    connect_factory = FakeConnectFactory([conn1, conn2])
+
+    client = PolymarketUSMarketWebSocketClient(
+        url="wss://ws.polymarket.us/markets",
+        signer=_new_signer(),
+        ws_connect=connect_factory,
+        max_retries=2,
+        backoff_base_s=0.0,
+        backoff_max_s=0.0,
+    )
+
+    stream = client.listen()
+    first = await asyncio.wait_for(anext(stream), timeout=1.0)
+    second = await asyncio.wait_for(anext(stream), timeout=1.0)
+    await stream.aclose()
+    await client.disconnect()
+
+    assert first["sequence"] == 5
+    assert second["sequence"] == 1
+    assert "_sequence_gap" not in second
+
+
 def test_sequence_rules_dedupe_and_gap() -> None:
     client = PolymarketUSMarketWebSocketClient(
         url="wss://ws.polymarket.us/markets",
