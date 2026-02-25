@@ -79,9 +79,9 @@ class BaseExchangeAdapter(ExchangeAdapter):
             self._daily_notional_date = current_day
             self._daily_notional_used = 0.0
 
-    def _enforce_policy(self, order: NormalizedOrderRequest, policy: TradingPolicy | None) -> None:
+    def _enforce_policy(self, order: NormalizedOrderRequest, policy: TradingPolicy | None) -> float:
         if policy is None:
-            return
+            return 0.0
         if not policy.live_enabled:
             raise PermissionError("Live trading is disabled by TradingPolicy.")
         if not policy.market_allowed(order.market_id):
@@ -104,4 +104,10 @@ class BaseExchangeAdapter(ExchangeAdapter):
                     f"{policy.max_daily_notional:.4f}."
                 )
 
+        return notional
+
+    def _record_daily_notional(self, notional: float) -> None:
+        if notional <= 0:
+            return
+        self._rollover_daily_notional_if_needed()
         self._daily_notional_used += notional

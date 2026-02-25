@@ -129,8 +129,9 @@ class KalshiAdapter(BaseExchangeAdapter):
         *,
         policy: TradingPolicy | None = None,
     ) -> NormalizedOrderResult:
+        notional_to_record = 0.0
         if policy is not None:
-            self._enforce_policy(order, policy)
+            notional_to_record = self._enforce_policy(order, policy)
 
         side = "yes" if order.side.endswith("yes") else "no"
         payload: dict[str, Any] = {
@@ -143,6 +144,8 @@ class KalshiAdapter(BaseExchangeAdapter):
             payload["price"] = order.price
 
         raw = self._call_any(["create_order", "place_order"], self.exchange, payload)
+        if policy is not None:
+            self._record_daily_notional(notional_to_record)
         order_data = raw.get("order", raw)
         return NormalizedOrderResult(
             success=True,
