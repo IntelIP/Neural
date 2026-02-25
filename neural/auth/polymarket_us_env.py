@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import os
 from pathlib import Path
 
@@ -60,7 +61,7 @@ def get_polymarket_us_api_secret() -> bytes:
         # Allow raw base64 string in POLYMARKET_US_API_SECRET for compatibility.
         try:
             return base64.b64decode(raw_value)
-        except Exception:
+        except (ValueError, binascii.Error):
             return raw_value.encode("utf-8")
 
     path = os.getenv("POLYMARKET_US_API_SECRET_PATH", str(DEFAULT_API_SECRET_PATH))
