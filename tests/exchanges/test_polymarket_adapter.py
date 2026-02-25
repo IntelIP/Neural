@@ -63,6 +63,35 @@ class FakeSession:
         if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/book"):
             return FakeResponse({"book": {"yes_bid": 0.61, "yes_ask": 0.63, "volume": 1234}})
 
+        if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/candles"):
+            return FakeResponse(
+                {
+                    "candles": [
+                        {"timestamp": 1700000000000, "open": 0.5, "high": 0.6, "low": 0.4, "close": 0.55}
+                    ]
+                }
+            )
+
+        if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/trades"):
+            return FakeResponse(
+                {
+                    "trades": [
+                        {"id": "t1", "timestamp": 1700000000000, "price": 0.55, "size": 10, "sequence": 1}
+                    ],
+                    "next_cursor": "next-1",
+                }
+            )
+
+        if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/events"):
+            return FakeResponse(
+                {
+                    "events": [
+                        {"id": "e1", "timestamp": 1700000000000, "type": "fill", "sequence": 1}
+                    ],
+                    "next_cursor": None,
+                }
+            )
+
         if method == "GET" and url.endswith("/api/v1/portfolio/positions"):
             return FakeResponse(
                 {
@@ -116,12 +145,12 @@ def test_get_quote_maps_book_shape() -> None:
     assert quote.no_bid == pytest.approx(0.37)
 
 
-def test_capabilities_are_read_only_in_pr2() -> None:
+def test_capabilities_include_streaming_in_pr3() -> None:
     session = FakeSession()
     adapter = _new_adapter(session)
 
     caps = adapter.capabilities().as_dict()
-    assert caps == {"read": True, "paper": False, "live": False, "streaming": False}
+    assert caps == {"read": True, "paper": False, "live": False, "streaming": True}
 
 
 def test_get_positions_returns_normalized_rows() -> None:
@@ -133,3 +162,26 @@ def test_get_positions_returns_normalized_rows() -> None:
     assert len(positions) == 1
     assert positions[0].market_id == "MKT-SPORT-1"
     assert positions[0].quantity == 10
+
+
+def test_get_candles_returns_rows() -> None:
+    session = FakeSession()
+    adapter = _new_adapter(session)
+
+    rows = adapter.get_candles("MKT-SPORT-1", interval="1m", limit=5)
+
+    assert len(rows) == 1
+    assert rows[0]["close"] == pytest.approx(0.55)
+
+
+def test_trade_replay_and_event_replay_return_cursor() -> None:
+    session = FakeSession()
+    adapter = _new_adapter(session)
+
+    trades = adapter.get_trade_replay("MKT-SPORT-1", limit=25)
+    events = adapter.get_market_events("MKT-SPORT-1", limit=25)
+
+    assert len(trades["items"]) == 1
+    assert trades["next_cursor"] == "next-1"
+    assert len(events["items"]) == 1
+    assert events["next_cursor"] is None

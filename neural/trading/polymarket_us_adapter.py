@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -25,6 +27,9 @@ from neural.exchanges.types import (
 )
 
 _LOG = logging.getLogger(__name__)
+
+DEFAULT_POLYMARKET_US_MARKET_WS_URL = "wss://ws.polymarket.us/markets"
+DEFAULT_POLYMARKET_US_USER_WS_URL = "wss://ws.polymarket.us/user"
 
 
 @dataclass(slots=True)
@@ -61,7 +66,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         self._http = self.session or requests.Session()
 
     def capabilities(self) -> ExchangeCapabilities:
-        return ExchangeCapabilities(read=True, paper=False, live=False, streaming=False)
+        return ExchangeCapabilities(read=True, paper=False, live=False, streaming=True)
 
     def list_markets(
         self, *, sport: str | None = None, limit: int = 100, sports_only: bool = True
@@ -144,6 +149,77 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
                 )
             )
         return out
+
+    def get_candles(
+        self,
+        market_id: str,
+        *,
+        interval: str = "1h",
+        limit: int = 200,
+        start_ts_ms: int | None = None,
+        end_ts_ms: int | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"interval": interval, "limit": limit}
+        if start_ts_ms is not None:
+            params["start_ts"] = start_ts_ms
+        if end_ts_ms is not None:
+            params["end_ts"] = end_ts_ms
+
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/candles", params=params)
+        rows = payload.get("candles") or payload.get("data") or []
+        if not isinstance(rows, list):
+            return []
+        return [row for row in rows if isinstance(row, dict)]
+
+    def get_trade_replay(
+        self,
+        market_id: str,
+        *,
+        limit: int = 500,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/trades", params=params)
+        rows = payload.get("trades") or payload.get("data") or []
+        clean_rows = rows if isinstance(rows, list) else []
+        return {
+            "items": [row for row in clean_rows if isinstance(row, dict)],
+            "next_cursor": payload.get("next_cursor") or payload.get("cursor"),
+            "raw": payload,
+        }
+
+    def get_market_events(
+        self,
+        market_id: str,
+        *,
+        limit: int = 500,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/events", params=params)
+        rows = payload.get("events") or payload.get("data") or []
+        clean_rows = rows if isinstance(rows, list) else []
+        return {
+            "items": [row for row in clean_rows if isinstance(row, dict)],
+            "next_cursor": payload.get("next_cursor") or payload.get("cursor"),
+            "raw": payload,
+        }
+
+    def market_ws_client(
+        self,
+        url: str = DEFAULT_POLYMARKET_US_MARKET_WS_URL,
+    ) -> PolymarketUSMarketWebSocketClient:
+        return PolymarketUSMarketWebSocketClient(url=url, signer=self._signer)
+
+    def user_ws_client(
+        self,
+        url: str = DEFAULT_POLYMARKET_US_USER_WS_URL,
+    ) -> PolymarketUSUserWebSocketClient:
+        return PolymarketUSUserWebSocketClient(url=url, signer=self._signer)
 
     def close(self) -> None:
         self._http.close()
@@ -254,3 +330,155 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+class PolymarketUSWebSocketBase:
+    """Reconnect-capable websocket base with subscription restore and sequence handling."""
+
+    def __init__(
+        self,
+        *,
+        url: str,
+        signer: PolymarketUSSigner,
+        connect_timeout: int = 10,
+        max_retries: int = 6,
+        backoff_base_s: float = 0.5,
+        backoff_max_s: float = 15.0,
+        ws_connect: Any | None = None,
+    ) -> None:
+        self.url = url
+        self.signer = signer
+        self.connect_timeout = connect_timeout
+        self.max_retries = max_retries
+        self.backoff_base_s = backoff_base_s
+        self.backoff_max_s = backoff_max_s
+        self._ws_connect = ws_connect
+        self._conn: Any = None
+        self._subscriptions: list[dict[str, Any]] = []
+        self._last_seq_by_key: dict[str, int] = {}
+
+    async def connect(self) -> None:
+        if self._ws_connect is None:
+            import websockets
+
+            self._ws_connect = websockets.connect
+
+        parsed = urlparse(self.url)
+        path = parsed.path or "/"
+        headers = self.signer.headers("GET", path)
+        self._conn = await self._ws_connect(  # type: ignore[misc]
+            self.url,
+            extra_headers=headers,
+            open_timeout=self.connect_timeout,
+        )
+        await self._restore_subscriptions()
+
+    async def disconnect(self) -> None:
+        if self._conn is not None:
+            await self._conn.close()
+            self._conn = None
+
+    async def send(self, payload: dict[str, Any]) -> None:
+        if self._conn is None:
+            raise RuntimeError("WebSocket is not connected.")
+        await self._conn.send(json.dumps(payload))
+
+    async def _register_subscription(self, payload: dict[str, Any]) -> None:
+        # Preserve order to make replay deterministic after reconnect.
+        self._subscriptions.append(payload)
+        if self._conn is not None:
+            await self.send(payload)
+
+    async def _restore_subscriptions(self) -> None:
+        for payload in self._subscriptions:
+            await self.send(payload)
+
+    def _parse_message(self, payload: Any) -> dict[str, Any] | None:
+        if isinstance(payload, bytes):
+            payload = payload.decode("utf-8", errors="ignore")
+        if isinstance(payload, str):
+            try:
+                decoded = json.loads(payload)
+            except json.JSONDecodeError:
+                _LOG.debug("Ignoring non-JSON polymarket websocket payload")
+                return None
+        elif isinstance(payload, dict):
+            decoded = payload
+        else:
+            return None
+
+        if not isinstance(decoded, dict):
+            return None
+        return decoded
+
+    def _sequence_key(self, message: dict[str, Any]) -> str:
+        channel = str(message.get("channel") or message.get("type") or "default")
+        market = str(message.get("market_id") or message.get("market") or "")
+        return f"{channel}:{market}"
+
+    def _sequence_value(self, message: dict[str, Any]) -> int | None:
+        for key in ("sequence", "seq", "version"):
+            value = message.get(key)
+            if value is None:
+                continue
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def _apply_sequence_rules(self, message: dict[str, Any]) -> dict[str, Any] | None:
+        seq = self._sequence_value(message)
+        if seq is None:
+            return message
+
+        key = self._sequence_key(message)
+        last = self._last_seq_by_key.get(key)
+        if last is not None and seq <= last:
+            return None
+
+        if last is not None and seq > last + 1:
+            message = dict(message)
+            message["_sequence_gap"] = {"expected": last + 1, "received": seq}
+
+        self._last_seq_by_key[key] = seq
+        return message
+
+    async def listen(self):
+        attempts = 0
+        while True:
+            try:
+                if self._conn is None:
+                    await self.connect()
+                assert self._conn is not None
+                raw = await self._conn.recv()
+                message = self._parse_message(raw)
+                if message is None:
+                    continue
+                message = self._apply_sequence_rules(message)
+                if message is None:
+                    continue
+                attempts = 0
+                yield message
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                _LOG.debug("Polymarket websocket receive loop error: %s", exc)
+                attempts += 1
+                await self.disconnect()
+                if attempts > self.max_retries:
+                    raise RuntimeError("Exceeded websocket reconnect attempts.") from exc
+                sleep_s = min(self.backoff_base_s * (2 ** (attempts - 1)), self.backoff_max_s)
+                await asyncio.sleep(sleep_s)
+
+
+class PolymarketUSMarketWebSocketClient(PolymarketUSWebSocketBase):
+    async def subscribe_markets(self, market_ids: list[str]) -> None:
+        await self._register_subscription(
+            {"type": "subscribe", "channel": "markets", "market_ids": market_ids}
+        )
+
+
+class PolymarketUSUserWebSocketClient(PolymarketUSWebSocketBase):
+    async def subscribe_user(self) -> None:
+        await self._register_subscription({"type": "subscribe", "channel": "user"})
