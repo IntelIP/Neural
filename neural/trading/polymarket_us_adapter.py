@@ -174,7 +174,24 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
                 timeout=self.timeout,
             )
             if response.status_code < 400:
-                data = response.json() if response.text else {}
+                if response.text:
+                    try:
+                        data = response.json()
+                    except ValueError as exc:
+                        if retry < self.max_retries:
+                            retry += 1
+                            sleep_s = 2**retry
+                            _LOG.warning(
+                                "Polymarket US response JSON decode failed, retrying in %ss (%s/%s)",
+                                sleep_s,
+                                retry,
+                                self.max_retries,
+                            )
+                            time.sleep(sleep_s)
+                            continue
+                        raise RuntimeError("Polymarket US response body was not valid JSON") from exc
+                else:
+                    data = {}
                 if isinstance(data, dict):
                     return data
                 return {"data": data}
@@ -258,7 +275,10 @@ def _is_sports_market(market: NormalizedMarket) -> bool:
 def _to_prob(value: Any) -> float | None:
     if value is None:
         return None
-    out = float(value)
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
     if out > 1:
         return out / 100.0
     return out
@@ -267,4 +287,7 @@ def _to_prob(value: Any) -> float | None:
 def _to_float(value: Any) -> float | None:
     if value is None:
         return None
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

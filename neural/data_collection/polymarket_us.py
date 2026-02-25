@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 import pandas as pd
@@ -31,7 +31,10 @@ class PolymarketUSMarketsSource(DataSource):
     ) -> None:
         super().__init__(name=name, config=config)
         self.adapter = adapter or PolymarketUSAdapter()
-        self._source_cfg = PolymarketUSConfig(**(config or {}))
+        raw_config = config or {}
+        allowed_keys = {f.name for f in fields(PolymarketUSConfig)}
+        source_cfg = {k: v for k, v in raw_config.items() if k in allowed_keys}
+        self._source_cfg = PolymarketUSConfig(**source_cfg)
 
     async def connect(self) -> None:
         self._connected = True

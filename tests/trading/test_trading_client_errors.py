@@ -55,3 +55,8 @@ def test_invalid_kwargs_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
     assert set(captured.keys()) == {"base_url", "api_key_id", "private_key_pem", "timeout"}
     assert captured["api_key_id"] == "abc123"
     assert isinstance(captured["private_key_pem"], (bytes, bytearray))
+
+
+def test_unknown_exchange_raises_value_error() -> None:
+    with pytest.raises(ValueError, match="Unsupported exchange"):
+        TradingClient(exchange="unknown")  # type: ignore[arg-type]

@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from neural.trading.polymarket_us_adapter import PolymarketUSAdapter
+from neural.trading.polymarket_us_adapter import PolymarketUSAdapter, _to_float, _to_prob
 
 
 @dataclass
@@ -86,13 +86,14 @@ class FakeSession:
         return None
 
 
-def _new_adapter(session: FakeSession) -> PolymarketUSAdapter:
+def _new_adapter(session: FakeSession, **kwargs: Any) -> PolymarketUSAdapter:
     return PolymarketUSAdapter(
         api_key="k",
         api_secret=bytes(range(32)),
         passphrase="p",
         base_url="https://api.polymarket.us",
         session=session,
+        **kwargs,
     )
 
 
@@ -155,3 +156,38 @@ def test_request_raises_when_error_response_does_not_raise_for_status() -> None:
     adapter = _new_adapter(_SoftFailSession())
     with pytest.raises(RuntimeError, match="raise_for_status\\(\\) did not raise"):
         adapter.get_quote("MKT-SPORT-1")
+
+
+def test_request_raises_for_invalid_json_response() -> None:
+    class _BadJsonResponse(FakeResponse):
+        @property
+        def text(self) -> str:
+            return "{bad json"
+
+        def json(self) -> dict[str, Any]:
+            raise ValueError("invalid json")
+
+    class _BadJsonSession(FakeSession):
+        def request(
+            self,
+            method: str,
+            url: str,
+            *,
+            params: dict[str, Any] | None = None,
+            data: str | None = None,
+            headers: dict[str, Any] | None = None,
+            timeout: int | None = None,
+        ) -> FakeResponse:
+            del method, url, params, data, headers, timeout
+            return _BadJsonResponse({})
+
+    adapter = _new_adapter(_BadJsonSession(), max_retries=0)
+    with pytest.raises(RuntimeError, match="not valid JSON"):
+        adapter.list_markets()
+
+
+def test_numeric_parsing_helpers_return_none_for_invalid_values() -> None:
+    assert _to_prob("bad") is None
+    assert _to_prob(object()) is None
+    assert _to_float("bad") is None
+    assert _to_float(object()) is None

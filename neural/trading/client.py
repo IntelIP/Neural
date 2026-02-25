@@ -127,7 +127,7 @@ class TradingClient:
                 timeout=timeout,
                 client_factory=factory,
             )
-        else:
+        elif exchange == "polymarket_us":
             self._adapter = registry.create(
                 "polymarket_us",
                 api_key=polymarket_us_api_key,
@@ -137,6 +137,8 @@ class TradingClient:
                 timeout=timeout,
                 session=polymarket_us_session,
             )
+        else:
+            raise ValueError(f"Unsupported exchange: {exchange}")
 
         self._client = getattr(self._adapter, "_client", self._adapter)
         self.portfolio = getattr(self._adapter, "portfolio", _CompatPortfolio(self))
