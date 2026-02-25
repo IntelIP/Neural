@@ -155,7 +155,9 @@ class KalshiAdapter(BaseExchangeAdapter):
         )
 
     def cancel_order(self, order_id: str) -> NormalizedOrderResult:
-        raw = self._call_any(["cancel_order", "delete_order"], self.exchange, {"order_id": order_id})
+        raw = self._call_any(
+            ["cancel_order", "delete_order"], self.exchange, {"order_id": order_id}
+        )
         status = "cancelled" if raw is not None else "unknown"
         return NormalizedOrderResult(
             success=True,

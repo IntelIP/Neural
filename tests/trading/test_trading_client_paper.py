@@ -20,7 +20,9 @@ class _FakePaperClient:
     def __init__(self) -> None:
         self.close_calls: list[dict[str, Any]] = []
 
-    def close_position(self, market_id: str, side: str, quantity: int | None = None) -> dict[str, Any]:
+    def close_position(
+        self, market_id: str, side: str, quantity: int | None = None
+    ) -> dict[str, Any]:
         self.close_calls.append({"market_id": market_id, "side": side, "quantity": quantity})
         return {"success": True, "closed_quantity": quantity}
 
