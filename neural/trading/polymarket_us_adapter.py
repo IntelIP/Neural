@@ -226,10 +226,11 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
             raise
 
         # Defensive fallback for non-standard response objects in tests/mocks.
-        raise RuntimeError(
-            f"Polymarket US request failed with status {response.status_code}, "
-            "but raise_for_status() did not raise."
-        )
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Polymarket US request failed with status {response.status_code}, "
+                "but raise_for_status() did not raise."
+            )
 
 
 def _extract_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
