@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 from typing import Any
 
 from neural.analysis.risk import Position
@@ -199,6 +198,50 @@ class TradingClient:
         result = self._adapter.place_order(order, policy=policy or self.trading_policy)
         return serialize_value(result)
 
+    async def place_order_async(
+        self,
+        market_id: str,
+        side: str,
+        *,
+        quantity: int | None = None,
+        count: int | None = None,
+        order_type: str = "market",
+        price: float | None = None,
+        idempotency_key: str | None = None,
+        policy: TradingPolicy | None = None,
+        paper: bool | None = None,
+    ) -> dict[str, Any]:
+        qty = quantity if quantity is not None else count
+        if qty is None:
+            raise ValueError("quantity or count is required")
+
+        use_paper = self.paper_trading if paper is None else paper
+        normalized_side = _normalize_order_side(side)
+
+        if use_paper:
+            return await self._place_paper_order_async(
+                market_id=market_id,
+                side=normalized_side,
+                quantity=qty,
+                order_type=order_type,
+                price=price,
+            )
+
+        order = NormalizedOrderRequest(
+            market_id=market_id,
+            side=normalized_side,
+            quantity=qty,
+            order_type="market" if order_type == "market" else "limit",
+            price=price,
+            idempotency_key=idempotency_key,
+        )
+        result = await asyncio.to_thread(
+            self._adapter.place_order,
+            order,
+            policy=policy or self.trading_policy,
+        )
+        return serialize_value(result)
+
     def cancel_order(self, order_id: str) -> dict[str, Any]:
         return serialize_value(self._adapter.cancel_order(order_id))
 
@@ -287,6 +330,38 @@ class TradingClient:
             )
         )
 
+    async def _place_paper_order_async(
+        self,
+        *,
+        market_id: str,
+        side: str,
+        quantity: int,
+        order_type: str,
+        price: float | None,
+    ) -> dict[str, Any]:
+        paper_client = self._paper_client_instance()
+        if side.startswith("sell_"):
+            base_side = "yes" if side.endswith("yes") else "no"
+            return serialize_value(
+                await asyncio.to_thread(
+                    paper_client.close_position,
+                    market_id,
+                    base_side,
+                    quantity,
+                )
+            )
+
+        base_side = "yes" if side.endswith("yes") else "no"
+        return serialize_value(
+            await paper_client.place_order(
+                market_id=market_id,
+                side=base_side,
+                quantity=quantity,
+                order_type=order_type,
+                price=price,
+            )
+        )
+
 
 def _normalize_order_side(side: str) -> str:
     normalized = side.lower().strip()
@@ -304,20 +379,9 @@ def _run_coro_sync(coro: Any) -> Any:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-
-    result: dict[str, Any] = {}
-    error: dict[str, BaseException] = {}
-
-    def _runner() -> None:
-        try:
-            result["value"] = asyncio.run(coro)
-        except BaseException as exc:
-            error["exc"] = exc
-
-    thread = threading.Thread(target=_runner)
-    thread.start()
-    thread.join()
-
-    if "exc" in error:
-        raise error["exc"]
-    return result.get("value")
+    if hasattr(coro, "close"):
+        coro.close()
+    raise RuntimeError(
+        "Cannot execute sync paper-trading call inside a running event loop. "
+        "Use await TradingClient.place_order_async(..., paper=True)."
+    )

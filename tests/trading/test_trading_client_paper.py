@@ -6,7 +6,6 @@ from typing import Any
 
 import pytest
 
-import neural.trading.client as trading_client_module
 from neural.trading.client import TradingClient
 
 
@@ -39,6 +38,15 @@ class _FakePaperClient:
         return {"success": True, "market_id": market_id, "side": side, "quantity": quantity}
 
 
+class _FakeLiveAdapter:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def place_order(self, order: Any, *, policy: Any = None) -> dict[str, Any]:
+        self.calls.append({"order": order, "policy": policy})
+        return {"success": True, "order_id": "LIVE-1"}
+
+
 def _fake_creds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("KALSHI_API_KEY_ID", "abc123")
     monkeypatch.setenv("KALSHI_PRIVATE_KEY_BASE64", base64.b64encode(b"KEY").decode())
@@ -57,35 +65,45 @@ def test_paper_sell_uses_requested_quantity(monkeypatch: pytest.MonkeyPatch) -> 
     assert fake_paper.close_calls == [{"market_id": "MKT-1", "side": "yes", "quantity": 3}]
 
 
-def test_paper_buy_works_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_paper_buy_sync_raises_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake_creds(monkeypatch)
     client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=True)
     client._paper_client = _FakePaperClient()
 
-    async def _call_sync_api() -> dict[str, Any]:
-        return client.place_order(market_id="MKT-2", side="buy_yes", quantity=2, paper=True)
+    async def _call_sync_api() -> None:
+        with pytest.raises(RuntimeError, match="place_order_async"):
+            client.place_order(market_id="MKT-2", side="buy_yes", quantity=2, paper=True)
 
-    out = asyncio.run(_call_sync_api())
+    asyncio.run(_call_sync_api())
+
+
+def test_paper_buy_async_works_inside_running_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_creds(monkeypatch)
+    client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=True)
+    client._paper_client = _FakePaperClient()
+
+    async def _call_async_api() -> dict[str, Any]:
+        return await client.place_order_async(
+            market_id="MKT-2", side="buy_yes", quantity=2, paper=True
+        )
+
+    out = asyncio.run(_call_async_api())
     assert out["success"] is True
     assert out["quantity"] == 2
 
 
-def test_run_coro_sync_uses_non_daemon_thread_inside_event_loop(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    seen: dict[str, Any] = {}
+def test_place_order_async_passes_policy_keyword(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_creds(monkeypatch)
+    client = TradingClient(client_factory=lambda **_: _DummyClient(), paper_trading=False)
+    live_adapter = _FakeLiveAdapter()
+    client._adapter = live_adapter
 
-    real_thread_cls = trading_client_module.threading.Thread
+    async def _call_async_api() -> dict[str, Any]:
+        return await client.place_order_async(
+            market_id="MKT-3", side="buy_yes", quantity=1, paper=False
+        )
 
-    class _RecordingThread(real_thread_cls):
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            seen["daemon"] = kwargs.get("daemon")
-            super().__init__(*args, **kwargs)
-
-    monkeypatch.setattr(trading_client_module.threading, "Thread", _RecordingThread)
-
-    async def _call_sync_bridge() -> int:
-        return trading_client_module._run_coro_sync(asyncio.sleep(0, result=7))
-
-    assert asyncio.run(_call_sync_bridge()) == 7
-    assert seen["daemon"] in (None, False)
+    out = asyncio.run(_call_async_api())
+    assert out["success"] is True
+    assert live_adapter.calls
+    assert live_adapter.calls[0]["policy"] is client.trading_policy
