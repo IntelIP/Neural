@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+import neural.trading.polymarket_us_adapter as adapter_module
 from neural.trading.polymarket_us_adapter import PolymarketUSAdapter, _to_float, _to_prob
 
 
@@ -191,3 +192,11 @@ def test_numeric_parsing_helpers_return_none_for_invalid_values() -> None:
     assert _to_prob(object()) is None
     assert _to_float("bad") is None
     assert _to_float(object()) is None
+
+
+def test_adapter_raises_clear_error_for_missing_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(adapter_module, "get_polymarket_us_credentials", lambda: {})
+    with pytest.raises(ValueError, match="credentials are required"):
+        PolymarketUSAdapter(base_url="https://api.polymarket.us")

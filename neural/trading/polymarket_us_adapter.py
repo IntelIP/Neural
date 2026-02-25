@@ -48,9 +48,19 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         creds: dict[str, Any] = {}
         if self.api_key is None or self.api_secret is None or self.passphrase is None:
             creds = get_polymarket_us_credentials()
-        self.api_key = self.api_key or str(creds["api_key"])
-        self.api_secret = self.api_secret or bytes(creds["api_secret"])
-        self.passphrase = self.passphrase or str(creds["passphrase"])
+
+        api_key = self.api_key or creds.get("api_key")
+        api_secret = self.api_secret or creds.get("api_secret")
+        passphrase = self.passphrase or creds.get("passphrase")
+        if api_key is None or api_secret is None or passphrase is None:
+            raise ValueError("Polymarket US credentials are required: api_key, api_secret, passphrase")
+
+        self.api_key = str(api_key)
+        if isinstance(api_secret, str):
+            self.api_secret = api_secret.encode("utf-8")
+        else:
+            self.api_secret = bytes(api_secret)
+        self.passphrase = str(passphrase)
         self.base_url = (self.base_url or get_polymarket_us_base_url()).rstrip("/")
 
         self._signer = PolymarketUSSigner(
