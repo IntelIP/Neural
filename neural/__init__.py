@@ -20,7 +20,7 @@ import warnings
 from types import ModuleType
 from typing import Set  # noqa: UP035
 
-from . import analysis, auth, data_collection, trading
+from . import analysis, auth, data_collection, exchanges, trading
 
 deployment: ModuleType | None
 try:
@@ -75,6 +75,7 @@ __all__ = [
     "data_collection",
     "analysis",
     "trading",
+    "exchanges",
     "deployment",  # v0.4.0: Docker deployment module (experimental)
     "_warn_experimental",  # For internal use by modules
 ]

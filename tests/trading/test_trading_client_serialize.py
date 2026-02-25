@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+import neural.trading.client as trading_client_module
 from neural.trading.client import TradingClient
 
 
@@ -58,3 +59,25 @@ def test_non_callable_attribute_passthrough(monkeypatch: pytest.MonkeyPatch) -> 
     client = TradingClient(client_factory=lambda **_: DummyClient())
 
     assert client.exchange.answer == 42
+
+
+def test_compat_wrappers_do_not_reserialize_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _CompatClient:
+        def list_markets(self, **kwargs: Any) -> list[dict[str, Any]]:
+            del kwargs
+            return [{"market_id": "KX-1"}]
+
+        def get_positions(self) -> list[dict[str, Any]]:
+            return [{"market_id": "KX-1", "quantity": 2}]
+
+    def _unexpected_serialize(_: Any) -> Any:
+        raise AssertionError("compat wrappers should not call serialize_value")
+
+    monkeypatch.setattr(trading_client_module, "serialize_value", _unexpected_serialize)
+    compat_client = _CompatClient()
+
+    markets = trading_client_module._CompatMarkets(compat_client).get_markets()
+    positions = trading_client_module._CompatPortfolio(compat_client).get_positions()
+
+    assert markets == {"markets": [{"market_id": "KX-1"}]}
+    assert positions == {"positions": [{"market_id": "KX-1", "quantity": 2}]}
