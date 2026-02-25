@@ -266,7 +266,13 @@ class TradingClient:
         paper_client = self._paper_client_instance()
         if side.startswith("sell_"):
             base_side = "yes" if side.endswith("yes") else "no"
-            return serialize_value(paper_client.close_position(market_id=market_id, side=base_side))
+            return serialize_value(
+                paper_client.close_position(
+                    market_id=market_id,
+                    side=base_side,
+                    quantity=quantity,
+                )
+            )
 
         base_side = "yes" if side.endswith("yes") else "no"
         return _run_coro_sync(
