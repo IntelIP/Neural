@@ -50,7 +50,7 @@ jobs:
           fi
 
       - name: Upload health report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: health-report
           path: health-report.json
@@ -144,9 +144,13 @@ jobs:
         if: always()
         run: |
           # Update documentation metrics dashboard
-          python scripts/update_metrics.py \
-            --health-report health-report.json \
-            --github-token ${{ secrets.GITHUB_TOKEN }}
+          if [ -f "scripts/update_metrics.py" ]; then
+            python scripts/update_metrics.py \
+              --health-report health-report.json \
+              --github-token ${{ secrets.GITHUB_TOKEN }}
+          else
+            echo "update_metrics.py not found; skipping metrics update"
+          fi
 
   metrics-dashboard:
     runs-on: ubuntu-latest
@@ -169,8 +173,25 @@ jobs:
 
       - name: Generate metrics dashboard
         run: |
-          python scripts/generate_metrics_dashboard.py \
-            --output docs/metrics-dashboard.html
+          if [ -f "scripts/generate_metrics_dashboard.py" ]; then
+            python scripts/generate_metrics_dashboard.py \
+              --output docs/metrics-dashboard.html
+          else
+            echo "generate_metrics_dashboard.py not found; creating placeholder dashboard"
+            python - <<'PY'
+          from pathlib import Path
+
+          Path("docs").mkdir(parents=True, exist_ok=True)
+          Path("docs/metrics-dashboard.html").write_text(
+              "<!doctype html>\n"
+              "<html lang=\"en\">\n"
+              "<head><meta charset=\"utf-8\"><title>Documentation Metrics</title></head>\n"
+              "<body><h1>Documentation Metrics</h1><p>No metrics generator script is configured.</p></body>\n"
+              "</html>\n",
+              encoding="utf-8",
+          )
+          PY
+          fi
 
       - name: Deploy metrics dashboard
         if: needs.health-check.result == 'success'
