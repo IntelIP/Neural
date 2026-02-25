@@ -268,7 +268,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
                 time.sleep(sleep_s)
                 continue
 
-            response.raise_for_status()
+            self._raise_http_error(response)
 
     @staticmethod
     def _normalize_market(raw: dict[str, Any]) -> NormalizedMarket:
@@ -292,6 +292,19 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
             category=category,
             sport=sport,
             metadata={"exchange": "polymarket_us", "raw": raw},
+        )
+
+    @staticmethod
+    def _raise_http_error(response: requests.Response) -> None:
+        try:
+            response.raise_for_status()
+        except Exception:
+            raise
+
+        # Defensive fallback for non-standard response objects in tests/mocks.
+        raise RuntimeError(
+            f"Polymarket US request failed with status {response.status_code}, "
+            "but raise_for_status() did not raise."
         )
 
 

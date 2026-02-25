@@ -12,6 +12,7 @@ from neural.trading.polymarket_us_adapter import PolymarketUSAdapter
 class FakeResponse:
     payload: dict[str, Any]
     status_code: int = 200
+    raise_http_error: bool = True
 
     @property
     def text(self) -> str:
@@ -21,7 +22,8 @@ class FakeResponse:
         return self.payload
 
     def raise_for_status(self) -> None:
-        raise RuntimeError(f"HTTP {self.status_code}")
+        if self.raise_http_error:
+            raise RuntimeError(f"HTTP {self.status_code}")
 
 
 class FakeSession:
@@ -185,3 +187,23 @@ def test_trade_replay_and_event_replay_return_cursor() -> None:
     assert trades["next_cursor"] == "next-1"
     assert len(events["items"]) == 1
     assert events["next_cursor"] is None
+
+
+def test_request_raises_when_error_response_does_not_raise_for_status() -> None:
+    class _SoftFailSession(FakeSession):
+        def request(
+            self,
+            method: str,
+            url: str,
+            *,
+            params: dict[str, Any] | None = None,
+            data: str | None = None,
+            headers: dict[str, Any] | None = None,
+            timeout: int | None = None,
+        ) -> FakeResponse:
+            del method, url, params, data, headers, timeout
+            return FakeResponse({}, status_code=500, raise_http_error=False)
+
+    adapter = _new_adapter(_SoftFailSession())
+    with pytest.raises(RuntimeError, match="raise_for_status\\(\\) did not raise"):
+        adapter.get_quote("MKT-SPORT-1")
