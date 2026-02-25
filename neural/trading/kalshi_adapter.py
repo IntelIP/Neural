@@ -246,7 +246,8 @@ class KalshiAdapter(BaseExchangeAdapter):
         allowed = {
             name
             for name, param in sig.parameters.items()
-            if param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+            if param.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
         }
         return set(kwargs).issubset(allowed)
 
@@ -258,11 +259,15 @@ class KalshiAdapter(BaseExchangeAdapter):
             return False
 
         for param in sig.parameters.values():
-            if param.kind in (
-                inspect.Parameter.POSITIONAL_ONLY,
-                inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                inspect.Parameter.KEYWORD_ONLY,
-            ) and param.default is inspect.Parameter.empty:
+            if (
+                param.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                )
+                and param.default is inspect.Parameter.empty
+            ):
                 return False
         return True
 
