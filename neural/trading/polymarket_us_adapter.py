@@ -155,6 +155,23 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
             )
         return out
 
+    def get_candles(
+        self,
+        market_id: str,
+        *,
+        interval: str = "1h",
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        payload = self._request(
+            "GET",
+            f"/api/v1/markets/{market_id}/candles",
+            params={"interval": interval, "limit": limit},
+        )
+        rows = payload.get("candles") or payload.get("data") or []
+        if not isinstance(rows, list):
+            return []
+        return [row for row in rows if isinstance(row, dict)]
+
     def close(self) -> None:
         self._http.close()
 
@@ -288,6 +305,8 @@ def _to_prob(value: Any) -> float | None:
     try:
         out = float(value)
     except (TypeError, ValueError):
+        return None
+    if out < 0 or out > 100:
         return None
     if out > 1:
         return out / 100.0

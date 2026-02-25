@@ -86,20 +86,10 @@ class PolymarketUSMarketsSource(DataSource):
         interval: str = "1h",
         limit: int = 200,
     ) -> pd.DataFrame:
-        # Path is intentionally isolated here so endpoint changes are easy to update.
-        payload = self.adapter._request(  # noqa: SLF001
-            "GET",
-            f"/api/v1/markets/{market_id}/candles",
-            params={"interval": interval, "limit": limit},
-        )
-        rows = payload.get("candles") or payload.get("data") or []
-        if not isinstance(rows, list):
-            rows = []
+        rows = self.adapter.get_candles(market_id, interval=interval, limit=limit)
 
         normalized = []
         for row in rows:
-            if not isinstance(row, dict):
-                continue
             normalized.append(
                 {
                     "timestamp": row.get("timestamp") or row.get("time"),

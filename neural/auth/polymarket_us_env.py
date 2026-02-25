@@ -58,11 +58,15 @@ def get_polymarket_us_api_secret() -> bytes:
 
     raw_value = os.getenv("POLYMARKET_US_API_SECRET")
     if raw_value:
-        # Allow raw base64 string in POLYMARKET_US_API_SECRET for compatibility.
-        try:
-            return base64.b64decode(raw_value)
-        except (ValueError, binascii.Error):
+        if raw_value.lstrip().startswith("-----BEGIN"):
             return raw_value.encode("utf-8")
+        # POLYMARKET_US_API_SECRET should be base64 unless PEM is explicitly provided.
+        try:
+            return base64.b64decode(raw_value, validate=True)
+        except binascii.Error as exc:
+            raise ValueError(
+                "POLYMARKET_US_API_SECRET must be valid base64 or PEM-encoded key data"
+            ) from exc
 
     path = os.getenv("POLYMARKET_US_API_SECRET_PATH", str(DEFAULT_API_SECRET_PATH))
     return _read_bytes_file(path, "Polymarket US API secret")

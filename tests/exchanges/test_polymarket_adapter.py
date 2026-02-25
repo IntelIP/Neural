@@ -81,6 +81,9 @@ class FakeSession:
                 }
             )
 
+        if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/candles"):
+            return FakeResponse({"candles": [{"timestamp": 1700000000000, "open": 0.5}]})
+
         return FakeResponse({}, status_code=404)
 
     def close(self) -> None:
@@ -190,6 +193,7 @@ def test_request_raises_for_invalid_json_response() -> None:
 def test_numeric_parsing_helpers_return_none_for_invalid_values() -> None:
     assert _to_prob("bad") is None
     assert _to_prob(object()) is None
+    assert _to_prob(150) is None
     assert _to_float("bad") is None
     assert _to_float(object()) is None
 
@@ -200,3 +204,10 @@ def test_adapter_raises_clear_error_for_missing_credentials(
     monkeypatch.setattr(adapter_module, "get_polymarket_us_credentials", lambda: {})
     with pytest.raises(ValueError, match="credentials are required"):
         PolymarketUSAdapter(base_url="https://api.polymarket.us")
+
+
+def test_get_candles_returns_normalized_rows() -> None:
+    session = FakeSession()
+    adapter = _new_adapter(session)
+    rows = adapter.get_candles("MKT-SPORT-1")
+    assert rows == [{"timestamp": 1700000000000, "open": 0.5}]
