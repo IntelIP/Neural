@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import date
 
 from .types import (
     ExchangeCapabilities,
@@ -63,9 +64,20 @@ class BaseExchangeAdapter(ExchangeAdapter):
     """Shared policy guards for live trading adapters."""
 
     _daily_notional_used: float
+    _daily_notional_date: date
 
     def __init__(self) -> None:
         self._daily_notional_used = 0.0
+        self._daily_notional_date = self._current_day()
+
+    def _current_day(self) -> date:
+        return date.today()
+
+    def _rollover_daily_notional_if_needed(self) -> None:
+        current_day = self._current_day()
+        if self._daily_notional_date != current_day:
+            self._daily_notional_date = current_day
+            self._daily_notional_used = 0.0
 
     def _enforce_policy(self, order: NormalizedOrderRequest, policy: TradingPolicy | None) -> None:
         if policy is None:
@@ -84,6 +96,7 @@ class BaseExchangeAdapter(ExchangeAdapter):
             )
 
         if policy.max_daily_notional is not None:
+            self._rollover_daily_notional_if_needed()
             projected = self._daily_notional_used + notional
             if projected > policy.max_daily_notional:
                 raise ValueError(
