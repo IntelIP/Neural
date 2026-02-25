@@ -14,6 +14,7 @@ from neural.exchanges.types import (
 from neural.trading.paper_client import PaperTradingClient
 
 from .kalshi_adapter import KalshiAdapter, KalshiClientFactory, serialize_value
+from .polymarket_us_adapter import PolymarketUSAdapter
 
 
 def _default_client_factory() -> KalshiClientFactory:
@@ -82,6 +83,8 @@ class _CompatExchange:
 def _ensure_adapters_registered() -> None:
     if "kalshi" not in registry.names():
         registry.register("kalshi", lambda **kwargs: KalshiAdapter(**kwargs))
+    if "polymarket_us" not in registry.names():
+        registry.register("polymarket_us", lambda **kwargs: PolymarketUSAdapter(**kwargs))
 
 
 class TradingClient:
@@ -99,6 +102,11 @@ class TradingClient:
         exchange: ExchangeName = "kalshi",
         paper_trading: bool = False,
         trading_policy: TradingPolicy | None = None,
+        polymarket_us_api_key: str | None = None,
+        polymarket_us_api_secret: bytes | None = None,
+        polymarket_us_passphrase: str | None = None,
+        polymarket_us_base_url: str | None = None,
+        polymarket_us_session: Any | None = None,
     ) -> None:
         _ensure_adapters_registered()
 
@@ -118,8 +126,18 @@ class TradingClient:
                 timeout=timeout,
                 client_factory=factory,
             )
+        elif exchange == "polymarket_us":
+            self._adapter = registry.create(
+                "polymarket_us",
+                api_key=polymarket_us_api_key,
+                api_secret=polymarket_us_api_secret,
+                passphrase=polymarket_us_passphrase,
+                base_url=polymarket_us_base_url,
+                timeout=timeout,
+                session=polymarket_us_session,
+            )
         else:
-            raise ValueError(f"Exchange '{exchange}' is not registered yet")
+            raise ValueError(f"Unsupported exchange: {exchange}")
 
         self._client = getattr(self._adapter, "_client", self._adapter)
         self.portfolio = getattr(self._adapter, "portfolio", _CompatPortfolio(self))

@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- **Exchange Core:** Added exchange abstraction contracts and normalized models in `neural/exchanges/`.
+- **Kalshi Adapter Routing:** Refactored `TradingClient` to route Kalshi behavior through an exchange adapter without breaking default usage.
+- **Polymarket US Auth + Read Support:** Added signer/env credential loading, sports-first market discovery, quote fetching, and normalized mapping.
+- **Polymarket US Data Source:** Added `PolymarketUSMarketsSource` and config model for SDK data collection workflows.
+
+### Changed
+- **SDK Exports:** Updated auth/trading/data collection export surfaces for multi-exchange usage.
+- **Public API Tests:** Added exchange-level contract and signer tests plus updated public import surface tests.
+
 ## [0.3.1] - 2025-10-26
 
 ### Added

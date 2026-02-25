@@ -15,6 +15,7 @@ from .kalshi import (
     search_markets,
 )
 from .kalshi_api_source import KalshiApiSource
+from .polymarket_us import PolymarketUSConfig, PolymarketUSMarketsSource
 from .registry import DataSourceRegistry, register_source, registry
 from .rest_api import RestApiSource
 from .transformer import DataTransformer
@@ -29,6 +30,8 @@ __all__ = [
     "registry",
     "register_source",
     "KalshiApiSource",
+    "PolymarketUSMarketsSource",
+    "PolymarketUSConfig",
     "KalshiMarketsSource",
     "SportMarketCollector",
     "filter_moneyline_markets",

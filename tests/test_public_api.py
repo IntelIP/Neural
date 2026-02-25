@@ -1,17 +1,8 @@
 def test_api_surface_imports() -> None:
-    # Data collection exports
-    # Analysis exports
-    from neural.analysis import (
-        Strategy,
-    )
-    from neural.data_collection import (
-        DataSource,
-    )
-
-    # Trading exports
-    from neural.trading import (
-        TradingClient,
-    )
+    from neural.analysis import Strategy
+    from neural.data_collection import DataSource, PolymarketUSMarketsSource
+    from neural.trading import PolymarketUSAdapter, TradingClient, TradingPolicy
 
     # Simple asserts to silence linters
-    assert Strategy and TradingClient and DataSource
+    assert Strategy and TradingClient and DataSource and PolymarketUSMarketsSource
+    assert PolymarketUSAdapter and TradingPolicy
