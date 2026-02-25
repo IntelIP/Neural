@@ -61,23 +61,26 @@ def test_daily_notional_resets_after_day_rollover() -> None:
     policy = TradingPolicy(live_enabled=True, max_daily_notional=5.0)
 
     first = NormalizedOrderRequest(market_id="MKT-1", side="buy_yes", quantity=4, price=1.0)
-    adapter._enforce_policy(first, policy)
+    notional = adapter._enforce_policy(first, policy)
+    adapter._record_daily_notional(notional)
 
     adapter._daily_notional_date = adapter._daily_notional_date - timedelta(days=1)
     second = NormalizedOrderRequest(market_id="MKT-2", side="buy_yes", quantity=4, price=1.0)
 
     # Should pass after rollover rather than failing against yesterday's usage.
-    adapter._enforce_policy(second, policy)
+    notional = adapter._enforce_policy(second, policy)
+    adapter._record_daily_notional(notional)
 
 
 def test_daily_notional_still_enforced_within_same_day() -> None:
     adapter = _PolicyAdapter()
     policy = TradingPolicy(live_enabled=True, max_daily_notional=5.0)
 
-    adapter._enforce_policy(
+    first_notional = adapter._enforce_policy(
         NormalizedOrderRequest(market_id="MKT-1", side="buy_yes", quantity=4, price=1.0),
         policy,
     )
+    adapter._record_daily_notional(first_notional)
     with pytest.raises(ValueError):
         adapter._enforce_policy(
             NormalizedOrderRequest(market_id="MKT-2", side="buy_yes", quantity=2, price=1.0),
