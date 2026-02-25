@@ -68,9 +68,14 @@ class PolymarketUSSigner:
         if api_key is None or api_secret is None or passphrase is None:
             raise ValueError("Missing required Polymarket signer config: api_key, api_secret, passphrase")
 
+        if isinstance(api_secret, str):
+            secret_bytes = api_secret.encode("utf-8")
+        else:
+            secret_bytes = bytes(api_secret)
+
         return cls(
             api_key=str(api_key),
-            api_secret=bytes(api_secret),
+            api_secret=secret_bytes,
             passphrase=str(passphrase),
             now_ms=now_ms,
         )

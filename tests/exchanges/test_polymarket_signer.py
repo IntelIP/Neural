@@ -47,3 +47,16 @@ def test_polymarket_signer_invalid_pem_has_clear_error() -> None:
             api_secret=b"-----BEGIN PRIVATE KEY-----\nnot-a-key\n-----END PRIVATE KEY-----",
             passphrase="passphrase",
         )
+
+
+def test_polymarket_signer_from_env_accepts_string_secret() -> None:
+    signer = PolymarketUSSigner.from_env(
+        {
+            "api_key": "key123",
+            "api_secret": "a" * 32,
+            "passphrase": "passphrase",
+        },
+        now_ms=lambda: 1700000000000,
+    )
+    headers = signer.headers("GET", "/api/v1/markets")
+    assert headers["PM-ACCESS-KEY"] == "key123"

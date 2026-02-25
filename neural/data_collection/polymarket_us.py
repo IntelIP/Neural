@@ -30,7 +30,13 @@ class PolymarketUSMarketsSource(DataSource):
         adapter: PolymarketUSAdapter | None = None,
     ) -> None:
         super().__init__(name=name, config=config)
-        self.adapter = adapter or PolymarketUSAdapter()
+        if adapter is not None:
+            self.adapter = adapter
+        else:
+            try:
+                self.adapter = PolymarketUSAdapter()
+            except Exception as exc:
+                raise RuntimeError("Failed to initialize PolymarketUSMarketsSource adapter") from exc
         raw_config = config or {}
         allowed_keys = {f.name for f in fields(PolymarketUSConfig)}
         source_cfg = {k: v for k, v in raw_config.items() if k in allowed_keys}
