@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint type test clean build publish-testpypi
+.PHONY: help install install-dev lint type test clean build publish-testpypi audit audit-security audit-deps
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
@@ -28,6 +28,17 @@ test: ## Run tests
 
 test-cov: ## Run tests with coverage
 	pytest tests/ --cov=neural --cov-report=term-missing
+
+audit: ## Run quality gates for bug analysis
+	ruff check neural tests scripts utils
+	mypy neural
+	pytest tests/
+
+audit-security: ## Run static security scan (Bandit)
+	bandit -q -r neural
+
+audit-deps: ## Run dependency vulnerability scan
+	pip-audit -r requirements-dev.txt
 
 clean: ## Clean build artifacts
 	rm -rf build dist neural.egg-info neural_sdk.egg-info *.egg-info
