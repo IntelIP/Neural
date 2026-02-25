@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 import pandas as pd
@@ -31,8 +31,19 @@ class PolymarketUSMarketsSource(DataSource):
         adapter: PolymarketUSAdapter | None = None,
     ) -> None:
         super().__init__(name=name, config=config)
-        self.adapter = adapter or PolymarketUSAdapter()
-        self._source_cfg = PolymarketUSConfig(**(config or {}))
+        if adapter is not None:
+            self.adapter = adapter
+        else:
+            try:
+                self.adapter = PolymarketUSAdapter()
+            except Exception as exc:
+                raise RuntimeError(
+                    "Failed to initialize PolymarketUSMarketsSource adapter"
+                ) from exc
+        raw_config = config or {}
+        allowed_keys = {f.name for f in fields(PolymarketUSConfig)}
+        source_cfg = {k: v for k, v in raw_config.items() if k in allowed_keys}
+        self._source_cfg = PolymarketUSConfig(**source_cfg)
 
     async def connect(self) -> None:
         self._connected = True
@@ -90,8 +101,6 @@ class PolymarketUSMarketsSource(DataSource):
 
         normalized = []
         for row in rows:
-            if not isinstance(row, dict):
-                continue
             normalized.append(
                 {
                     "timestamp": row.get("timestamp") or row.get("time"),

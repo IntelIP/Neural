@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, Protocol
@@ -223,16 +224,52 @@ class KalshiAdapter(BaseExchangeAdapter):
             method = getattr(target, name, None)
             if not callable(method):
                 continue
-            try:
+            if KalshiAdapter._can_call_with_kwargs(method, cleaned_kwargs):
                 return method(**cleaned_kwargs)
-            except TypeError:
-                # Retry with no kwargs for methods that do not accept filter args.
-                if cleaned_kwargs:
-                    try:
-                        return method()
-                    except TypeError:
-                        continue
+            if cleaned_kwargs and KalshiAdapter._can_call_without_kwargs(method):
+                return method()
         raise AttributeError(f"None of methods {method_names} exist on target API")
+
+    @staticmethod
+    def _can_call_with_kwargs(method: Any, kwargs: dict[str, Any]) -> bool:
+        if not kwargs:
+            return True
+        try:
+            sig = inspect.signature(method)
+        except (TypeError, ValueError):
+            return True
+
+        params = sig.parameters.values()
+        if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params):
+            return True
+
+        allowed = {
+            name
+            for name, param in sig.parameters.items()
+            if param.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        }
+        return set(kwargs).issubset(allowed)
+
+    @staticmethod
+    def _can_call_without_kwargs(method: Any) -> bool:
+        try:
+            sig = inspect.signature(method)
+        except (TypeError, ValueError):
+            return False
+
+        for param in sig.parameters.values():
+            if (
+                param.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                )
+                and param.default is inspect.Parameter.empty
+            ):
+                return False
+        return True
 
 
 def _to_prob(value: Any) -> float | None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from neural.exchanges.types import NormalizedOrderRequest, TradingPolicy
 from neural.trading.kalshi_adapter import KalshiAdapter
 
@@ -90,3 +92,13 @@ def test_kalshi_adapter_contract_methods() -> None:
 
     positions = adapter.get_positions()
     assert positions[0].quantity == 5
+
+
+def test_call_any_does_not_swallow_internal_type_errors() -> None:
+    class _BuggyMarkets:
+        def get_markets(self, **kwargs: Any) -> dict[str, Any]:
+            del kwargs
+            raise TypeError("internal bug")
+
+    with pytest.raises(TypeError, match="internal bug"):
+        KalshiAdapter._call_any(["get_markets"], _BuggyMarkets(), {"limit": 10})

@@ -37,7 +37,10 @@ class PolymarketUSSigner:
     def _load_private_key(secret: bytes) -> ed25519.Ed25519PrivateKey:
         # Accept PEM-encoded keys and raw 32-byte seeds.
         if secret.lstrip().startswith(b"-----BEGIN"):
-            key = serialization.load_pem_private_key(secret, password=None)
+            try:
+                key = serialization.load_pem_private_key(secret, password=None)
+            except ValueError as exc:
+                raise ValueError("Polymarket US private key PEM is invalid") from exc
             if not isinstance(key, ed25519.Ed25519PrivateKey):
                 raise ValueError("Polymarket US requires an Ed25519 private key")
             return key
@@ -59,9 +62,20 @@ class PolymarketUSSigner:
 
     @classmethod
     def from_env(cls, values: dict[str, Any], now_ms: TimestampFn | None = None) -> PolymarketUSSigner:
+        api_key = values.get("api_key")
+        api_secret = values.get("api_secret")
+        passphrase = values.get("passphrase")
+        if api_key is None or api_secret is None or passphrase is None:
+            raise ValueError("Missing required Polymarket signer config: api_key, api_secret, passphrase")
+
+        if isinstance(api_secret, str):
+            secret_bytes = api_secret.encode("utf-8")
+        else:
+            secret_bytes = bytes(api_secret)
+
         return cls(
-            api_key=str(values["api_key"]),
-            api_secret=values["api_secret"],
-            passphrase=str(values["passphrase"]),
+            api_key=str(api_key),
+            api_secret=secret_bytes,
+            passphrase=str(passphrase),
             now_ms=now_ms,
         )

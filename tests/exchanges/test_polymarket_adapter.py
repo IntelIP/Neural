@@ -5,7 +5,8 @@ from typing import Any
 
 import pytest
 
-from neural.trading.polymarket_us_adapter import PolymarketUSAdapter
+import neural.trading.polymarket_us_adapter as adapter_module
+from neural.trading.polymarket_us_adapter import PolymarketUSAdapter, _to_float, _to_prob
 
 
 @dataclass
@@ -69,7 +70,13 @@ class FakeSession:
             return FakeResponse(
                 {
                     "candles": [
-                        {"timestamp": 1700000000000, "open": 0.5, "high": 0.6, "low": 0.4, "close": 0.55}
+                        {
+                            "timestamp": 1700000000000,
+                            "open": 0.5,
+                            "high": 0.6,
+                            "low": 0.4,
+                            "close": 0.55,
+                        }
                     ]
                 }
             )
@@ -78,7 +85,13 @@ class FakeSession:
             return FakeResponse(
                 {
                     "trades": [
-                        {"id": "t1", "timestamp": 1700000000000, "price": 0.55, "size": 10, "sequence": 1}
+                        {
+                            "id": "t1",
+                            "timestamp": 1700000000000,
+                            "price": 0.55,
+                            "size": 10,
+                            "sequence": 1,
+                        }
                     ],
                     "next_cursor": "next-1",
                 }
@@ -109,19 +122,23 @@ class FakeSession:
                 }
             )
 
+        if method == "GET" and url.endswith("/api/v1/markets/MKT-SPORT-1/candles"):
+            return FakeResponse({"candles": [{"timestamp": 1700000000000, "open": 0.5}]})
+
         return FakeResponse({}, status_code=404)
 
     def close(self) -> None:
         return None
 
 
-def _new_adapter(session: FakeSession) -> PolymarketUSAdapter:
+def _new_adapter(session: FakeSession, **kwargs: Any) -> PolymarketUSAdapter:
     return PolymarketUSAdapter(
         api_key="k",
         api_secret=bytes(range(32)),
         passphrase="p",
         base_url="https://api.polymarket.us",
         session=session,
+        **kwargs,
     )
 
 
@@ -187,6 +204,8 @@ def test_trade_replay_and_event_replay_return_cursor() -> None:
     assert trades["next_cursor"] == "next-1"
     assert len(events["items"]) == 1
     assert events["next_cursor"] is None
+
+
 def test_request_raises_when_error_response_does_not_raise_for_status() -> None:
     class _SoftFailSession(FakeSession):
         def request(
@@ -205,3 +224,56 @@ def test_request_raises_when_error_response_does_not_raise_for_status() -> None:
     adapter = _new_adapter(_SoftFailSession())
     with pytest.raises(RuntimeError, match="raise_for_status\\(\\) did not raise"):
         adapter.get_quote("MKT-SPORT-1")
+
+
+def test_request_raises_for_invalid_json_response() -> None:
+    class _BadJsonResponse(FakeResponse):
+        @property
+        def text(self) -> str:
+            return "{bad json"
+
+        def json(self) -> dict[str, Any]:
+            raise ValueError("invalid json")
+
+    class _BadJsonSession(FakeSession):
+        def request(
+            self,
+            method: str,
+            url: str,
+            *,
+            params: dict[str, Any] | None = None,
+            data: str | None = None,
+            headers: dict[str, Any] | None = None,
+            timeout: int | None = None,
+        ) -> FakeResponse:
+            del method, url, params, data, headers, timeout
+            return _BadJsonResponse({})
+
+    adapter = _new_adapter(_BadJsonSession(), max_retries=0)
+    with pytest.raises(RuntimeError, match="not valid JSON"):
+        adapter.list_markets()
+
+
+def test_numeric_parsing_helpers_return_none_for_invalid_values() -> None:
+    assert _to_prob("bad") is None
+    assert _to_prob(object()) is None
+    assert _to_prob(150) is None
+    assert _to_float("bad") is None
+    assert _to_float(object()) is None
+
+
+def test_adapter_raises_clear_error_for_missing_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(adapter_module, "get_polymarket_us_credentials", lambda: {})
+    with pytest.raises(ValueError, match="credentials are required"):
+        PolymarketUSAdapter(base_url="https://api.polymarket.us")
+
+
+def test_get_candles_returns_normalized_rows() -> None:
+    session = FakeSession()
+    adapter = _new_adapter(session)
+    rows = adapter.get_candles("MKT-SPORT-1")
+    assert rows
+    assert rows[0]["timestamp"] == 1700000000000
+    assert rows[0]["open"] == 0.5

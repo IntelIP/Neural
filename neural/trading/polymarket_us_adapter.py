@@ -53,9 +53,21 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         creds: dict[str, Any] = {}
         if self.api_key is None or self.api_secret is None or self.passphrase is None:
             creds = get_polymarket_us_credentials()
-        self.api_key = self.api_key or str(creds["api_key"])
-        self.api_secret = self.api_secret or bytes(creds["api_secret"])
-        self.passphrase = self.passphrase or str(creds["passphrase"])
+
+        api_key = self.api_key or creds.get("api_key")
+        api_secret = self.api_secret or creds.get("api_secret")
+        passphrase = self.passphrase or creds.get("passphrase")
+        if api_key is None or api_secret is None or passphrase is None:
+            raise ValueError(
+                "Polymarket US credentials are required: api_key, api_secret, passphrase"
+            )
+
+        self.api_key = str(api_key)
+        if isinstance(api_secret, str):
+            self.api_secret = api_secret.encode("utf-8")
+        else:
+            self.api_secret = bytes(api_secret)
+        self.passphrase = str(passphrase)
         self.base_url = (self.base_url or get_polymarket_us_base_url()).rstrip("/")
 
         self._signer = PolymarketUSSigner(
@@ -118,14 +130,10 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         *,
         policy: TradingPolicy | None = None,
     ) -> NormalizedOrderResult:
-        raise NotImplementedError(
-            "Polymarket US live order placement is introduced in a later PR."
-        )
+        raise NotImplementedError("Polymarket US live order placement is introduced in a later PR.")
 
     def cancel_order(self, order_id: str) -> NormalizedOrderResult:
-        raise NotImplementedError(
-            "Polymarket US order cancellation is introduced in a later PR."
-        )
+        raise NotImplementedError("Polymarket US order cancellation is introduced in a later PR.")
 
     def get_order_status(self, order_id: str) -> NormalizedOrderResult:
         raise NotImplementedError(
@@ -250,7 +258,26 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
                 timeout=self.timeout,
             )
             if response.status_code < 400:
-                data = response.json() if response.text else {}
+                if response.text:
+                    try:
+                        data = response.json()
+                    except ValueError as exc:
+                        if retry < self.max_retries:
+                            retry += 1
+                            sleep_s = 2**retry
+                            _LOG.warning(
+                                "Polymarket US response JSON decode failed, retrying in %ss (%s/%s)",
+                                sleep_s,
+                                retry,
+                                self.max_retries,
+                            )
+                            time.sleep(sleep_s)
+                            continue
+                        raise RuntimeError(
+                            "Polymarket US response body was not valid JSON"
+                        ) from exc
+                else:
+                    data = {}
                 if isinstance(data, dict):
                     return data
                 return {"data": data}
@@ -277,7 +304,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         category = str(raw.get("category") or raw.get("topic") or "sports")
         sport = str(raw.get("sport") or raw.get("league") or category)
 
-        yes_price = _to_prob(raw.get("yes_price") or raw.get("price_yes") or raw.get("best_ask_yes"))
+        yes_price = _to_prob(
+            raw.get("yes_price") or raw.get("price_yes") or raw.get("best_ask_yes")
+        )
         no_price = _to_prob(raw.get("no_price") or raw.get("price_no") or raw.get("best_ask_no"))
         if no_price is None and yes_price is not None:
             no_price = 1.0 - yes_price
@@ -334,7 +363,12 @@ def _is_sports_market(market: NormalizedMarket) -> bool:
 def _to_prob(value: Any) -> float | None:
     if value is None:
         return None
-    out = float(value)
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if out < 0 or out > 100:
+        return None
     if out > 1:
         return out / 100.0
     return out
@@ -343,7 +377,10 @@ def _to_prob(value: Any) -> float | None:
 def _to_float(value: Any) -> float | None:
     if value is None:
         return None
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 class PolymarketUSWebSocketBase:
