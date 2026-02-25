@@ -8,6 +8,7 @@ from neural.auth.env import get_api_key_id, get_base_url, get_private_key_materi
 from neural.exchanges.base import BaseExchangeAdapter
 from neural.exchanges.types import (
     ExchangeCapabilities,
+    ExchangeName,
     NormalizedMarket,
     NormalizedOrderRequest,
     NormalizedOrderResult,
@@ -64,7 +65,7 @@ class KalshiAdapter(BaseExchangeAdapter):
     timeout: int = 15
     client_factory: KalshiClientFactory | None = None
 
-    name: str = "kalshi"
+    name: ExchangeName = "kalshi"
 
     def __post_init__(self) -> None:
         BaseExchangeAdapter.__init__(self)
