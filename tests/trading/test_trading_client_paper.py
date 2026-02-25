@@ -43,8 +43,6 @@ class _FakeLiveAdapter:
     def place_order(self, order: Any, *, policy: Any = None) -> dict[str, Any]:
         self.calls.append({"order": order, "policy": policy})
         return {"success": True, "order_id": "LIVE-1"}
-
-
 def _fake_creds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("KALSHI_API_KEY_ID", "abc123")
     monkeypatch.setenv("KALSHI_PRIVATE_KEY_BASE64", base64.b64encode(b"KEY").decode())

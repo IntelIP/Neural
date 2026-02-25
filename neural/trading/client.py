@@ -378,7 +378,6 @@ def _run_coro_sync(coro: Any) -> Any:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-
     if hasattr(coro, "close"):
         coro.close()
     raise RuntimeError(

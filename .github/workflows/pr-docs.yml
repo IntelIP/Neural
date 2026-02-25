@@ -5,6 +5,11 @@ on:
     branches: [ main ]
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   docs-check:
     runs-on: ubuntu-latest
@@ -46,18 +51,19 @@ jobs:
         run: |
           python scripts/check_docstring_coverage.py
 
-       - name: Validate example documentation
-         if: steps.changes.outputs.examples == 'true'
-         run: |
-           python scripts/validate_examples.py
+      - name: Validate example documentation
+        if: steps.changes.outputs.examples == 'true'
+        run: |
+          python scripts/validate_examples.py
 
       - name: Check for API documentation updates
         if: steps.changes.outputs.code == 'true'
         run: |
-          python scripts/check_api_docs.py
+          python scripts/validate_docs.py
 
       - name: Comment on PR
         if: always()
+        continue-on-error: true
         uses: actions/github-script@v6
         with:
           script: |

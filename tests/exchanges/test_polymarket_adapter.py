@@ -187,8 +187,6 @@ def test_trade_replay_and_event_replay_return_cursor() -> None:
     assert trades["next_cursor"] == "next-1"
     assert len(events["items"]) == 1
     assert events["next_cursor"] is None
-
-
 def test_request_raises_when_error_response_does_not_raise_for_status() -> None:
     class _SoftFailSession(FakeSession):
         def request(
