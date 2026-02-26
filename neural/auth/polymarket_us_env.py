@@ -1,3 +1,5 @@
+"""Helpers for resolving Polymarket US auth credentials from env/files."""
+
 from __future__ import annotations
 
 import base64
@@ -14,6 +16,7 @@ DEFAULT_PASSPHRASE_PATH = SECRETS_DIR / "polymarket_us_api_passphrase.txt"
 
 
 def _read_text_file(path: str | Path, label: str) -> str:
+    """Read a UTF-8 secret file and return stripped text content."""
     try:
         return Path(path).read_text(encoding="utf-8").strip()
     except FileNotFoundError:
@@ -23,6 +26,7 @@ def _read_text_file(path: str | Path, label: str) -> str:
 
 
 def _read_bytes_file(path: str | Path, label: str) -> bytes:
+    """Read a binary secret file."""
     try:
         return Path(path).read_bytes()
     except FileNotFoundError:
@@ -32,10 +36,12 @@ def _read_bytes_file(path: str | Path, label: str) -> bytes:
 
 
 def get_polymarket_us_base_url() -> str:
+    """Return the normalized base API URL for Polymarket US."""
     return os.getenv("POLYMARKET_US_API_URL", POLYMARKET_US_API_URL).rstrip("/")
 
 
 def get_polymarket_us_api_key() -> str:
+    """Resolve API key from env var first, then fallback secret file path."""
     value = os.getenv("POLYMARKET_US_API_KEY")
     if value:
         return value
@@ -44,6 +50,7 @@ def get_polymarket_us_api_key() -> str:
 
 
 def get_polymarket_us_passphrase() -> str:
+    """Resolve API passphrase from env var first, then fallback secret file path."""
     value = os.getenv("POLYMARKET_US_API_PASSPHRASE")
     if value:
         return value
@@ -52,6 +59,7 @@ def get_polymarket_us_passphrase() -> str:
 
 
 def get_polymarket_us_api_secret() -> bytes:
+    """Resolve API secret bytes from env vars or fallback secret file path."""
     b64_value = os.getenv("POLYMARKET_US_API_SECRET_BASE64")
     if b64_value:
         return base64.b64decode(b64_value)
@@ -73,6 +81,7 @@ def get_polymarket_us_api_secret() -> bytes:
 
 
 def get_polymarket_us_credentials() -> dict[str, object]:
+    """Build full credential payload for signer initialization."""
     return {
         "api_key": get_polymarket_us_api_key(),
         "api_secret": get_polymarket_us_api_secret(),
