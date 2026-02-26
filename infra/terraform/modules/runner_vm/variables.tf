@@ -47,6 +47,17 @@ variable "service_account_email" {
   default     = null
 }
 
+variable "service_account_scopes" {
+  description = "OAuth scopes granted to the runner VM service account"
+  type        = list(string)
+  default = [
+    "https://www.googleapis.com/auth/logging.write",
+    "https://www.googleapis.com/auth/monitoring.write",
+    "https://www.googleapis.com/auth/devstorage.read_only",
+    "https://www.googleapis.com/auth/secretmanager",
+  ]
+}
+
 variable "startup_script" {
   description = "Startup script for VM bootstrap"
   type        = string

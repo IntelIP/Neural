@@ -38,7 +38,7 @@ resource "google_compute_instance" "runner" {
 
   service_account {
     email  = local.resolved_service_account_email
-    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    scopes = var.service_account_scopes
   }
 
   shielded_instance_config {
