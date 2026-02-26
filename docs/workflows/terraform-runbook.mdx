@@ -30,8 +30,8 @@ Initialize the production environment with backend config:
 ```bash
 cd infra/terraform/environments/prod
 terraform init \
-  -backend-config=\"bucket=neural-tf-state-prod\" \
-  -backend-config=\"prefix=neural/prod\"
+  -backend-config="bucket=neural-tf-state-prod" \
+  -backend-config="prefix=neural/prod"
 ```
 
 Repeat with a different bucket/prefix for `dev`.
@@ -59,8 +59,8 @@ The reference stack provisions Secret Manager containers and grants runner acces
 Add secret **versions** outside Terraform to avoid storing secret values in state:
 
 ```bash
-echo -n \"<KALSHI_API_KEY_ID>\" | gcloud secrets versions add kalshi-api-key-id --data-file=-
-echo -n \"<KALSHI_PRIVATE_KEY_PEM>\" | gcloud secrets versions add kalshi-private-key-pem --data-file=-
+echo -n "<KALSHI_API_KEY_ID>" | gcloud secrets versions add kalshi-api-key-id --data-file=-
+echo -n "<KALSHI_PRIVATE_KEY_PEM>" | gcloud secrets versions add kalshi-private-key-pem --data-file=-
 ```
 
 In runtime bootstrap scripts, resolve secrets at startup using the runner service account.

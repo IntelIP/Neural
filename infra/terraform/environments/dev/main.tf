@@ -7,6 +7,11 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Configure this with backend config flags or a backend.hcl file during init.
+  # Example:
+  # terraform init -backend-config="bucket=neural-tf-state-dev" -backend-config="prefix=neural/dev"
+  backend "gcs" {}
 }
 
 provider "google" {
