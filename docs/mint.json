@@ -107,6 +107,7 @@
         "workflows/build-first-bot",
         "workflows/promotion-checklist",
         "workflows/data-pipeline",
+        "workflows/deployment-providers",
         "workflows/terraform-runbook"
       ]
     },
