@@ -29,7 +29,10 @@ resource "google_compute_instance" "runner" {
     network    = var.network_self_link
     subnetwork = var.subnetwork_self_link
 
-    access_config {}
+    dynamic "access_config" {
+      for_each = var.assign_public_ip ? [1] : []
+      content {}
+    }
   }
 
   metadata = var.metadata

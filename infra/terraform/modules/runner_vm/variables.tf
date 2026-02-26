@@ -54,8 +54,13 @@ variable "service_account_scopes" {
     "https://www.googleapis.com/auth/logging.write",
     "https://www.googleapis.com/auth/monitoring.write",
     "https://www.googleapis.com/auth/devstorage.read_only",
-    "https://www.googleapis.com/auth/secretmanager",
   ]
+}
+
+variable "assign_public_ip" {
+  description = "Whether to assign an ephemeral public IP to the runner VM"
+  type        = bool
+  default     = true
 }
 
 variable "startup_script" {
