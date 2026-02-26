@@ -52,7 +52,9 @@ resource "google_compute_instance" "runner" {
 
   lifecycle {
     precondition {
-      condition     = var.create_service_account || var.service_account_email != null
+      condition = var.create_service_account || (
+        var.service_account_email != null && trimspace(var.service_account_email) != ""
+      )
       error_message = "service_account_email must be provided when create_service_account=false."
     }
   }
