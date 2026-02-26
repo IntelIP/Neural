@@ -30,7 +30,7 @@ variable "subnet_cidr" {
 variable "allow_ssh_cidrs" {
   description = "CIDR blocks allowed for SSH"
   type        = list(string)
-  default     = []
+  default     = ["35.235.240.0/20"]
 }
 
 variable "machine_type" {
