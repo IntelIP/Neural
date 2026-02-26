@@ -1,0 +1,62 @@
+---
+title: 'Deployment Provider Plugins'
+description: 'Extend Neural deployment with external provider plugins (for example, private Daytona runtimes).'
+---
+
+Neural ships with a built-in Docker deployment provider and a registry for loading external providers.
+This lets you keep proprietary runtime logic outside the OSS SDK while using the same deployment interface.
+
+## Built-in provider
+
+```python
+from neural.deployment import create_provider
+
+docker = create_provider("docker")
+```
+
+The built-in `docker` provider maps to `DockerDeploymentProvider`.
+
+## Register providers programmatically
+
+```python
+from neural.deployment import create_provider, register_provider
+from neural.deployment.base import DeploymentProvider
+
+class MyProvider(DeploymentProvider):
+    ...
+
+register_provider("my_provider", MyProvider)
+provider = create_provider("my_provider")
+```
+
+If a provider name already exists, pass `replace=True` to overwrite it.
+
+## Register providers via entry points
+
+External packages can register providers with Python entry points:
+
+```toml
+[project.entry-points."neural.deployment.providers"]
+daytona = "neural_daytona_runtime.provider:create_provider"
+```
+
+Neural auto-discovers this group and exposes the provider through `create_provider("daytona")`.
+
+## Error behavior
+
+- Unknown provider names raise `ProviderNotFoundError` with available providers listed.
+- Plugins that fail to load raise `ProviderNotFoundError` with the plugin load error details.
+- Factories that return non-`DeploymentProvider` objects raise `ConfigurationError`.
+
+## Plugin authoring checklist
+
+1. Implement `DeploymentProvider` methods: `deploy`, `status`, `logs`, `stop`, `list_deployments`, `cleanup`.
+2. Keep secret loading in your provider package (not in SDK source).
+3. Map runtime errors into Neural deployment exceptions with clear operator-facing messages.
+4. Add unit tests for discovery and lifecycle methods.
+
+## Next
+
+- Production workflow progression: `workflows/promotion-checklist`
+- Deployment and runtime dependencies: `basics/infrastructure`
+

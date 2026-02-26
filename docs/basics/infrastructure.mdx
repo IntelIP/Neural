@@ -16,6 +16,12 @@ Summarize the external services Neural touches (REST, WebSocket, FIX), their lat
 
 Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes \<100 ms once enabled.
 
+## Deployment runtime model
+
+- The OSS SDK includes a built-in Docker deployment provider.
+- Additional runtimes can be loaded as provider plugins through `neural.deployment`.
+- This enables private or environment-specific deployment backends without forking SDK APIs.
+
 ## Quick smoke tests
 
 ```bash
@@ -57,4 +63,4 @@ REST polling (baseline) ─┬─> Strategy / Aggregator ──> TradingClient
 - Verify install & credentials: `getting-started`
 - Review execution options: `trading/overview`
 - Plan deployment workflows: `workflows/promotion-checklist`
-
+- Build custom runtime integrations: `workflows/deployment-providers`
