@@ -55,4 +55,5 @@ resource "google_compute_firewall" "allow_ssh" {
   }
 
   source_ranges = var.allow_ssh_cidrs
+  target_tags   = var.ssh_target_tags
 }
