@@ -74,6 +74,10 @@ variable "startup_script" {
     apt-get install -y docker.io
     systemctl enable docker
     systemctl start docker
+
+    # Allow common default VM users to run Docker without sudo.
+    id -u ubuntu >/dev/null 2>&1 && usermod -aG docker ubuntu || true
+    id -u debian >/dev/null 2>&1 && usermod -aG docker debian || true
   EOT
 }
 
