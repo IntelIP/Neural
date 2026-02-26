@@ -34,3 +34,15 @@ variable "allow_ssh_cidrs" {
   type        = list(string)
   default     = []
 }
+
+variable "internal_tcp_ports" {
+  description = "TCP ports allowed for east-west traffic inside the subnet"
+  type        = list(string)
+  default     = []
+}
+
+variable "internal_udp_ports" {
+  description = "UDP ports allowed for east-west traffic inside the subnet"
+  type        = list(string)
+  default     = []
+}

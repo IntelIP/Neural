@@ -29,7 +29,10 @@ resource "google_compute_instance" "runner" {
     network    = var.network_self_link
     subnetwork = var.subnetwork_self_link
 
-    access_config {}
+    dynamic "access_config" {
+      for_each = var.assign_public_ip ? [1] : []
+      content {}
+    }
   }
 
   metadata = var.metadata
@@ -38,7 +41,7 @@ resource "google_compute_instance" "runner" {
 
   service_account {
     email  = local.resolved_service_account_email
-    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    scopes = var.service_account_scopes
   }
 
   shielded_instance_config {

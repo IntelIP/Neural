@@ -19,12 +19,20 @@ resource "google_compute_firewall" "allow_internal" {
   name    = "${var.network_name}-allow-internal"
   network = google_compute_network.this.name
 
-  allow {
-    protocol = "tcp"
+  dynamic "allow" {
+    for_each = length(var.internal_tcp_ports) > 0 ? [1] : []
+    content {
+      protocol = "tcp"
+      ports    = var.internal_tcp_ports
+    }
   }
 
-  allow {
-    protocol = "udp"
+  dynamic "allow" {
+    for_each = length(var.internal_udp_ports) > 0 ? [1] : []
+    content {
+      protocol = "udp"
+      ports    = var.internal_udp_ports
+    }
   }
 
   allow {

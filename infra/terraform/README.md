@@ -20,7 +20,10 @@ Inputs:
 - `network_name` (string)
 - `subnet_name` (string)
 - `subnet_cidr` (string)
+- `enable_private_google_access` (bool, default `true`)
 - `allow_ssh_cidrs` (list(string), default `[]`)
+- `internal_tcp_ports` (list(string), default `[]`)
+- `internal_udp_ports` (list(string), default `[]`)
 
 Outputs:
 - `network_name`
@@ -37,8 +40,16 @@ Inputs:
 - `network_self_link` (string)
 - `subnetwork_self_link` (string)
 - `create_service_account` (bool, default `true`)
-- `service_account_email` (string, optional when `create_service_account=true`)
+- `service_account_id` (string, default `neural-runner`)
+- `service_account_email` (string, required when `create_service_account=false`)
+- `service_account_scopes` (list(string), default logging/monitoring/container-pull scopes; add Secret Manager scope if needed)
+- `assign_public_ip` (bool, default `true`)
 - `startup_script` (string, optional)
+- `metadata` (map(string), default `{}`)
+- `tags` (list(string), default `["neural-runner"]`)
+- `boot_image` (string, default Debian 12 family image)
+- `boot_disk_size_gb` (number, default `50`)
+- `boot_disk_type` (string, default `pd-balanced`)
 
 Outputs:
 - `instance_name`

@@ -10,7 +10,7 @@ output "instance_self_link" {
 
 output "instance_external_ip" {
   description = "External IP address for the runner VM"
-  value       = google_compute_instance.runner.network_interface[0].access_config[0].nat_ip
+  value       = length(google_compute_instance.runner.network_interface[0].access_config) > 0 ? google_compute_instance.runner.network_interface[0].access_config[0].nat_ip : null
 }
 
 output "service_account_email" {

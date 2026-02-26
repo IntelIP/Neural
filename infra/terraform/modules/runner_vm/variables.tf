@@ -47,6 +47,22 @@ variable "service_account_email" {
   default     = null
 }
 
+variable "service_account_scopes" {
+  description = "OAuth scopes granted to the runner VM service account"
+  type        = list(string)
+  default = [
+    "https://www.googleapis.com/auth/logging.write",
+    "https://www.googleapis.com/auth/monitoring.write",
+    "https://www.googleapis.com/auth/devstorage.read_only",
+  ]
+}
+
+variable "assign_public_ip" {
+  description = "Whether to assign an ephemeral public IP to the runner VM"
+  type        = bool
+  default     = true
+}
+
 variable "startup_script" {
   description = "Startup script for VM bootstrap"
   type        = string
@@ -58,6 +74,10 @@ variable "startup_script" {
     apt-get install -y docker.io
     systemctl enable docker
     systemctl start docker
+
+    # Allow common default VM users to run Docker without sudo.
+    id -u ubuntu >/dev/null 2>&1 && usermod -aG docker ubuntu || true
+    id -u debian >/dev/null 2>&1 && usermod -aG docker debian || true
   EOT
 }
 
