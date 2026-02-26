@@ -78,7 +78,7 @@ except Exception as exc:  # pragma: no cover - depends on optional dependency pr
     _DOCKER_AVAILABLE = False
     _DOCKER_IMPORT_ERROR = exc
 
-    class DockerDeploymentProvider:  # type: ignore[override]
+    class DockerDeploymentProvider:  # type: ignore[no-redef]
         """Placeholder that raises when Docker deployment extras are missing."""
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:

@@ -79,7 +79,7 @@ def discover_providers(*, force: bool = False) -> None:
             if not callable(loaded_factory):
                 raise TypeError("entry point did not resolve to a callable provider factory")
             register_provider(provider_name, loaded_factory)
-        except Exception as exc:  # pragma: no cover - exercised via tests with monkeypatch
+        except Exception as exc:
             _provider_load_errors[provider_name] = (
                 f"Provider plugin '{provider_name}' failed to load from '{entry_point.value}': {exc}"
             )
