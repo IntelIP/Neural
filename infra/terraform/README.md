@@ -22,6 +22,8 @@ Inputs:
 - `subnet_cidr` (string)
 - `enable_private_google_access` (bool, default `true`)
 - `allow_ssh_cidrs` (list(string), default `[]`)
+- `internal_tcp_ports` (list(string), default `[]`)
+- `internal_udp_ports` (list(string), default `[]`)
 
 Outputs:
 - `network_name`

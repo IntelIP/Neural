@@ -4,7 +4,7 @@ resource "google_logging_metric" "runner_errors" {
 
   filter = <<-EOT
     resource.type="gce_instance"
-    resource.labels.instance_id:* 
+    resource.labels.instance_id:*
     labels."compute.googleapis.com/resource_name"="${var.instance_name}"
     severity>=ERROR
   EOT

@@ -44,9 +44,7 @@ class FakeConnectFactory:
         extra_headers: dict[str, str],
         open_timeout: int,
     ) -> FakeConnection:
-        self.calls.append(
-            {"url": url, "extra_headers": extra_headers, "open_timeout": open_timeout}
-        )
+        self.calls.append({"url": url, "extra_headers": extra_headers, "open_timeout": open_timeout})
         if not self._conns:
             raise RuntimeError("No available websocket connections")
         return self._conns.pop(0)
@@ -124,9 +122,7 @@ def test_sequence_rules_dedupe_and_gap() -> None:
         signer=_new_signer(),
     )
 
-    first = client._apply_sequence_rules(
-        {"channel": "markets", "market_id": "MKT-1", "sequence": 1}
-    )
+    first = client._apply_sequence_rules({"channel": "markets", "market_id": "MKT-1", "sequence": 1})
     duplicate = client._apply_sequence_rules(
         {"channel": "markets", "market_id": "MKT-1", "sequence": 1}
     )
