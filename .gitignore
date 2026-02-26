@@ -70,6 +70,8 @@ dmyp.json
 
 # Secrets and Credentials (CRITICAL - NEVER COMMIT)
 secrets/
+!infra/terraform/modules/secrets/
+!infra/terraform/modules/secrets/*.tf
 *.pem
 *.key
 *_private_key.pem
