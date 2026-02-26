@@ -61,12 +61,16 @@ class PolymarketUSSigner:
         }
 
     @classmethod
-    def from_env(cls, values: dict[str, Any], now_ms: TimestampFn | None = None) -> PolymarketUSSigner:
+    def from_env(
+        cls, values: dict[str, Any], now_ms: TimestampFn | None = None
+    ) -> PolymarketUSSigner:
         api_key = values.get("api_key")
         api_secret = values.get("api_secret")
         passphrase = values.get("passphrase")
         if api_key is None or api_secret is None or passphrase is None:
-            raise ValueError("Missing required Polymarket signer config: api_key, api_secret, passphrase")
+            raise ValueError(
+                "Missing required Polymarket signer config: api_key, api_secret, passphrase"
+            )
 
         if isinstance(api_secret, str):
             secret_bytes = api_secret.encode("utf-8")
