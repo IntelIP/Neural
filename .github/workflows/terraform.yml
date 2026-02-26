@@ -1,0 +1,48 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform fmt check
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+
+      - name: Terraform init (root)
+        run: terraform -chdir=infra/terraform init -backend=false
+
+      - name: Terraform validate (root)
+        run: terraform -chdir=infra/terraform validate
+
+      - name: Terraform validate modules
+        run: |
+          for module in network runner_vm secrets observability; do
+            terraform -chdir=infra/terraform/modules/$module init -backend=false
+            terraform -chdir=infra/terraform/modules/$module validate
+          done
+
+      - name: Terraform validate environments
+        run: |
+          for env in dev prod; do
+            terraform -chdir=infra/terraform/environments/$env init -backend=false
+            terraform -chdir=infra/terraform/environments/$env validate
+          done

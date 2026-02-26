@@ -106,7 +106,8 @@
       "pages": [
         "workflows/build-first-bot",
         "workflows/promotion-checklist",
-        "workflows/data-pipeline"
+        "workflows/data-pipeline",
+        "workflows/terraform-runbook"
       ]
     },
     {
