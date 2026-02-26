@@ -35,6 +35,12 @@ variable "allow_ssh_cidrs" {
   default     = []
 }
 
+variable "ssh_target_tags" {
+  description = "Network tags that SSH access rules apply to"
+  type        = list(string)
+  default     = ["neural-runner"]
+}
+
 variable "internal_tcp_ports" {
   description = "TCP ports allowed for east-west traffic inside the subnet"
   type        = list(string)

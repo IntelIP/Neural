@@ -1,0 +1,8 @@
+project_id = "my-gcp-project"
+region     = "us-central1"
+zone       = "us-central1-f"
+
+allow_ssh_cidrs = ["35.235.240.0/20"] # IAP TCP tunnel range
+
+enable_alert_policy   = true
+notification_channels = ["projects/my-gcp-project/notificationChannels/1234567890"]

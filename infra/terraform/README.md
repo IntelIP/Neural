@@ -22,6 +22,7 @@ Inputs:
 - `subnet_cidr` (string)
 - `enable_private_google_access` (bool, default `true`)
 - `allow_ssh_cidrs` (list(string), default `[]`)
+- `ssh_target_tags` (list(string), default `["neural-runner"]`)
 - `internal_tcp_ports` (list(string), default `[]`)
 - `internal_udp_ports` (list(string), default `[]`)
 

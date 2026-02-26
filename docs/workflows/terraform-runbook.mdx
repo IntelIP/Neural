@@ -1,0 +1,91 @@
+---
+title: 'Terraform Deployment Runbook'
+description: 'Bootstrap, plan, apply, and troubleshoot the GCP Terraform environments for Neural.'
+---
+
+Use this runbook when operating the reference Terraform stack under `infra/terraform`.
+
+## 1. Prerequisites
+
+- Terraform `1.5.x`
+- GCP project with billing enabled
+- `gcloud` authenticated to the target project
+- IAM permissions for VPC, Compute Engine, Secret Manager, and Monitoring resources
+
+## 2. Bootstrap remote state
+
+Create a dedicated state bucket (one-time):
+
+```bash
+gcloud storage buckets create gs://neural-tf-state-prod \
+  --project <PROJECT_ID> \
+  --location us-central1 \
+  --uniform-bucket-level-access
+
+gcloud storage buckets update gs://neural-tf-state-prod --versioning
+```
+
+Initialize the production environment with backend config:
+
+```bash
+cd infra/terraform/environments/prod
+terraform init \
+  -backend-config="bucket=neural-tf-state-prod" \
+  -backend-config="prefix=neural/prod"
+```
+
+Repeat with a different bucket/prefix for `dev`.
+
+## 3. Plan and apply
+
+Create `terraform.tfvars` from `terraform.tfvars.example`, then run:
+
+```bash
+terraform fmt -check -recursive
+terraform validate
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+Recommended safety controls:
+
+1. Keep `plan` output in PR artifacts before apply.
+2. Require manual approval for `prod` applies.
+3. Use separate service accounts for `dev` and `prod`.
+
+## 4. Secret injection model
+
+The reference stack provisions Secret Manager containers and grants runner access.
+Add secret **versions** outside Terraform to avoid storing secret values in state:
+
+```bash
+echo -n "<KALSHI_API_KEY_ID>" | gcloud secrets versions add kalshi-api-key-id --data-file=-
+echo -n "<KALSHI_PRIVATE_KEY_PEM>" | gcloud secrets versions add kalshi-private-key-pem --data-file=-
+```
+
+In runtime bootstrap scripts, resolve secrets at startup using the runner service account.
+
+## 5. Destroy workflow
+
+```bash
+terraform plan -destroy -out=tfdestroy
+terraform apply tfdestroy
+```
+
+Before destroy:
+
+1. Drain/disable bot workloads.
+2. Export required logs and runtime artifacts.
+3. Confirm no shared resources are referenced by other environments.
+
+## 6. Troubleshooting
+
+- **`terraform init` backend errors**: verify bucket name, region, and IAM access.
+- **Provider auth failures**: run `gcloud auth application-default login` or configure workload identity.
+- **Secret access denied**: verify `roles/secretmanager.secretAccessor` on the runner service account.
+- **No alert notifications**: ensure `notification_channels` are valid Monitoring channel resource IDs.
+
+## Next
+
+- Module and contract reference: `basics/infrastructure`
+- Production promotion checklist: `workflows/promotion-checklist`

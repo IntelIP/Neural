@@ -14,7 +14,16 @@ Summarize the external services Neural touches (REST, WebSocket, FIX), their lat
 | FIX API | `fix.elections.kalshi.com:8228` | Ultra-low-latency order entry and execution reports | ✅ operational |
 | WebSocket | `/trade-api/ws/v2` | Real-time market data stream | ⚠️ requires Kalshi approval |
 
-Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes \<100 ms once enabled.
+Latency reference: REST polling at 1s intervals, FIX round-trips ~5–10 ms, WebSocket delivers pushes <100 ms once enabled.
+
+## Deployment split model
+
+Neural infrastructure can be split cleanly by responsibility:
+
+- **Open-source baseline**: Terraform modules for network, runner VM, secrets, and observability.
+- **Private runtime**: Environment-specific deployment providers (for example, Daytona-based runtimes) that plug into the shared deployment interface.
+
+This keeps infrastructure reproducible in OSS while preserving proprietary runtime orchestration logic in private repositories.
 
 ## Deployment runtime model
 
@@ -64,3 +73,4 @@ REST polling (baseline) ─┬─> Strategy / Aggregator ──> TradingClient
 - Review execution options: `trading/overview`
 - Plan deployment workflows: `workflows/promotion-checklist`
 - Build custom runtime integrations: `workflows/deployment-providers`
+- Operate Terraform environments: `workflows/terraform-runbook`
