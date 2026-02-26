@@ -121,4 +121,3 @@ def test_factory_must_return_provider_instance() -> None:
 
     with pytest.raises(ConfigurationError, match="expected a DeploymentProvider instance"):
         create_provider("bad")
-
