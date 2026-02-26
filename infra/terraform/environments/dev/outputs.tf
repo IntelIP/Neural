@@ -17,3 +17,8 @@ output "secret_ids" {
   value       = module.secrets.secret_ids
   description = "Provisioned Secret Manager IDs"
 }
+
+output "log_metric_type" {
+  value       = module.observability.log_metric_type
+  description = "Log metric used for error alerting"
+}
