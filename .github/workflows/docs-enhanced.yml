@@ -40,7 +40,6 @@ on:
         type: boolean
 
 env:
-  NODE_VERSION: '18'
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -115,45 +114,29 @@ jobs:
       needs.detect-changes.outputs.docs-changed == 'true' || 
       needs.detect-changes.outputs.examples-changed == 'true' ||
       needs.detect-changes.outputs.config-changed == 'true'
-    outputs:
-      cache-hit: ${{ steps.cache.outputs.cache-hit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          enable-cache: true
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          bun-version: latest
 
-      - name: Cache Python dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
-
-      - name: Install Mintlify CLI
-        run: npm install -g @mintlify/cli
+      - name: Sync Python dependencies
+        run: uv sync --extra dev --extra docs
 
       - name: Verify installations
         run: |
-          python --version
-          npm --version
-          mintlify --version
+          uv --version
+          bun --version
+          bunx @mintlify/cli@latest --version
 
   # Stage 3: API Documentation Generation
   generate-api-docs:
@@ -171,37 +154,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
+      - name: Sync dependencies
+        run: uv sync --extra dev --extra docs
 
       - name: Generate API docs with mkdocstrings
         id: generate
         run: |
           mkdir -p docs/api
-          python scripts/generate_api_docs.py
+          uv run python scripts/generate_api_docs.py
           echo "generated=true" >> $GITHUB_OUTPUT
 
       - name: Generate OpenAPI specifications
         id: openapi
         run: |
-          python scripts/generate_openapi_specs.py
+          uv run python scripts/generate_openapi_specs.py
           echo "generated=true" >> $GITHUB_OUTPUT
 
       - name: Validate generated API docs
         run: |
           if [ -f "scripts/validate_api_docs.py" ]; then
-            python scripts/validate_api_docs.py
+            uv run python scripts/validate_api_docs.py
           else
             echo "validate_api_docs.py not found; skipping strict API docs validation"
             if [ -f "scripts/validate_docs.py" ]; then
-              python scripts/validate_docs.py || echo "validate_docs reported issues; continuing for advisory check"
+              uv run python scripts/validate_docs.py || echo "validate_docs reported issues; continuing for advisory check"
             fi
           fi
 
@@ -228,26 +210,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
+      - name: Sync dependencies
+        run: uv sync --extra dev --extra docs
 
       - name: Generate examples documentation
         id: generate
         run: |
           mkdir -p docs/examples/generated
-          python scripts/generate_examples_docs.py
+          uv run python scripts/generate_examples_docs.py
           echo "generated=true" >> $GITHUB_OUTPUT
 
       - name: Validate examples
         run: |
-          python scripts/validate_examples.py
+          uv run python scripts/validate_examples.py
 
       - name: Upload examples documentation
         uses: actions/upload-artifact@v4
@@ -272,15 +253,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
+      - name: Sync dependencies
+        run: uv sync --extra dev --extra docs
 
       - name: Download all generated docs
         uses: actions/download-artifact@v4
@@ -302,7 +282,7 @@ jobs:
       - name: Validate documentation structure
         id: validate
         run: |
-          if python scripts/validate_docs.py; then
+          if uv run python scripts/validate_docs.py; then
             echo "passed=true" >> $GITHUB_OUTPUT
           else
             echo "::warning::validate_docs reported issues; continuing as advisory check"
@@ -312,13 +292,13 @@ jobs:
       - name: Check documentation coverage
         id: coverage
         run: |
-          python scripts/check_docstring_coverage.py > coverage-report.txt
+          uv run python scripts/check_docstring_coverage.py > coverage-report.txt
           echo "report=coverage-report.txt" >> $GITHUB_OUTPUT
 
       - name: Test code examples
         run: |
           if [ -f "scripts/test_doc_examples.py" ]; then
-            python scripts/test_doc_examples.py || \
+            uv run python scripts/test_doc_examples.py || \
               echo "::warning::Documentation example tests reported issues; continuing as advisory check"
           else
             echo "::notice::scripts/test_doc_examples.py not found; skipping example tests"
@@ -327,7 +307,7 @@ jobs:
       - name: Check links and references
         run: |
           if [ -f "scripts/check_documentation_links.py" ]; then
-            python scripts/check_documentation_links.py || \
+            uv run python scripts/check_documentation_links.py || \
               echo "::warning::Documentation link checks reported issues; continuing as advisory check"
           else
             echo "::notice::scripts/check_documentation_links.py not found; skipping link checks"
@@ -355,13 +335,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Mintlify CLI
-        run: npm install -g @mintlify/cli
+          bun-version: latest
 
       - name: Download generated docs
         uses: actions/download-artifact@v4
@@ -381,7 +358,7 @@ jobs:
         id: preview
         run: |
           # Create preview deployment
-          mintlify deploy --preview \
+          bunx @mintlify/cli@latest deploy --preview \
             --team neural-sdk \
             --key ${{ secrets.MINTLIFY_API_KEY }} \
             --branch ${{ github.head_ref }} \
@@ -446,13 +423,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Mintlify CLI
-        run: npm install -g @mintlify/cli
+          bun-version: latest
 
       - name: Download generated docs
         uses: actions/download-artifact@v4
@@ -477,7 +451,7 @@ jobs:
       - name: Validate documentation before deployment
         run: |
           # Local validation
-          mintlify dev --no-open &
+          bunx @mintlify/cli@latest dev --no-open &
           DEV_PID=$!
           sleep 15
           
@@ -496,7 +470,7 @@ jobs:
         id: deploy
         run: |
           # Deploy to production
-          mintlify deploy \
+          bunx @mintlify/cli@latest deploy \
             --team neural-sdk \
             --key ${{ secrets.MINTLIFY_API_KEY }}
           
@@ -549,16 +523,25 @@ jobs:
     needs: deploy-production
     if: always() && needs.deploy-production.result == 'success'
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
       - name: Check documentation health
         run: |
           # Perform health checks on deployed documentation
-          python scripts/health_check.py --url https://neural-sdk.mintlify.app
+          uv run python scripts/health_check.py --url https://neural-sdk.mintlify.app
 
       - name: Update metrics
         run: |
           # Update documentation metrics and monitoring
           if [ -f "scripts/update_metrics.py" ]; then
-            python scripts/update_metrics.py
+            uv run python scripts/update_metrics.py
           else
             echo "update_metrics.py not found; skipping metrics update"
           fi
@@ -587,17 +570,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
       - name: Generate release documentation
         run: |
           if [ -f "scripts/generate_release_docs.py" ]; then
-            python scripts/generate_release_docs.py --version ${{ github.event.release.tag_name }}
+            uv run python scripts/generate_release_docs.py --version ${{ github.event.release.tag_name }}
           else
             echo "generate_release_docs.py not found; skipping release docs generation"
           fi
 
       - name: Update changelog
         run: |
-          python scripts/update_changelog.py --version ${{ github.event.release.tag_name }}
+          uv run --with gitpython python scripts/update_changelog.py --version ${{ github.event.release.tag_name }}
 
       - name: Commit release documentation
         run: |

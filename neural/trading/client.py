@@ -1,9 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 from typing import Any
 
-from neural.analysis.risk import Position
 from neural.exchanges.registry import registry
 from neural.exchanges.types import (
     ExchangeName,
@@ -280,6 +279,8 @@ class TradingClient:
             try:
                 import time
 
+                from neural.analysis.risk import Position
+
                 position = Position(
                     market_id=market_id,
                     side="yes" if _normalize_order_side(side).endswith("yes") else "no",
@@ -385,3 +386,5 @@ def _run_coro_sync(coro: Any) -> Any:
         "Cannot execute sync paper-trading call inside a running event loop. "
         "Use await TradingClient.place_order_async(..., paper=True)."
     )
+
+

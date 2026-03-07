@@ -8,37 +8,37 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 install: ## Install package
-	pip install -e .
+	uv sync
 
 install-dev: ## Install package with dev dependencies
-	pip install -e ".[dev,trading]"
+	uv sync --extra dev --extra trading --extra sentiment --extra analysis --extra deployment
 
 lint: ## Run linters
-	ruff check neural tests
-	ruff format --check neural tests
+	uv run ruff check neural tests
+	uv run ruff format --check neural tests
 
 format: ## Format code
-	ruff format neural tests
+	uv run ruff format neural tests
 
 type: ## Run type checker
-	mypy neural
+	uv run mypy neural
 
 test: ## Run tests
-	pytest tests/
+	uv run pytest tests/
 
 test-cov: ## Run tests with coverage
-	pytest tests/ --cov=neural --cov-report=term-missing
+	uv run pytest tests/ --cov=neural --cov-report=term-missing
 
 audit: ## Run quality gates for bug analysis
-	ruff check neural tests scripts utils
-	mypy neural
-	pytest tests/
+	uv run ruff check neural tests scripts utils
+	uv run mypy neural
+	uv run pytest tests/
 
 audit-security: ## Run static security scan (Bandit)
-	bandit -q -r neural
+	uv tool run bandit -q -r neural
 
 audit-deps: ## Run dependency vulnerability scan
-	pip-audit -r requirements-dev.txt
+	uv tool run pip-audit -r requirements-dev.txt
 
 clean: ## Clean build artifacts
 	rm -rf build dist neural.egg-info neural_sdk.egg-info *.egg-info
@@ -46,16 +46,16 @@ clean: ## Clean build artifacts
 	find . -type f -name "*.pyc" -delete
 
 build: clean ## Build package
-	python -m build
+	uv build
 
 check: build ## Check built package with twine
-	twine check dist/*
+	uv tool run twine check dist/*
 
 publish-testpypi: build check ## Publish to TestPyPI
-	twine upload --repository testpypi --non-interactive --skip-existing dist/*
+	uv tool run twine upload --repository testpypi --non-interactive --skip-existing dist/*
 
 publish: build check ## Publish to PyPI
-	twine upload --non-interactive --skip-existing dist/*
+	uv tool run twine upload --non-interactive --skip-existing dist/*
 
 bump-patch: ## Bump patch version (0.1.0 -> 0.1.1)
 	bump2version patch
