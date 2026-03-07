@@ -15,7 +15,6 @@ from typing import Any
 
 from neural.deployment import create_provider, list_providers
 
-
 CLI_COMMANDS = [
     "doctor",
     "capabilities",

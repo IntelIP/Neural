@@ -224,7 +224,7 @@ class Strategy(ABC):
         # Kalshi fee formula: 0.07 × P × (1 - P) × contracts
         return 0.07 * price * (1 - price) * size
 
-    def should_close_position(self, position: "Position") -> bool:
+    def should_close_position(self, position: Position) -> bool:
         """
         Check if position should be closed based on stop loss or take profit.
 

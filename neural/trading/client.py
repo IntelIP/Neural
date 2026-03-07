@@ -278,6 +278,7 @@ class TradingClient:
         if self.risk_manager and stop_loss_config:
             try:
                 import time
+
                 from neural.analysis.risk import Position
 
                 position = Position(
