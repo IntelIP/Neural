@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, fields
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from neural.trading.polymarket_us_adapter import PolymarketUSAdapter
 
@@ -63,6 +64,8 @@ class PolymarketUSMarketsSource(DataSource):
             await asyncio.sleep(self._source_cfg.poll_interval)
 
     def get_markets_df(self) -> pd.DataFrame:
+        import pandas as pd
+
         markets = self.adapter.list_markets(
             sport=self._source_cfg.sport,
             limit=self._source_cfg.limit,
@@ -91,6 +94,8 @@ class PolymarketUSMarketsSource(DataSource):
         start_ts_ms: int | None = None,
         end_ts_ms: int | None = None,
     ) -> pd.DataFrame:
+        import pandas as pd
+
         rows = self.adapter.get_candles(
             market_id,
             interval=interval,
@@ -124,6 +129,8 @@ class PolymarketUSMarketsSource(DataSource):
         limit: int | None = None,
         cursor: str | None = None,
     ) -> tuple[pd.DataFrame, str | None]:
+        import pandas as pd
+
         page_size = limit or self._source_cfg.replay_page_size
         payload = self.adapter.get_trade_replay(market_id, limit=page_size, cursor=cursor)
         rows = payload.get("items", [])
@@ -180,6 +187,8 @@ class PolymarketUSMarketsSource(DataSource):
         limit: int | None = None,
         cursor: str | None = None,
     ) -> tuple[pd.DataFrame, str | None]:
+        import pandas as pd
+
         page_size = limit or self._source_cfg.replay_page_size
         payload = self.adapter.get_market_events(market_id, limit=page_size, cursor=cursor)
         rows = payload.get("items", [])

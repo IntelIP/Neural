@@ -5,14 +5,17 @@ Provides the foundation for all trading strategies with built-in risk management
 backtesting support, and seamless integration with the trading stack.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import pandas as pd
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
 
 
 @dataclass
@@ -358,6 +361,9 @@ class Strategy(ABC):
         if not self.trade_history:
             return {}
 
+        import numpy as np
+        import pandas as pd
+
         trades = pd.DataFrame(self.trade_history)
         returns = np.array(trades["pnl"].values)
 
@@ -381,6 +387,8 @@ class Strategy(ABC):
 
     def _calculate_max_drawdown(self, returns: np.ndarray) -> float:
         """Calculate maximum drawdown"""
+        import numpy as np
+
         cumulative = np.cumsum(returns)
         running_max = np.maximum.accumulate(cumulative)
         drawdown = cumulative - running_max

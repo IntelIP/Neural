@@ -1,105 +1,124 @@
-"""
-Neural Analysis Strategies
+﻿"""Neural Analysis strategies with lazy imports for optional strategy stacks."""
 
-Pre-built trading strategies for Kalshi sports markets.
-"""
+from __future__ import annotations
 
-from .arbitrage import ArbitrageStrategy, HighSpeedArbitrageStrategy
-from .base import Position, Signal, SignalType, Strategy
-from .mean_reversion import MeanReversionStrategy, SportsbookArbitrageStrategy
-from .momentum import GameMomentumStrategy, MomentumStrategy
-from .news_based import BreakingNewsStrategy, NewsBasedStrategy
+import importlib
+from typing import Any
+
+_ATTRIBUTE_EXPORTS = {
+    "Strategy": (".base", "Strategy"),
+    "Signal": (".base", "Signal"),
+    "SignalType": (".base", "SignalType"),
+    "Position": (".base", "Position"),
+    "MeanReversionStrategy": (".mean_reversion", "MeanReversionStrategy"),
+    "SportsbookArbitrageStrategy": (".mean_reversion", "SportsbookArbitrageStrategy"),
+    "MomentumStrategy": (".momentum", "MomentumStrategy"),
+    "GameMomentumStrategy": (".momentum", "GameMomentumStrategy"),
+    "ArbitrageStrategy": (".arbitrage", "ArbitrageStrategy"),
+    "HighSpeedArbitrageStrategy": (".arbitrage", "HighSpeedArbitrageStrategy"),
+    "NewsBasedStrategy": (".news_based", "NewsBasedStrategy"),
+    "BreakingNewsStrategy": (".news_based", "BreakingNewsStrategy"),
+}
+
+
+def __getattr__(name: str) -> object:
+    if name == "STRATEGY_PRESETS":
+        presets = _strategy_presets()
+        globals()[name] = presets
+        return presets
+
+    target = _ATTRIBUTE_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attribute_name = target
+    module = importlib.import_module(module_name, __name__)
+    value = getattr(module, attribute_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_ATTRIBUTE_EXPORTS) | {"STRATEGY_PRESETS"})
+
+
+def _strategy_presets() -> dict[str, dict[str, Any]]:
+    return {
+        "conservative": {
+            "class": __getattr__("MeanReversionStrategy"),
+            "params": {
+                "divergence_threshold": 0.08,
+                "max_position_size": 0.05,
+                "stop_loss": 0.2,
+                "min_edge": 0.05,
+            },
+        },
+        "momentum": {
+            "class": __getattr__("MomentumStrategy"),
+            "params": {
+                "lookback_periods": 10,
+                "momentum_threshold": 0.1,
+                "use_rsi": True,
+                "max_position_size": 0.1,
+            },
+        },
+        "arbitrage": {
+            "class": __getattr__("ArbitrageStrategy"),
+            "params": {
+                "min_arbitrage_profit": 0.01,
+                "max_exposure_per_arb": 0.3,
+                "speed_priority": True,
+            },
+        },
+        "news": {
+            "class": __getattr__("NewsBasedStrategy"),
+            "params": {
+                "sentiment_threshold": 0.65,
+                "news_decay_minutes": 30,
+                "min_social_volume": 100,
+            },
+        },
+        "aggressive": {
+            "class": __getattr__("GameMomentumStrategy"),
+            "params": {
+                "event_window": 5,
+                "fade_blowouts": True,
+                "max_position_size": 0.2,
+                "min_edge": 0.02,
+            },
+        },
+        "high_frequency": {
+            "class": __getattr__("HighSpeedArbitrageStrategy"),
+            "params": {"fixed_size": 100, "pre_calculate_size": True, "latency_threshold_ms": 50},
+        },
+    }
+
+
+def create_strategy(preset: str, **override_params: Any) -> object:
+    presets = _strategy_presets()
+    if preset not in presets:
+        raise ValueError(f"Unknown preset: {preset}. Choose from: {list(presets.keys())}")
+
+    preset_config = presets[preset]
+    strategy_class = preset_config["class"]
+    params = dict(preset_config["params"])
+    params.update(override_params)
+    return strategy_class(**params)
+
 
 __all__ = [
-    # Base classes
     "Strategy",
     "Signal",
     "SignalType",
     "Position",
-    # Mean Reversion
     "MeanReversionStrategy",
     "SportsbookArbitrageStrategy",
-    # Momentum
     "MomentumStrategy",
     "GameMomentumStrategy",
-    # Arbitrage
     "ArbitrageStrategy",
     "HighSpeedArbitrageStrategy",
-    # News Based
     "NewsBasedStrategy",
     "BreakingNewsStrategy",
+    "STRATEGY_PRESETS",
+    "create_strategy",
 ]
-
-# Strategy presets for quick initialization
-STRATEGY_PRESETS = {
-    "conservative": {
-        "class": MeanReversionStrategy,
-        "params": {
-            "divergence_threshold": 0.08,
-            "max_position_size": 0.05,
-            "stop_loss": 0.2,
-            "min_edge": 0.05,
-        },
-    },
-    "momentum": {
-        "class": MomentumStrategy,
-        "params": {
-            "lookback_periods": 10,
-            "momentum_threshold": 0.1,
-            "use_rsi": True,
-            "max_position_size": 0.1,
-        },
-    },
-    "arbitrage": {
-        "class": ArbitrageStrategy,
-        "params": {
-            "min_arbitrage_profit": 0.01,
-            "max_exposure_per_arb": 0.3,
-            "speed_priority": True,
-        },
-    },
-    "news": {
-        "class": NewsBasedStrategy,
-        "params": {"sentiment_threshold": 0.65, "news_decay_minutes": 30, "min_social_volume": 100},
-    },
-    "aggressive": {
-        "class": GameMomentumStrategy,
-        "params": {
-            "event_window": 5,
-            "fade_blowouts": True,
-            "max_position_size": 0.2,
-            "min_edge": 0.02,
-        },
-    },
-    "high_frequency": {
-        "class": HighSpeedArbitrageStrategy,
-        "params": {"fixed_size": 100, "pre_calculate_size": True, "latency_threshold_ms": 50},
-    },
-}
-
-
-def create_strategy(preset: str, **override_params) -> Strategy:
-    """
-    Create a strategy from a preset with optional parameter overrides.
-
-    Args:
-        preset: Name of preset ('conservative', 'momentum', etc.)
-        **override_params: Parameters to override from preset
-
-    Returns:
-        Initialized strategy instance
-
-    Example:
-        >>> strategy = create_strategy('conservative', initial_capital=5000)
-    """
-    if preset not in STRATEGY_PRESETS:
-        raise ValueError(f"Unknown preset: {preset}. Choose from: {list(STRATEGY_PRESETS.keys())}")
-
-    preset_config = STRATEGY_PRESETS[preset]
-    strategy_class = preset_config["class"]  # type: ignore[index]
-    params = dict(preset_config["params"])  # type: ignore[index,arg-type]
-
-    # Apply overrides
-    params.update(override_params)
-
-    return strategy_class(**params)  # type: ignore[return-value,operator]

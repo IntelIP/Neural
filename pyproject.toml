@@ -46,29 +46,18 @@ dependencies = [
     "requests>=2.31.0",
     "cryptography>=41.0.0",
     "python-dotenv>=1.0.0",
-    "kalshi-python>=2.1.4",
     "websocket-client>=1.7.0",
     "websockets>=11.0.0",
     "simplefix>=1.0.17",
     "pandas>=2.0.0",
-    # Bug Fix #3, #13: NumPy 2.x compatibility - SDK compiled against NumPy 1.x API
-    # Must use NumPy <2.0 to avoid runtime crashes
     "numpy>=1.24.0,<2.0",
-    # Bug Fix #5: Added certifi for proper SSL certificate verification
     "certifi>=2023.0.0",
-    # Sentiment Analysis Dependencies
-    "textblob>=0.17.1",
-    "vaderSentiment>=3.3.2",
     "aiohttp>=3.8.0",
-    # Data Processing Dependencies
-    "plotly>=5.15.0",
-    # Deployment Dependencies (v0.4.0)
     "pydantic>=2.0.0",
     "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
-# Development extras
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -81,31 +70,30 @@ dev = [
     "build>=0.10.0",
     "twine>=4.0.0",
 ]
-# Documentation extras
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.1.0",
     "mkdocstrings[python]>=0.22.0",
 ]
-# Optional trading extras to separate heavier deps
+analysis = [
+    "plotly>=5.15.0",
+]
 trading = [
     "kalshi-python>=2.1.4,<3",
 ]
-# Sentiment analysis extras for social media and text analysis
 sentiment = [
     "textblob>=0.17.1",
     "vaderSentiment>=3.3.2",
-    "transformers>=4.21.0",  # Optional for advanced sentiment models
-    "torch>=1.12.0",  # For transformer models
-    "scikit-learn>=1.1.0",  # For ML-based sentiment analysis
+    "transformers>=4.21.0",
+    "torch>=1.12.0",
+    "scikit-learn>=1.1.0",
 ]
-# Deployment extras for Docker-based bot deployment (v0.4.0)
 deployment = [
-    "docker>=6.1.0",  # Docker SDK for Python
-    "sqlalchemy>=2.0.0",  # Database ORM for trade persistence
-    "psycopg2-binary>=2.9.0",  # PostgreSQL adapter
-    "fastapi>=0.100.0",  # Optional: for deployment API server
-    "uvicorn>=0.23.0",  # Optional: ASGI server for FastAPI
+    "docker>=6.1.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
 ]
 
 [project.urls]
@@ -150,7 +138,7 @@ markers = [
 [tool.black]
 line-length = 100
 target-version = ["py310", "py311", "py312"]
-include = '\.pyi?$'
+include = '\\.pyi?$'
 
 [tool.ruff]
 line-length = 100
@@ -158,18 +146,18 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
 ]
 ignore = [
-    "E501", # line too long (handled by black)
-    "B008", # do not perform function calls in argument defaults
-    "C901", # too complex
+    "E501",
+    "B008",
+    "C901",
 ]
 
 [tool.ruff.lint.per-file-ignores]
