@@ -1,9 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import asyncio
 import importlib.util
 import json
+import logging
 import math
 import os
 import platform
@@ -14,6 +15,8 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from neural.deployment import create_provider, list_providers
+
+LOGGER = logging.getLogger(__name__)
 
 CLI_COMMANDS = [
     "doctor",
@@ -43,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = args.handler(args)
         _emit_success(payload, json_output=json_output, formatter=getattr(args, "formatter", None))
         return 0
-    except Exception as exc:  # pragma: no cover - exercised via CLI entrypoint
+    except Exception as exc:
         _emit_error(exc, json_output=json_output)
         return 1
 
@@ -351,7 +354,8 @@ def _resolve_provider_name(explicit_provider: str | None) -> str:
 def _safe_list_providers() -> list[str]:
     try:
         return list_providers()
-    except Exception:
+    except Exception as exc:
+        LOGGER.debug("Provider discovery failed", exc_info=exc)
         return []
 
 
@@ -528,4 +532,3 @@ def _format_deployment_logs(payload: dict[str, Any]) -> str:
 
 def _format_deployment_stop(payload: dict[str, Any]) -> str:
     return f"Stopped {payload['deployment_id']}: {payload['stopped']}"
-

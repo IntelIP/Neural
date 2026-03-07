@@ -49,6 +49,7 @@ Current bridge commands:
 - `deployments list`
 - `deployments status`
 - `deployments logs`
+- `deployments stop`
 
 ## Credentials
 

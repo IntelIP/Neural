@@ -1,4 +1,4 @@
-﻿"""Neural Analysis strategies with lazy imports for optional strategy stacks."""
+"""Neural Analysis strategies with lazy imports for optional strategy stacks."""
 
 from __future__ import annotations
 
@@ -43,9 +43,14 @@ def __dir__() -> list[str]:
 
 
 def _strategy_presets() -> dict[str, dict[str, Any]]:
+    from .arbitrage import ArbitrageStrategy, HighSpeedArbitrageStrategy
+    from .mean_reversion import MeanReversionStrategy
+    from .momentum import GameMomentumStrategy, MomentumStrategy
+    from .news_based import NewsBasedStrategy
+
     return {
         "conservative": {
-            "class": __getattr__("MeanReversionStrategy"),
+            "class": MeanReversionStrategy,
             "params": {
                 "divergence_threshold": 0.08,
                 "max_position_size": 0.05,
@@ -54,7 +59,7 @@ def _strategy_presets() -> dict[str, dict[str, Any]]:
             },
         },
         "momentum": {
-            "class": __getattr__("MomentumStrategy"),
+            "class": MomentumStrategy,
             "params": {
                 "lookback_periods": 10,
                 "momentum_threshold": 0.1,
@@ -63,7 +68,7 @@ def _strategy_presets() -> dict[str, dict[str, Any]]:
             },
         },
         "arbitrage": {
-            "class": __getattr__("ArbitrageStrategy"),
+            "class": ArbitrageStrategy,
             "params": {
                 "min_arbitrage_profit": 0.01,
                 "max_exposure_per_arb": 0.3,
@@ -71,7 +76,7 @@ def _strategy_presets() -> dict[str, dict[str, Any]]:
             },
         },
         "news": {
-            "class": __getattr__("NewsBasedStrategy"),
+            "class": NewsBasedStrategy,
             "params": {
                 "sentiment_threshold": 0.65,
                 "news_decay_minutes": 30,
@@ -79,7 +84,7 @@ def _strategy_presets() -> dict[str, dict[str, Any]]:
             },
         },
         "aggressive": {
-            "class": __getattr__("GameMomentumStrategy"),
+            "class": GameMomentumStrategy,
             "params": {
                 "event_window": 5,
                 "fade_blowouts": True,
@@ -88,7 +93,7 @@ def _strategy_presets() -> dict[str, dict[str, Any]]:
             },
         },
         "high_frequency": {
-            "class": __getattr__("HighSpeedArbitrageStrategy"),
+            "class": HighSpeedArbitrageStrategy,
             "params": {"fixed_size": 100, "pre_calculate_size": True, "latency_threshold_ms": 50},
         },
     }
