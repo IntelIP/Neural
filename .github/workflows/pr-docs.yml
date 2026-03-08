@@ -34,32 +34,31 @@ jobs:
             readme:
               - 'README.md'
 
-      - name: Set up Python
+      - name: Set up uv
         if: steps.changes.outputs.code == 'true' || steps.changes.outputs.examples == 'true'
-        uses: actions/setup-python@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
+          enable-cache: true
 
-      - name: Install dependencies
+      - name: Sync dependencies
         if: steps.changes.outputs.code == 'true' || steps.changes.outputs.examples == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
+        run: uv sync --extra dev --extra docs
 
       - name: Check for docstring coverage
         if: steps.changes.outputs.code == 'true'
         run: |
-          python scripts/check_docstring_coverage.py
+          uv run python scripts/check_docstring_coverage.py
 
       - name: Validate example documentation
         if: steps.changes.outputs.examples == 'true'
         run: |
-          python scripts/validate_examples.py
+          uv run python scripts/validate_examples.py
 
       - name: Check for API documentation updates
         if: steps.changes.outputs.code == 'true'
         run: |
-          python scripts/validate_docs.py
+          uv run python scripts/validate_docs.py
 
       - name: Comment on PR
         if: always()

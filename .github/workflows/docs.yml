@@ -49,17 +49,16 @@ jobs:
               - 'README.md'
               - 'CHANGELOG.md'
 
-      - name: Set up Python
+      - name: Set up uv
         if: steps.changes.outputs.docs == 'true'
-        uses: actions/setup-python@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
+          enable-cache: true
 
-      - name: Install dependencies
+      - name: Sync dependencies
         if: steps.changes.outputs.docs == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev,docs]
+        run: uv sync --extra dev --extra docs
 
       - name: Generate API docs with mkdocstrings
         if: steps.changes.outputs.docs == 'true'
@@ -73,7 +72,7 @@ jobs:
         if: steps.changes.outputs.docs == 'true'
         run: |
           mkdir -p docs/examples/generated
-          python scripts/generate_examples_docs.py
+          uv run python scripts/generate_examples_docs.py
 
       - name: Validate documentation links
         if: steps.changes.outputs.docs == 'true'
@@ -94,7 +93,7 @@ jobs:
         if: steps.changes.outputs.docs == 'true'
         run: |
           # Check for required sections in documentation
-          python scripts/validate_docs.py
+          uv run python scripts/validate_docs.py
 
       - name: Upload generated docs
         if: steps.changes.outputs.docs == 'true'
@@ -113,26 +112,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
+      - name: Sync dependencies
+        run: uv sync --extra dev
 
       - name: Test examples syntax
         run: |
           for example in examples/*.py; do
             echo "Checking syntax of $example"
-            python -m py_compile "$example"
+            uv run python -m py_compile "$example"
           done
 
       - name: Validate example imports
         run: |
-          python -c "
+          uv run python -c "
           import ast
           import sys
           from pathlib import Path
@@ -163,8 +161,11 @@ jobs:
           name: generated-docs
           path: docs/
 
-      - name: Install Mintlify CLI
-        run: npm install -g @mintlify/cli
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Validate Mintlify CLI availability
+        run: bunx @mintlify/cli@latest --version
 
       - name: Validate Mintlify configuration
         run: |
@@ -178,7 +179,7 @@ jobs:
 
           # mintlify dev expects docs.json; run preview only when that layout exists.
           if [ -f "docs.json" ] || [ -f "docs/docs.json" ]; then
-            timeout 30s mintlify dev --no-open --port 3000 || \
+            timeout 30s bunx @mintlify/cli@latest dev --no-open --port 3000 || \
               echo "::warning::Documentation preview failed; continuing as advisory check"
           else
             echo "::notice::Skipping mintlify dev preview because docs.json is not present"
@@ -208,19 +209,15 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install gitpython
+          enable-cache: true
 
       - name: Auto-update changelog
         run: |
-          python scripts/update_changelog.py
+          uv run --with gitpython python scripts/update_changelog.py
 
       - name: Commit changelog updates
         run: |

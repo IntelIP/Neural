@@ -18,28 +18,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
+          enable-cache: true
 
-      - name: Install pip-audit
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev] pip-audit
+      - name: Export dependency graph for audit
+        run: uv export --extra dev --format requirements-txt -o requirements-dev.txt
 
       - name: Run pip-audit
         id: pip_audit
         continue-on-error: true
-        run: |
-          pip-audit -r requirements-dev.txt -f json -o pip-audit.json
+        run: uvx pip-audit -r requirements-dev.txt -f json -o pip-audit.json
 
       - name: Summarize dependency findings
         if: always()
         env:
           PIP_AUDIT_OUTCOME: ${{ steps.pip_audit.outcome }}
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -72,7 +70,6 @@ jobs:
                           f.write(f"| {pkg} | {ver} | {vuln} |\n")
                   else:
                       f.write("No known vulnerabilities found.\n")
-
           PY
           cat pip-audit-summary.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -93,28 +90,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
-
-      - name: Install Bandit
-        run: |
-          python -m pip install --upgrade pip
-          pip install bandit
+          enable-cache: true
 
       - name: Run Bandit
         id: bandit
         continue-on-error: true
-        run: |
-          bandit -q -r neural -f json -o bandit.json
+        run: uvx --from bandit bandit -q -r neural -f json -o bandit.json
 
       - name: Summarize Bandit findings
         if: always()
         env:
           BANDIT_OUTCOME: ${{ steps.bandit.outcome }}
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           import os
           from pathlib import Path
