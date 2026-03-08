@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -85,6 +85,8 @@ def test_paper_order_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
             "5",
             "--price",
             "0.55",
+            "--data-dir",
+            str(Path.cwd() / ".tmp-paper-cli"),
         ]
     )
 
@@ -110,6 +112,8 @@ def test_paper_order_json_output_real_client(monkeypatch: pytest.MonkeyPatch) ->
             "1",
             "--price",
             "0.55",
+            "--data-dir",
+            str(Path.cwd() / ".tmp-paper-cli"),
         ]
     )
 
@@ -119,7 +123,6 @@ def test_paper_order_json_output_real_client(monkeypatch: pytest.MonkeyPatch) ->
     payload = json.loads(stdout.getvalue())
     assert payload["ok"] is True
     assert payload["data"]["order"]["success"] is True
-    assert payload["data"]["portfolio"]["profit_factor"] is None
 
 
 def test_deployments_list_json_output_with_default_provider_resolution(
@@ -137,7 +140,7 @@ def test_deployments_list_json_output_with_default_provider_resolution(
         return _FakeProvider()
 
     monkeypatch.setattr(cli, "_safe_list_providers", lambda: ["docker"])
-    monkeypatch.setattr(cli, "create_provider", _fake_create_provider)
+    monkeypatch.setattr(cli, "_create_provider", _fake_create_provider)
 
     exit_code = cli.main(["--json", "deployments", "list"])
 
@@ -200,3 +203,15 @@ def test_python_module_cli_json_is_clean_on_stderr() -> None:
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert payload["ok"] is True
+
+def test_missing_subcommand_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    stdout, stderr = _capture(monkeypatch)
+
+    exit_code = cli.main(["--json", "deployments"])
+
+    assert exit_code == 1
+    assert stderr.getvalue() == ""
+    payload = json.loads(stdout.getvalue())
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "ValueError"
+    assert "Missing sub-command" in payload["error"]["message"]

@@ -14,8 +14,6 @@ from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from neural.deployment import create_provider, list_providers
-
 LOGGER = logging.getLogger(__name__)
 
 CLI_COMMANDS = [
@@ -39,7 +37,13 @@ def main(argv: list[str] | None = None) -> int:
     json_output = bool(args.json)
 
     if not hasattr(args, "handler"):
-        parser.print_help()
+        if json_output:
+            _emit_error(
+                ValueError("Missing sub-command. Run 'neural --help' for usage."),
+                json_output=True,
+            )
+        else:
+            parser.print_help()
         return 1
 
     try:
@@ -327,7 +331,7 @@ def _build_provider(args: argparse.Namespace) -> tuple[str, Any]:
         value = getattr(args, source, None)
         if value:
             kwargs[dest] = value
-    return provider_name, create_provider(provider_name, **kwargs)
+    return provider_name, _create_provider(provider_name, **kwargs)
 
 
 def _resolve_provider_name(explicit_provider: str | None) -> str:
@@ -353,10 +357,18 @@ def _resolve_provider_name(explicit_provider: str | None) -> str:
 
 def _safe_list_providers() -> list[str]:
     try:
+        from neural.deployment import list_providers
+
         return list_providers()
     except Exception as exc:
         LOGGER.debug("Provider discovery failed", exc_info=exc)
         return []
+
+
+def _create_provider(provider_name: str, **kwargs: Any) -> Any:
+    from neural.deployment import create_provider
+
+    return create_provider(provider_name, **kwargs)
 
 
 def _get_kalshi_http_client_class() -> Any:
