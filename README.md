@@ -51,6 +51,13 @@ Current bridge commands:
 - `deployments logs`
 - `deployments stop`
 
+## Highlighted Examples
+
+- [examples/09_daily_nba_markets.py](./examples/09_daily_nba_markets.py): public Kalshi NBA market snapshot with sports-aware parsing.
+- [examples/10_daily_nba_markets_polymarket.py](./examples/10_daily_nba_markets_polymarket.py): public Polymarket US NBA market snapshot using the normalized market interface.
+- [examples/12_cross_provider_analysis_bridge.py](./examples/12_cross_provider_analysis_bridge.py): live cross-provider normalization plus one shared analysis pass.
+- [examples/13_deterministic_cross_provider_replay.py](./examples/13_deterministic_cross_provider_replay.py): reproducible replay proving the analysis stack generates `buy_yes`, `buy_no`, and `hold` decisions on standardized cross-provider data.
+
 ## Credentials
 
 Create a `.env` file with your Kalshi credentials:

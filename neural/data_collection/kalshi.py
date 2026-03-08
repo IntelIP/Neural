@@ -39,6 +39,76 @@ def _resolve_series_list(series: Iterable[str] | None) -> list[str]:
     return [s for s in (_normalize_series(item) for item in series) if s]
 
 
+_MONTH_MAP = {
+    "JAN": 1,
+    "FEB": 2,
+    "MAR": 3,
+    "APR": 4,
+    "MAY": 5,
+    "JUN": 6,
+    "JUL": 7,
+    "AUG": 8,
+    "SEP": 9,
+    "OCT": 10,
+    "NOV": 11,
+    "DEC": 12,
+}
+
+
+def _parse_market_date_from_ticker(ticker: Any) -> pd.Timestamp:
+    if not isinstance(ticker, str):
+        return pd.NaT
+
+    match = re.search(r"-(\d{2}[A-Z]{3}\d{2})", ticker)
+    if not match:
+        return pd.NaT
+
+    date_str = match.group(1)
+    try:
+        year = int(date_str[0:2]) + 2000
+        month = _MONTH_MAP.get(date_str[2:5])
+        day = int(date_str[5:7])
+        if month is None:
+            return pd.NaT
+        return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
+    except Exception:
+        return pd.NaT
+
+
+def _parse_matchup_teams(row: pd.Series) -> pd.Series:
+    title = str(row.get("title", ""))
+    subtitle = str(row.get("subtitle", ""))
+
+    patterns = [
+        r"Will the (?P<away>.+?) beat the (?P<home>.+?)\?",
+        r"(?P<away>.+?) at (?P<home>.+?) Winner\?",
+        r"(?P<away>.+?) vs (?P<home>.+?) Winner\?",
+    ]
+    for source in (title, subtitle):
+        for pattern in patterns:
+            match = re.search(pattern, source, re.IGNORECASE)
+            if match:
+                return pd.Series(
+                    {
+                        "home_team": match.group("home").strip(),
+                        "away_team": match.group("away").strip(),
+                    }
+                )
+
+    for separator in (" vs ", " at "):
+        if separator in subtitle:
+            teams = subtitle.split(separator)
+            if len(teams) == 2:
+                return pd.Series(
+                    {
+                        "home_team": teams[1].strip(),
+                        "away_team": teams[0].strip(),
+                    }
+                )
+
+    return pd.Series({"home_team": None, "away_team": None})
+
+
 async def _fetch_markets(
     params: dict[str, Any],
     *,
@@ -356,64 +426,9 @@ async def get_nfl_games(
     )
 
     if not df.empty:
-        # Parse teams from title (common format: "Will the [Away] beat the [Home]?" or similar)
-        def parse_teams(row):
-            title = row["title"]
-            match = re.search(
-                r"Will the (\w+(?:\s\w+)?) beat the (\w+(?:\s\w+)?)\?", title, re.IGNORECASE
-            )
-            if match:
-                away, home = match.groups()
-                return pd.Series({"home_team": home, "away_team": away})
-            # Fallback: extract from subtitle or ticker
-            subtitle = row.get("subtitle", "")
-            if " vs " in subtitle:
-                teams = subtitle.split(" vs ")
-                return pd.Series(
-                    {
-                        "home_team": teams[1].strip() if len(teams) > 1 else None,
-                        "away_team": teams[0].strip(),
-                    }
-                )
-            return pd.Series({"home_team": None, "away_team": None})
-
-        team_df = df.apply(parse_teams, axis=1)
+        team_df = df.apply(_parse_matchup_teams, axis=1)
         df = pd.concat([df, team_df], axis=1)
-
-        # Parse game date from ticker (format: KXNFLGAME-25SEP22DETBAL -> 25SEP22)
-        def parse_game_date(ticker):
-            match = re.search(r"-(\d{2}[A-Z]{3}\d{2})", ticker)
-            if match:
-                date_str = match.group(1)
-                try:
-                    # Assume YYMMMDD, convert to full year (e.g., 22 -> 2022)
-                    year = (
-                        int(date_str[-2:]) + 2000
-                        if int(date_str[-2:]) < 50
-                        else 1900 + int(date_str[-2:])
-                    )
-                    month_map = {
-                        "JAN": 1,
-                        "FEB": 2,
-                        "MAR": 3,
-                        "APR": 4,
-                        "MAY": 5,
-                        "JUN": 6,
-                        "JUL": 7,
-                        "AUG": 8,
-                        "SEP": 9,
-                        "OCT": 10,
-                        "NOV": 11,
-                        "DEC": 12,
-                    }
-                    month = month_map.get(date_str[2:5])
-                    day = int(date_str[0:2])
-                    return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
-                except Exception:
-                    pass
-            return pd.NaT
-
-        df["game_date"] = df["ticker"].apply(parse_game_date)
+        df["game_date"] = df["ticker"].apply(_parse_market_date_from_ticker)
 
         # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
         # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
@@ -455,73 +470,9 @@ async def get_nba_games(
     )
 
     if not df.empty:
-        # Parse teams from title (NBA format: "Will the [Away] beat the [Home]?" or similar)
-        def parse_teams(row):
-            title = row["title"]
-            match = re.search(
-                r"Will the (\w+(?:\s\w+)?) beat the (\w+(?:\s\w+)?)\?", title, re.IGNORECASE
-            )
-            if match:
-                away, home = match.groups()
-                return pd.Series({"home_team": home, "away_team": away})
-            # Fallback: extract from subtitle or ticker
-            subtitle = row.get("subtitle", "")
-            if " vs " in subtitle:
-                teams = subtitle.split(" vs ")
-                return pd.Series(
-                    {
-                        "home_team": teams[1].strip() if len(teams) > 1 else None,
-                        "away_team": teams[0].strip(),
-                    }
-                )
-            # NBA-specific: Try "at" format (Away at Home)
-            if " at " in subtitle:
-                teams = subtitle.split(" at ")
-                return pd.Series(
-                    {
-                        "home_team": teams[1].strip() if len(teams) > 1 else None,
-                        "away_team": teams[0].strip(),
-                    }
-                )
-            return pd.Series({"home_team": None, "away_team": None})
-
-        team_df = df.apply(parse_teams, axis=1)
+        team_df = df.apply(_parse_matchup_teams, axis=1)
         df = pd.concat([df, team_df], axis=1)
-
-        # Parse game date from ticker (format: KXNBA-25OCT15LALGSW -> 25OCT15)
-        def parse_game_date(ticker):
-            match = re.search(r"-(\d{2}[A-Z]{3}\d{2})", ticker)
-            if match:
-                date_str = match.group(1)
-                try:
-                    # Assume YYMMMDD, convert to full year (e.g., 25 -> 2025)
-                    year = (
-                        int(date_str[-2:]) + 2000
-                        if int(date_str[-2:]) < 50
-                        else 1900 + int(date_str[-2:])
-                    )
-                    month_map = {
-                        "JAN": 1,
-                        "FEB": 2,
-                        "MAR": 3,
-                        "APR": 4,
-                        "MAY": 5,
-                        "JUN": 6,
-                        "JUL": 7,
-                        "AUG": 8,
-                        "SEP": 9,
-                        "OCT": 10,
-                        "NOV": 11,
-                        "DEC": 12,
-                    }
-                    month = month_map.get(date_str[2:5])
-                    day = int(date_str[0:2])
-                    return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
-                except Exception:
-                    pass
-            return pd.NaT
-
-        df["game_date"] = df["ticker"].apply(parse_game_date)
+        df["game_date"] = df["ticker"].apply(_parse_market_date_from_ticker)
 
         # Filter for NBA games only
         nba_mask = df["ticker"].str.contains("KXNBA", na=False) | df["title"].str.contains(
@@ -553,7 +504,7 @@ async def get_cfb_games(
         DataFrame with CFB markets, including parsed teams and game date
     """
     df = await get_markets_by_sport(
-        sport="NCAA Football",
+        sport="CFB",
         status=status,
         limit=limit,
         use_authenticated=use_authenticated,
@@ -562,62 +513,9 @@ async def get_cfb_games(
     )
 
     if not df.empty:
-        # Parse teams similar to NFL
-        def parse_teams(row):
-            title = row["title"]
-            match = re.search(
-                r"Will the (\w+(?:\s\w+)?) beat the (\w+(?:\s\w+)?)\?", title, re.IGNORECASE
-            )
-            if match:
-                away, home = match.groups()
-                return pd.Series({"home_team": home, "away_team": away})
-            subtitle = row.get("subtitle", "")
-            if " vs " in subtitle:
-                teams = subtitle.split(" vs ")
-                return pd.Series(
-                    {
-                        "home_team": teams[1].strip() if len(teams) > 1 else None,
-                        "away_team": teams[0].strip(),
-                    }
-                )
-            return pd.Series({"home_team": None, "away_team": None})
-
-        team_df = df.apply(parse_teams, axis=1)
+        team_df = df.apply(_parse_matchup_teams, axis=1)
         df = pd.concat([df, team_df], axis=1)
-
-        # Parse game date from ticker
-        def parse_game_date(ticker):
-            match = re.search(r"-(\d{2}[A-Z]{3}\d{2})", ticker)
-            if match:
-                date_str = match.group(1)
-                try:
-                    year = (
-                        int(date_str[-2:]) + 2000
-                        if int(date_str[-2:]) < 50
-                        else 1900 + int(date_str[-2:])
-                    )
-                    month_map = {
-                        "JAN": 1,
-                        "FEB": 2,
-                        "MAR": 3,
-                        "APR": 4,
-                        "MAY": 5,
-                        "JUN": 6,
-                        "JUL": 7,
-                        "AUG": 8,
-                        "SEP": 9,
-                        "OCT": 10,
-                        "NOV": 11,
-                        "DEC": 12,
-                    }
-                    month = month_map.get(date_str[2:5])
-                    day = int(date_str[0:2])
-                    return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
-                except Exception:
-                    pass
-            return pd.NaT
-
-        df["game_date"] = df["ticker"].apply(parse_game_date)
+        df["game_date"] = df["ticker"].apply(_parse_market_date_from_ticker)
 
         # Bug Fix #4, #12: Filter using ticker (which exists) instead of series_ticker (which doesn't)
         # The series_ticker field doesn't exist in Kalshi API responses, use ticker or event_ticker instead
