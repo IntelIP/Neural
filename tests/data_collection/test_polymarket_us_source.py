@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import pandas as pd
 import pytest
 
 import neural.data_collection.polymarket_us as source_module
@@ -25,13 +26,29 @@ class FakeAdapter:
         return [
             NormalizedMarket(
                 market_id="MKT-1",
-                ticker="MKT-1",
-                title="Example",
+                ticker="nba-game-1",
+                title="Chicago vs. New York",
                 status="open",
                 yes_price=0.6,
                 no_price=0.4,
                 category="sports",
-                sport=sport or "nfl",
+                sport=sport or "nba",
+                metadata={
+                    "raw": {
+                        "gameStartTime": "2026-03-10T23:00:00Z",
+                        "marketType": "moneyline",
+                        "marketSides": [
+                            {
+                                "description": "Chicago",
+                                "team": {"name": "Chicago Bulls", "ordering": "away", "league": "nba"},
+                            },
+                            {
+                                "description": "New York",
+                                "team": {"name": "New York Knicks", "ordering": "home", "league": "nba"},
+                            },
+                        ],
+                    }
+                },
             )
         ]
 
@@ -110,6 +127,18 @@ def test_source_wraps_adapter_initialization_errors(monkeypatch: pytest.MonkeyPa
         RuntimeError, match="Failed to initialize PolymarketUSMarketsSource adapter"
     ):
         PolymarketUSMarketsSource()
+
+
+def test_get_markets_df_enriches_sports_rows() -> None:
+    source = PolymarketUSMarketsSource(adapter=FakeAdapter())
+    markets = source.get_markets_df()
+
+    assert markets.iloc[0]["ticker"] == "nba-game-1"
+    assert markets.iloc[0]["home_team"] == "New York Knicks"
+    assert markets.iloc[0]["away_team"] == "Chicago Bulls"
+    assert markets.iloc[0]["market_type"] == "moneyline"
+    assert markets.iloc[0]["game_date"] == pd.Timestamp("2026-03-10T23:00:00Z")
+
 
 
 def test_market_history_uses_adapter_public_candles_api() -> None:

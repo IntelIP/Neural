@@ -12,6 +12,31 @@ from neural.trading.polymarket_us_adapter import PolymarketUSAdapter
 from .base import DataSource
 
 
+def _extract_game_context(raw: dict[str, Any]) -> dict[str, Any]:
+    market_sides = raw.get("marketSides")
+    home_team = None
+    away_team = None
+    if isinstance(market_sides, list):
+        for side in market_sides:
+            if not isinstance(side, dict):
+                continue
+            team = side.get("team") if isinstance(side.get("team"), dict) else {}
+            team_name = team.get("name") or side.get("description")
+            ordering = team.get("ordering") or side.get("ordering")
+            if ordering == "home":
+                home_team = team_name
+            elif ordering == "away":
+                away_team = team_name
+
+    return {
+        "home_team": home_team,
+        "away_team": away_team,
+        "game_date": raw.get("gameStartTime") or raw.get("startDate") or raw.get("endDate"),
+        "market_type": raw.get("sportsMarketTypeV2") or raw.get("sportsMarketType") or raw.get("marketType"),
+    }
+
+
+
 @dataclass(slots=True)
 class PolymarketUSConfig:
     sport: str | None = None
@@ -71,20 +96,27 @@ class PolymarketUSMarketsSource(DataSource):
             limit=self._source_cfg.limit,
             sports_only=self._source_cfg.sports_only,
         )
-        rows = [
-            {
-                "market_id": m.market_id,
-                "ticker": m.ticker,
-                "title": m.title,
-                "status": m.status,
-                "yes_price": m.yes_price,
-                "no_price": m.no_price,
-                "sport": m.sport,
-                "category": m.category,
+        rows = []
+        for market in markets:
+            raw = market.metadata.get("raw", {}) if isinstance(market.metadata, dict) else {}
+            row = {
+                "market_id": market.market_id,
+                "ticker": market.ticker,
+                "title": market.title,
+                "status": market.status,
+                "yes_price": market.yes_price,
+                "no_price": market.no_price,
+                "sport": market.sport,
+                "category": market.category,
             }
-            for m in markets
-        ]
-        return pd.DataFrame(rows)
+            if isinstance(raw, dict):
+                row.update(_extract_game_context(raw))
+            rows.append(row)
+
+        df = pd.DataFrame(rows)
+        if not df.empty and "game_date" in df.columns:
+            df["game_date"] = pd.to_datetime(df["game_date"], errors="coerce", utc=True)
+        return df
 
     def get_market_history(
         self,

@@ -28,6 +28,7 @@ from neural.exchanges.types import (
 
 _LOG = logging.getLogger(__name__)
 
+DEFAULT_POLYMARKET_US_PUBLIC_BASE_URL = "https://gateway.polymarket.us"
 DEFAULT_POLYMARKET_US_MARKET_WS_URL = "wss://ws.polymarket.us/markets"
 DEFAULT_POLYMARKET_US_USER_WS_URL = "wss://ws.polymarket.us/user"
 
@@ -40,27 +41,37 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
     api_secret: bytes | None = None
     passphrase: str | None = None
     base_url: str | None = None
+    public_base_url: str | None = None
     timeout: int = 30
     max_retries: int = 3
     session: requests.Session | None = None
 
     name: str = "polymarket_us"
     _http: requests.Session = field(init=False)
-    _signer: PolymarketUSSigner = field(init=False)
+    _signer: PolymarketUSSigner | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         BaseExchangeAdapter.__init__(self)
         creds: dict[str, Any] = {}
         if self.api_key is None or self.api_secret is None or self.passphrase is None:
-            creds = get_polymarket_us_credentials()
+            try:
+                creds = get_polymarket_us_credentials()
+            except (FileNotFoundError, ValueError):
+                creds = {}
 
         api_key = self.api_key or creds.get("api_key")
         api_secret = self.api_secret or creds.get("api_secret")
         passphrase = self.passphrase or creds.get("passphrase")
+        self.base_url = (self.base_url or get_polymarket_us_base_url()).rstrip("/")
+        self.public_base_url = (self.public_base_url or DEFAULT_POLYMARKET_US_PUBLIC_BASE_URL).rstrip("/")
+        self._http = self.session or requests.Session()
+
         if api_key is None or api_secret is None or passphrase is None:
-            raise ValueError(
-                "Polymarket US credentials are required: api_key, api_secret, passphrase"
-            )
+            self.api_key = None
+            self.api_secret = None
+            self.passphrase = None
+            self._signer = None
+            return
 
         self.api_key = str(api_key)
         if isinstance(api_secret, str):
@@ -68,14 +79,11 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         else:
             self.api_secret = bytes(api_secret)
         self.passphrase = str(passphrase)
-        self.base_url = (self.base_url or get_polymarket_us_base_url()).rstrip("/")
-
         self._signer = PolymarketUSSigner(
             api_key=self.api_key,
             api_secret=self.api_secret,
             passphrase=self.passphrase,
         )
-        self._http = self.session or requests.Session()
 
     def capabilities(self) -> ExchangeCapabilities:
         return ExchangeCapabilities(read=True, paper=False, live=False, streaming=True)
@@ -83,27 +91,46 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
     def list_markets(
         self, *, sport: str | None = None, limit: int = 100, sports_only: bool = True
     ) -> list[NormalizedMarket]:
-        path = "/api/v1/sports/markets" if sports_only else "/api/v1/markets"
-        params: dict[str, Any] = {"limit": limit}
-        if sport:
-            params["sport"] = sport
+        target_sport = sport.lower() if sport else None
+        page_size = min(max(limit, 1), 200)
+        offset = 0
+        out: list[NormalizedMarket] = []
 
-        payload = self._request("GET", path, params=params)
-        rows = _extract_rows(payload)
-        out = [self._normalize_market(r) for r in rows]
+        while True:
+            params: dict[str, Any] = {"limit": page_size, "offset": offset, "active": "true"}
+            if sports_only:
+                params["categories"] = "sports"
 
-        if sports_only:
-            out = [m for m in out if _is_sports_market(m)]
-        if sport:
-            out = [m for m in out if (m.sport or "").lower() == sport.lower()]
-        return out
+            payload = self._request_public("GET", "/v1/markets", params=params)
+            rows = _extract_rows(payload)
+            if not rows:
+                break
+
+            chunk = [self._normalize_market(r) for r in rows]
+            if sports_only:
+                chunk = [m for m in chunk if _is_sports_market(m)]
+            if target_sport:
+                chunk = [m for m in chunk if (m.sport or "").lower() == target_sport]
+            out.extend(chunk)
+            if len(out) >= limit:
+                return out[:limit]
+            if len(rows) < page_size:
+                break
+            offset += len(rows)
+
+        return out[:limit]
 
     def get_quote(self, market_id: str) -> NormalizedQuote:
-        path = f"/api/v1/markets/{market_id}/book"
-        payload = self._request("GET", path)
-        row = payload.get("book") or payload.get("data") or payload
-        yes_bid = _to_prob(row.get("yes_bid") or row.get("best_bid_yes") or row.get("bid"))
-        yes_ask = _to_prob(row.get("yes_ask") or row.get("best_ask_yes") or row.get("ask"))
+        market_lookup_path = (
+            f"/v1/market/id/{market_id}" if str(market_id).isdigit() else f"/v1/market/slug/{market_id}"
+        )
+        market_payload = self._request_public("GET", market_lookup_path)
+        market_row = market_payload.get("market") or market_payload.get("data") or market_payload
+        market_slug = str(market_row.get("slug") or market_id)
+        payload = self._request_public("GET", f"/v1/markets/{market_slug}/bbo")
+        row = payload.get("marketData") or payload.get("data") or payload
+        yes_bid = _to_prob(row.get("bestBid") or row.get("bid") or row.get("yes_bid"))
+        yes_ask = _to_prob(row.get("bestAsk") or row.get("ask") or row.get("yes_ask"))
         no_bid = _to_prob(row.get("no_bid") or row.get("best_bid_no"))
         no_ask = _to_prob(row.get("no_ask") or row.get("best_ask_no"))
 
@@ -118,10 +145,15 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
             yes_ask=yes_ask,
             no_bid=no_bid,
             no_ask=no_ask,
-            last_price=_to_prob(row.get("last_price") or row.get("last")),
-            volume=_to_float(row.get("volume")),
+            last_price=_to_prob(
+                (row.get("lastTradePx") or {}).get("value")
+                or (row.get("currentPx") or {}).get("value")
+                or row.get("last_price")
+                or row.get("last")
+            ),
+            volume=_to_float(row.get("sharesTraded") or row.get("volume")),
             timestamp=_to_float(row.get("timestamp") or row.get("ts")),
-            metadata={"exchange": self.name, "raw": row},
+            metadata={"exchange": self.name, "raw": {"market": market_row, "bbo": row}},
         )
 
     def place_order(
@@ -141,7 +173,8 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         )
 
     def get_positions(self) -> list[NormalizedPosition]:
-        raw = self._request("GET", "/api/v1/portfolio/positions")
+        self._require_auth("portfolio positions")
+        raw = self._request("GET", "/api/v1/portfolio/positions", require_auth=True)
         rows = _extract_rows(raw)
         out: list[NormalizedPosition] = []
         for row in rows:
@@ -173,7 +206,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         if end_ts_ms is not None:
             params["end_ts"] = end_ts_ms
 
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/candles", params=params)
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/candles", params=params, require_auth=True)
         rows = payload.get("candles") or payload.get("data") or []
         if not isinstance(rows, list):
             return []
@@ -189,7 +222,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         params: dict[str, Any] = {"limit": limit}
         if cursor:
             params["cursor"] = cursor
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/trades", params=params)
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/trades", params=params, require_auth=True)
         rows = payload.get("trades") or payload.get("data") or []
         clean_rows = rows if isinstance(rows, list) else []
         return {
@@ -208,7 +241,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         params: dict[str, Any] = {"limit": limit}
         if cursor:
             params["cursor"] = cursor
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/events", params=params)
+        payload = self._request("GET", f"/api/v1/markets/{market_id}/events", params=params, require_auth=True)
         rows = payload.get("events") or payload.get("data") or []
         clean_rows = rows if isinstance(rows, list) else []
         return {
@@ -221,13 +254,15 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         self,
         url: str = DEFAULT_POLYMARKET_US_MARKET_WS_URL,
     ) -> PolymarketUSMarketWebSocketClient:
-        return PolymarketUSMarketWebSocketClient(url=url, signer=self._signer)
+        signer = self._require_auth("market websocket")
+        return PolymarketUSMarketWebSocketClient(url=url, signer=signer)
 
     def user_ws_client(
         self,
         url: str = DEFAULT_POLYMARKET_US_USER_WS_URL,
     ) -> PolymarketUSUserWebSocketClient:
-        return PolymarketUSUserWebSocketClient(url=url, signer=self._signer)
+        signer = self._require_auth("user websocket")
+        return PolymarketUSUserWebSocketClient(url=url, signer=signer)
 
     def close(self) -> None:
         self._http.close()
@@ -239,12 +274,15 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         *,
         params: dict[str, Any] | None = None,
         json_data: dict[str, Any] | None = None,
+        require_auth: bool = False,
     ) -> dict[str, Any]:
         body = json.dumps(json_data, separators=(",", ":")) if json_data else ""
-        headers = {
-            "Content-Type": "application/json",
-            **self._signer.headers(method, path, body=body),
-        }
+        headers = {"Content-Type": "application/json"}
+        if require_auth:
+            signer = self._require_auth(path)
+            headers.update(signer.headers(method, path, body=body))
+        elif self._signer is not None:
+            headers.update(self._signer.headers(method, path, body=body))
 
         url = f"{self.base_url}{path}"
         retry = 0
@@ -297,12 +335,42 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
 
             self._raise_http_error(response)
 
+    def _request_public(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        url = f"{self.public_base_url}{path}"
+        response = self._http.request(method=method, url=url, params=params, timeout=self.timeout)
+        if response.status_code < 400:
+            if response.text:
+                try:
+                    data = response.json()
+                except ValueError as exc:
+                    raise RuntimeError("Polymarket US response body was not valid JSON") from exc
+            else:
+                data = {}
+            if isinstance(data, dict):
+                return data
+            return {"data": data}
+        self._raise_http_error(response)
+
+    def _require_auth(self, operation: str) -> PolymarketUSSigner:
+        if self._signer is None:
+            raise ValueError(
+                "Polymarket US credentials are required for "
+                f"{operation}: api_key, api_secret, passphrase"
+            )
+        return self._signer
+
     @staticmethod
     def _normalize_market(raw: dict[str, Any]) -> NormalizedMarket:
         market_id = str(raw.get("id") or raw.get("market_id") or raw.get("slug") or "")
         title = str(raw.get("title") or raw.get("question") or raw.get("name") or market_id)
         category = str(raw.get("category") or raw.get("topic") or "sports")
-        sport = str(raw.get("sport") or raw.get("league") or category)
+        sport = _extract_market_sport(raw) or str(raw.get("sport") or raw.get("league") or category)
 
         yes_price = _to_prob(
             raw.get("yes_price") or raw.get("price_yes") or raw.get("best_ask_yes")
@@ -315,7 +383,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
             market_id=market_id,
             ticker=str(raw.get("ticker") or raw.get("slug") or market_id),
             title=title,
-            status=str(raw.get("status") or "open"),
+            status=_extract_market_status(raw),
             yes_price=yes_price,
             no_price=no_price,
             category=category,
@@ -350,6 +418,38 @@ def _extract_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
     if payload:
         return [payload]
     return []
+
+
+def _extract_market_status(raw: dict[str, Any]) -> str:
+    status = raw.get("status")
+    if isinstance(status, str) and status:
+        return status
+    if raw.get("archived") is True:
+        return "archived"
+    if raw.get("active") is True:
+        return "open"
+    if raw.get("closed") is True:
+        return "closed"
+    return "inactive"
+
+
+def _extract_market_sport(raw: dict[str, Any]) -> str | None:
+    league = raw.get("league") or raw.get("sport")
+    if isinstance(league, str) and league:
+        return league.lower()
+
+    market_sides = raw.get("marketSides")
+    if isinstance(market_sides, list):
+        for side in market_sides:
+            if not isinstance(side, dict):
+                continue
+            team = side.get("team")
+            if not isinstance(team, dict):
+                continue
+            league = team.get("league")
+            if isinstance(league, str) and league:
+                return league.lower()
+    return None
 
 
 def _is_sports_market(market: NormalizedMarket) -> bool:
