@@ -1,0 +1,6 @@
+{
+  "strictness": 2,
+  "triggerOnUpdates": true,
+  "statusCheck": true,
+  "excludeAuthors": ["dependabot[bot]"]
+}

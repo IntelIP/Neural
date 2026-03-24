@@ -86,6 +86,7 @@ kalshi_private_key.pem
 # Data files
 *.csv
 *.json
+!greptile.json
 *.parquet
 *.h5
 *.hdf5
