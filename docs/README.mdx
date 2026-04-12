@@ -1,35 +1,45 @@
 ---
 title: 'What is Neural'
-description: 'Your Complete Guide to Building Trading Systems with Real-Time Market Data'
+description: 'Kalshi-first beta guide for building trading systems with Neural'
 ---
 
 ## What is Neural?
 
-Neural is an algorithmic trading platform that allows users to build algorithms to trade sports contracts on the Kalshi platform.
+Neural is an algorithmic trading SDK for building prediction-market workflows with a Kalshi-first public beta.
 
-Making money in sports is incredibly difficult for several reasons:
+The public beta is intentionally narrow. Neural gives you a programmable path for researching markets, rehearsing execution, and automating selected live trading workflows without implying that the broader repository surface is production-ready.
 
-**Traditional Sportsbooks**: Even if you develop winning strategies, sportsbooks will ban you once you start winning consistently. This limits your ability to scale profitable strategies long-term.
-
-**Kalshi Platform Complexity**: While Kalshi offers a legitimate marketplace for sports event contracts without the risk of being banned, trading sustainably on the platform is challenging without systematic approaches. Manual trading leads to:
-- Emotional decision-making
-- Inconsistent position sizing
-- Missing profitable opportunities
-- Lack of proper backtesting
-
-**This is where Neural comes in.**
-
-Neural is an algorithmic trading platform which allows users to create, backtest, trade, and deploy strategies all in one stack. Instead of manual trading or getting banned from traditional sportsbooks, you can:
+Use it to:
 
 - Develop systematic, data-driven strategies
 - Backtest your approaches on historical data
-- Execute trades programmatically with proper risk management
-- Scale your operations without platform restrictions
+- Execute Kalshi trades programmatically with risk controls
+- Rehearse workflows in paper mode before risking capital
+
+## Current beta scope
+
+The supported beta story today is:
+
+- Kalshi auth and market data
+- Paper trading
+- Selected Kalshi live trading flows through `TradingClient`
+- Minimal CLI health checks
+
+Polymarket US currently ships as read/stream-only beta support. Sentiment, deployment, FIX streaming, and broader platform surfaces are still experimental.
+
+Installation follows the same split:
+
+- `pip install neural-sdk` for the base SDK, CLI, and supported beta imports
+- `pip install "neural-sdk[trading]"` for Kalshi live trading, streaming, and FIX helpers
+- `pip install "neural-sdk[sentiment]"` for research-only sentiment tooling
+- `pip install "neural-sdk[deployment]"` for the experimental Docker deployment helpers
+
+Keep the beta boundary narrow in production. Use the base SDK and `trading` extra for the public path; treat sentiment, FIX, and deployment helpers as operator-owned experiments until they are promoted.
 
 ## Getting Started
 
-If you're new to Neural, follow our quickstart to build your first algorithm, backtest it and begin trading on Kalshi.
+If you're new to Neural, start with the quickstart to validate your environment, pull live Kalshi data, and run the paper-trading workflow end to end.
 
 <Note>
-A quick disclaimer, our software is still in beta testing so some features may not work as intended. Understand that there is a risk trading financial contracts as we assume no risk in loses from strategies. Trade at your own risk.
+Neural is still in beta. Trade at your own risk, keep experimental modules behind review, and prefer the documented Kalshi-first path until the broader surface is hardened.
 </Note>

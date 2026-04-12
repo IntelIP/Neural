@@ -3,7 +3,9 @@ title: Overview
 description: Neural architecture and module layout
 ---
 
-Neural provides a clean, modular architecture to build trading systems on prediction markets. The platform is organized into three stacks:
+Neural provides a modular architecture for building trading systems on prediction markets. The supported beta path is Kalshi-first, with several adjacent modules still marked experimental.
+
+Base installs stay small on purpose. Use `neural-sdk` for the supported beta surface, `neural-sdk[trading]` for live trading and streaming, `neural-sdk[sentiment]` for research-only sentiment helpers, and `neural-sdk[deployment]` only when you are intentionally experimenting with the deployment layer.
 
 ## Stacks
 
@@ -34,6 +36,8 @@ Includes:
 - Position sizing helpers and sentiment toolkit
 - Order manager bridge
 
+Status: backtesting and risk helpers are useful research tools, but they are still experimental relative to the supported trading path.
+
 **Example:**
 
 ```python
@@ -47,11 +51,13 @@ engine = Backtester(initial_capital=10_000)
 
 ### 3) Trading (`neural.trading`)
 
-Purpose: Execute orders with production-ready clients
+Purpose: Execute orders with Neural's exchange facade
 Includes:
-- `TradingClient` (REST), `KalshiWebSocketClient`, and FIX connectors
+- `TradingClient` (Kalshi-first), `KalshiWebSocketClient`, and exchange adapters
 - Paper trading simulators and reporting helpers
 - Streaming market data adapters
+
+Status: Kalshi paper trading and selected live trading flows are the stable beta path. Polymarket US is read/stream beta only, while FIX streaming remains experimental.
 
 **Example:**
 
@@ -68,5 +74,6 @@ paper = PaperTradingClient(initial_capital=10_000, save_trades=False)
 - Environment-first credential loading with helpful errors
 - Optional dependencies are imported lazily so partial installs never crash the SDK
 - Integration tests skip gracefully when credentials are absent for reliable CI
+- The public beta promise is narrower than the full repository surface, and the docs call that out explicitly instead of implying every module is launch-ready.
 
 Keep this mental model handy and jump to `architecture/start-here` or `workflows/build-first-bot` for the end-to-end orientation.

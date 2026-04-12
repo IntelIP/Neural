@@ -5,6 +5,8 @@ description: 'Leverage the FIX client for ultra-low latency trading and executio
 
 The FIX client is built around `neural.trading.fix.KalshiFIXClient`, an async FIX 5.0 SP2 session tailored for Kalshi order entry.
 
+This surface is experimental and requires `neural-sdk[trading]`.
+
 ## Connecting
 
 ```python
@@ -53,3 +55,5 @@ The client exposes `_send_lock` to serialize writes and internal tasks for heart
 - Adjust `heartbeat_interval` and latency thresholds (e.g., in `HighSpeedArbitrageStrategy`) to match your infrastructure.
 
 When latency matters and you need full control over execution reports, the FIX client provides the building blocks.
+
+For the supported public beta path, prefer `TradingClient` plus paper trading first. Use FIX only when you are intentionally operating beyond the stable beta contract.

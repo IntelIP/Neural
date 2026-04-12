@@ -20,7 +20,6 @@ try:
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     TEXTBLOB_AVAILABLE = False
-    print("TextBlob not available. Install with: pip install textblob")
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -28,7 +27,6 @@ try:
     VADER_AVAILABLE = True
 except ImportError:
     VADER_AVAILABLE = False
-    print("VADER not available. Install with: pip install vaderSentiment")
 
 
 class SentimentEngine(Enum):

@@ -3,17 +3,26 @@ title: 'Data Pipeline Patterns'
 description: 'Design reliable pipelines from Kalshi APIs to strategy inputs and analytics.'
 ---
 
-Neural’s modular design lets you assemble data pipelines that suit different latency and resiliency requirements. This guide describes common patterns.
+Neural’s modular design lets you assemble data pipelines that suit different latency and resiliency requirements. This guide starts with the supported beta patterns, then calls out the broader research patterns that remain optional.
 
 ## Streaming Bot
 
 ```
-Kalshi WebSocket → MultiSourceAggregator → Strategy → OrderManager → TradingClient
+Kalshi WebSocket → Strategy → OrderManager → PaperTradingClient / TradingClient
 ```
 
 - Use `KalshiWebSocketClient` for low-latency quotes.
-- Attach Twitter/ESPN sources in the aggregator to enrich signals.
-- Forward `AggregatedData` to strategies that evaluate sentiment + price in near real-time.
+- Forward market updates directly into strategies and risk checks.
+- Keep paper trading as the default onboarding path while you calibrate the execution loop.
+
+## Research Enrichment Pipeline
+
+```
+Kalshi WebSocket / REST → MultiSourceAggregator → Research Strategy / Notebook
+```
+
+- Attach Twitter/ESPN sources only when you intentionally want the experimental research path.
+- Keep multi-feed aggregation outside the default beta story until the workflow is explicitly promoted.
 
 ## Polling Dashboard
 
@@ -42,12 +51,12 @@ MultiSourceAggregator → Custom Handler → Slack/Webhooks
 ```
 
 - Register `aggregator.data_handlers` that push notifications on specific sentiment or price thresholds.
-- Use `GameSentimentTracker` to detect momentum swings worth human attention.
+- Use `GameSentimentTracker` only in the experimental research pipeline; it is not part of the supported default launch path.
 
 ## Reliability Tips
 
 - Wrap collection in `asyncio.create_task` and guard with cancellation + error logs to keep services responsive.
-- Use the registry to swap data sources without touching strategy code—handy when moving from demo to production feeds.
+- Use the registry to swap data sources without touching strategy code, but keep the production path centered on Kalshi-first feeds unless you have validated broader research inputs.
 - Periodically run `DataBuffer.cleanup_old_data()` to prevent memory creep in long-running services.
 
-Good data hygiene powers accurate backtests and dependable live systems. Mix and match the building blocks above to fit your latency, cost, and compliance constraints.
+Good data hygiene powers accurate backtests and dependable live systems. Mix and match the building blocks above to fit your latency, cost, and compliance constraints, but keep experimental ESPN/Twitter enrichment out of the default onboarding and docs path.

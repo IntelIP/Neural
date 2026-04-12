@@ -5,6 +5,8 @@ description: 'Stream Kalshi market data using WebSocket, REST polling, and FIX-b
 
 Neural offers multiple ways to stay on top of market moves, covering lightweight setups and full FIX connectivity.
 
+Install `neural-sdk[trading]` before using the WebSocket or FIX clients. The base install is enough for the docs and CLI, but these streaming surfaces live in the trading extra.
+
 ## WebSocket Client
 
 `KalshiWebSocketClient` wraps the Kalshi WebSocket RPC service with automatic signing and background thread management.
@@ -72,4 +74,4 @@ async def main():
 | Real-time trading bots | `KalshiWebSocketClient` |
 | High-frequency strategies or large books | `FIXStreamingClient` + `KalshiFIXClient` |
 
-Whichever route you choose, the snapshots integrate cleanly with the analysis stack and paper trading simulator.
+Whichever route you choose, the snapshots integrate cleanly with the analysis stack and paper trading simulator. Treat FIX as experimental until the supported beta contract expands to cover it.

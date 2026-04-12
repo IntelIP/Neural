@@ -21,8 +21,8 @@ _LOG = logging.getLogger(__name__)
 
 # Import risk management types if available
 try:
-    from neural.analysis.risk import Position as RiskPosition
-    from neural.analysis.risk import StopLossConfig, StopLossType
+    from neural.analysis.risk.risk_manager import Position as RiskPosition
+    from neural.analysis.risk.risk_manager import StopLossConfig, StopLossType
 
     RISK_MODULE_AVAILABLE = True
 except Exception as e:

@@ -3,7 +3,9 @@ title: 'TradingClient API'
 description: 'Execute Kalshi trades with the Neural TradingClient facade and optional dependency injection.'
 ---
 
-`neural.trading.client.TradingClient` wraps the official `kalshi_python` SDK and exposes consistent method signatures to the rest of Neural.
+`neural.trading.client.TradingClient` is Neural's exchange-facing trading facade. It defaults to Kalshi, preserves a stable public interface, and can also construct the read-only Polymarket US adapter where implemented.
+
+The base SDK is enough to import and inspect the client. Install `neural-sdk[trading]` when you want live Kalshi execution or streaming helpers; keep the Polymarket US path in read/stream beta until live order placement is explicitly promoted.
 
 ## Construction
 
@@ -20,9 +22,22 @@ client = TradingClient(
 
 Omitting arguments defers to `neural.auth.env` helpers so environment variables or secrets files drive the configuration.
 
+To construct the Polymarket US adapter instead:
+
+```python
+client = TradingClient(
+    exchange="polymarket_us",
+    polymarket_us_api_key="...",
+    polymarket_us_api_secret=b"...",
+    polymarket_us_passphrase="...",
+)
+```
+
+During the current beta, `exchange="polymarket_us"` supports reads and streaming only. Live order placement is not yet part of the supported surface.
+
 ## Dependency Injection
 
-`TradingClient` accepts a `client_factory` callable to inject a mock or preconfigured `kalshi-python` client—useful for tests and paper simulations.
+`TradingClient` accepts a `client_factory` callable to inject a mock or preconfigured `kalshi-python` client. That is useful for tests and paper simulations.
 
 ```python
 class FakeClient:
@@ -36,24 +51,27 @@ client = TradingClient(client_factory=lambda **kwargs: FakeClient(**kwargs))
 
 ## Proxies
 
-After initialization, three proxies expose the respective Kalshi API namespaces:
+After initialization, top-level methods expose the stable public trading surface:
 
-- `client.portfolio`
-- `client.markets`
-- `client.exchange`
+- `client.get_positions()`
+- `client.list_markets()`
+- `client.place_order()`
 
-Each proxy lazily delegates attribute access, converts return objects to plain Python (`dict`/`list`), and preserves docstrings where available.
+The client also exposes compatibility proxies at `client.portfolio`, `client.markets`, and `client.exchange` for older integrations.
 
 ```python
-positions = client.portfolio.list_positions()
-markets = client.markets.get_markets(series_ticker="KXNFLGAME-25SEP25SEAARI")
-order = client.exchange.place_order(
-    ticker="KXNFLGAME-25SEP25SEAARI-SEA",
+positions = client.get_positions()
+markets = client.list_markets(sport="football", limit=25)
+order = client.place_order(
+    market_id="KXNFLGAME-25SEP25SEAARI-SEA",
     side="yes",
-    count=100,
+    quantity=100,
+    order_type="limit",
     price=55,
 )
 ```
+
+The compatibility proxies accept `sport`, `category`, `limit`, and `sports_only`. If you need raw Kalshi REST parameters like `series_ticker`, use `KalshiHTTPClient` directly.
 
 ## Resource Management
 
@@ -81,5 +99,7 @@ This keeps import-time errors descriptive and prevents silent failures.
 - Reuse a single `TradingClient` instance per process to benefit from connection pooling.
 - Inject custom factories in tests to avoid hitting real endpoints.
 - Combine with `OrderManager` to keep strategy logic independent from execution details.
+- Call `client.capabilities()` before wiring a new exchange into live execution paths.
+- Treat Polymarket US live order placement and FIX-based automation as out of scope for the supported beta until those surfaces are explicitly promoted.
 
 The facade gives you a stable surface even when Kalshi’s SDK evolves, so your algorithms stay focused on trading logic.

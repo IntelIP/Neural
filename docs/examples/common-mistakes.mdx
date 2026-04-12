@@ -12,8 +12,8 @@ description: Avoid common pitfalls when using Neural
 
 ## Using Outdated APIs
 
-- Use `TradingClient` and its proxies: portfolio, markets, exchange
-- Avoid calling non-existent convenience methods (e.g., `trader.place_order`) unless added by your app
+- Use `TradingClient` and its stable methods directly: `place_order`, `list_markets`, `get_positions`
+- Use the compatibility proxies only when you need legacy integration points: `portfolio`, `markets`, `exchange`
 
 ## Running Integration Tests Without Secrets
 
@@ -27,5 +27,10 @@ description: Avoid common pitfalls when using Neural
 - `uv` is fast and works great for project installs:
   - `uv add neural-sdk`
   - `uv add "neural-sdk[trading]"`
+  - `uv add "neural-sdk[sentiment]"`
+  - `uv add "neural-sdk[deployment]"`
 - `pip` works as well:
   - `pip install neural-sdk`
+  - `pip install "neural-sdk[trading]"`
+  - `pip install "neural-sdk[sentiment]"`
+  - `pip install "neural-sdk[deployment]"`

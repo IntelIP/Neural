@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import warnings
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, Protocol
@@ -29,7 +30,9 @@ def serialize_value(obj: Any) -> Any:
     if hasattr(obj, "model_dump"):
         try:
             return obj.model_dump()
-        except Exception:
+        except (TypeError, ValueError):
+            # Fall back to recursive serialization for model-like objects that
+            # advertise model_dump but cannot serialize in their current state.
             pass
     if isinstance(obj, dict):
         return {k: serialize_value(v) for k, v in obj.items()}
@@ -199,8 +202,12 @@ class KalshiAdapter(BaseExchangeAdapter):
         if hasattr(self._client, "close"):
             try:
                 self._client.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                warnings.warn(
+                    f"Kalshi client close failed: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
     @staticmethod
     def _normalize_market(raw: dict[str, Any]) -> NormalizedMarket:

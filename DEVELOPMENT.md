@@ -270,6 +270,9 @@ gh pr create --title "release: v0.4.0" \
 ### **Publishing Release**
 
 ```bash
+# Optional: validate artifacts before tagging
+make release-dry-run
+
 # After PR merged to main, create tag
 git checkout main
 git pull origin main
@@ -564,4 +567,3 @@ git fetch origin && git rebase origin/main
 - Open an issue on [GitHub](https://github.com/IntelIP/Neural/issues)
 
 Happy coding! 🚀
-

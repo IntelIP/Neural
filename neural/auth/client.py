@@ -96,6 +96,6 @@ class AuthClient:
             msg = None
             try:
                 msg = resp.json()
-            except Exception:
+            except ValueError:
                 msg = resp.text
             raise requests.HTTPError(f"{e} | body={msg}") from None

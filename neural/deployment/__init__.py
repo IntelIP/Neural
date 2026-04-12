@@ -4,7 +4,7 @@ Neural SDK Deployment Module (Experimental)
 Provides Docker-based deployment infrastructure for trading bots with
 database persistence, monitoring, and multi-environment support.
 
-  EXPERIMENTAL: This module is experimental in Neural SDK Beta v0.4.0.
+EXPERIMENTAL: This module is experimental in Neural SDK Beta v0.4.0.
 Use with caution in production environments.
 
 Example:

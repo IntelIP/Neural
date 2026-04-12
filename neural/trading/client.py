@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from typing import Any
 
-from neural.analysis.risk import Position
+from neural.analysis.risk.risk_manager import Position
 from neural.exchanges.registry import registry
 from neural.exchanges.types import (
     ExchangeName,
@@ -289,8 +290,12 @@ class TradingClient:
                     stop_loss=stop_loss_config,
                 )
                 self.risk_manager.add_position(position)
-            except Exception:
-                pass
+            except Exception as exc:
+                warnings.warn(
+                    f"Risk manager position registration failed after order placement: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         return result
 

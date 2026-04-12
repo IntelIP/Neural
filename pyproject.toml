@@ -1,10 +1,11 @@
 [project]
 name = "neural-sdk"
-version = "0.4.0"
+version = "0.4.1"
 description = "Professional-grade SDK for algorithmic trading on prediction markets (Beta - Core features stable, advanced modules experimental)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
+license-files = ["LICENSE"]
 keywords = [
     "kalshi",
     "prediction-markets",
@@ -46,25 +47,12 @@ dependencies = [
     "requests>=2.31.0",
     "cryptography>=41.0.0",
     "python-dotenv>=1.0.0",
-    "kalshi-python>=2.1.4",
-    "websocket-client>=1.7.0",
-    "websockets>=11.0.0",
-    "simplefix>=1.0.17",
     "pandas>=2.0.0",
     # Bug Fix #3, #13: NumPy 2.x compatibility - SDK compiled against NumPy 1.x API
     # Must use NumPy <2.0 to avoid runtime crashes
     "numpy>=1.24.0,<2.0",
     # Bug Fix #5: Added certifi for proper SSL certificate verification
     "certifi>=2023.0.0",
-    # Sentiment Analysis Dependencies
-    "textblob>=0.17.1",
-    "vaderSentiment>=3.3.2",
-    "aiohttp>=3.8.0",
-    # Data Processing Dependencies
-    "plotly>=5.15.0",
-    # Deployment Dependencies (v0.4.0)
-    "pydantic>=2.0.0",
-    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -80,6 +68,7 @@ dev = [
     "bump2version>=1.0.0",
     "build>=0.10.0",
     "twine>=4.0.0",
+    "websocket-client>=1.7.0",  # Credentialed integration smoke tests use websocket-client
 ]
 # Documentation extras
 docs = [
@@ -90,17 +79,22 @@ docs = [
 # Optional trading extras to separate heavier deps
 trading = [
     "kalshi-python>=2.1.4,<3",
+    "websockets>=11.0.0",
+    "simplefix>=1.0.17",
 ]
 # Sentiment analysis extras for social media and text analysis
 sentiment = [
     "textblob>=0.17.1",
     "vaderSentiment>=3.3.2",
+    "aiohttp>=3.8.0",
     "transformers>=4.21.0",  # Optional for advanced sentiment models
     "torch>=1.12.0",  # For transformer models
     "scikit-learn>=1.1.0",  # For ML-based sentiment analysis
 ]
 # Deployment extras for Docker-based bot deployment (v0.4.0)
 deployment = [
+    "pydantic>=2.0.0",  # Deployment configuration models
+    "jinja2>=3.1.0",  # Docker template rendering
     "docker>=6.1.0",  # Docker SDK for Python
     "sqlalchemy>=2.0.0",  # Database ORM for trade persistence
     "psycopg2-binary>=2.9.0",  # PostgreSQL adapter
@@ -109,7 +103,7 @@ deployment = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/IntelIP/Neural"
+Homepage = "https://neuralsdk.trade"
 Documentation = "https://neural-sdk.mintlify.app"
 Repository = "https://github.com/IntelIP/Neural"
 Issues = "https://github.com/IntelIP/Neural/issues"
@@ -119,7 +113,7 @@ Changelog = "https://github.com/IntelIP/Neural/blob/main/CHANGELOG.md"
 neural = "neural.cli:main"
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

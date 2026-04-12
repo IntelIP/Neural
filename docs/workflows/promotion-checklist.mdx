@@ -3,7 +3,7 @@ title: 'Promotion Checklist'
 description: 'Use this checklist before switching a bot from research to live trading.'
 ---
 
-Use this checklist to the recommended path for turning a prototype into a production bot.
+Use this checklist as the recommended path for turning a prototype into a production bot.
 
 ## 1. Research & Prototype
 
@@ -22,10 +22,10 @@ Use this checklist to the recommended path for turning a prototype into a produc
 - Inspect `BacktestResult` metrics: Sharpe, max drawdown, win rate, volume distribution.
 - Chart the equity curve and review losing streaks to ensure they fit your risk tolerance.
 
-## 4. Integrate Sentiment & Context
+## 4. Integrate context selectively
 
-- If the strategy relies on narratives, run the `MultiSourceAggregator` alongside the backtester to capture sentiment features for replay.
-- Confirm that ESPN/Twitter signals are stable and latency is acceptable.
+- If the strategy relies on narratives, run the `MultiSourceAggregator` alongside the backtester to capture extra features for replay.
+- Treat ESPN/Twitter sentiment and related enrichment as experimental until you have validated latency, uptime, and data quality yourself.
 
 ## 5. Dry Run in Paper Mode
 
@@ -37,14 +37,17 @@ Use this checklist to the recommended path for turning a prototype into a produc
 
 - Implement logging & alerting around key events (missed fills, websocket disconnects, FIX heartbeats).
 - Add health checks for credential expiry and API responses.
+- Run `neural doctor` in CI or deploy-time checks so missing credentials and optional dependencies fail early.
 - Document runbooks for manual intervention (throttle strategies, square positions, rotate credentials).
 
 ## 7. Launch Live
 
-- Point the strategy at `TradingClient`.
+- Point the strategy at `TradingClient(exchange="kalshi")`.
 - Start with conservative sizing (e.g., half Kelly fraction, tighter stop losses).
-- Monitor fills via WebSocket or FIX execution reports.
+- Monitor fills via WebSocket or REST order checks.
 - Replay daily logs with the reporting stack to detect behavior drift.
+
+If you are using any exchange besides Kalshi, confirm `client.capabilities()` first and do not assume live order support is present.
 
 Consistently iterating through this loop keeps strategies resilient as Kalshi microstructure evolves.
 

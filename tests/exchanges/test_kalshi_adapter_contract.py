@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from neural.exchanges.types import NormalizedOrderRequest, TradingPolicy
-from neural.trading.kalshi_adapter import KalshiAdapter
+from neural.trading.kalshi_adapter import KalshiAdapter, serialize_value
 
 
 class _Markets:
@@ -102,3 +102,27 @@ def test_call_any_does_not_swallow_internal_type_errors() -> None:
 
     with pytest.raises(TypeError, match="internal bug"):
         KalshiAdapter._call_any(["get_markets"], _BuggyMarkets(), {"limit": 10})
+
+
+def test_serialize_value_does_not_swallow_unexpected_model_dump_errors() -> None:
+    class _BrokenModel:
+        def model_dump(self) -> Any:
+            raise RuntimeError("serialization bug")
+
+    with pytest.raises(RuntimeError, match="serialization bug"):
+        serialize_value(_BrokenModel())
+
+
+def test_kalshi_adapter_close_warns_when_underlying_close_fails() -> None:
+    class _ClientWithBrokenClose(_Client):
+        def close(self) -> None:
+            raise RuntimeError("socket stuck")
+
+    adapter = KalshiAdapter(
+        api_key_id="abc",
+        private_key_pem=b"pem",
+        client_factory=lambda **kwargs: _ClientWithBrokenClose(**kwargs),
+    )
+
+    with pytest.warns(RuntimeWarning, match="Kalshi client close failed"):
+        adapter.close()

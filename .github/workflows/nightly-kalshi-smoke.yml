@@ -1,0 +1,96 @@
+name: Nightly Kalshi Smoke
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-kalshi-smoke
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  kalshi-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Validate Kalshi runtime inputs
+        env:
+          KALSHI_API_KEY_ID: ${{ secrets.KALSHI_API_KEY_ID }}
+          KALSHI_PRIVATE_KEY_BASE64: ${{ secrets.KALSHI_PRIVATE_KEY_BASE64 }}
+          KALSHI_PRIVATE_KEY_PATH: ${{ secrets.KALSHI_PRIVATE_KEY_PATH }}
+          KALSHI_API_BASE: ${{ secrets.KALSHI_API_BASE || 'https://api.elections.kalshi.com' }}
+        run: |
+          missing=0
+
+          if [ -z "$KALSHI_API_KEY_ID" ]; then
+            echo "::error::KALSHI_API_KEY_ID secret is required for nightly smoke."
+            missing=1
+          fi
+
+          if [ -z "$KALSHI_PRIVATE_KEY_BASE64" ] && [ -z "$KALSHI_PRIVATE_KEY_PATH" ]; then
+            echo "::error::Set either KALSHI_PRIVATE_KEY_BASE64 or KALSHI_PRIVATE_KEY_PATH for nightly smoke."
+            missing=1
+          fi
+
+          {
+            echo "### Kalshi nightly smoke preflight"
+            echo ""
+            if [ "$missing" -eq 0 ]; then
+              echo "- API key ID: configured"
+              if [ -n "$KALSHI_PRIVATE_KEY_BASE64" ]; then
+                echo "- Private key source: KALSHI_PRIVATE_KEY_BASE64"
+              else
+                echo "- Private key source: KALSHI_PRIVATE_KEY_PATH"
+              fi
+              echo "- API base: ${KALSHI_API_BASE}"
+            else
+              echo "- Required secret inputs are missing."
+              echo "- Expected: KALSHI_API_KEY_ID plus one private key source."
+              echo "- Supported private key sources: KALSHI_PRIVATE_KEY_BASE64 or KALSHI_PRIVATE_KEY_PATH."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$missing" -ne 0 ]; then
+            echo ""
+            echo "Nightly Kalshi smoke cannot continue until the required secrets are wired."
+            exit 1
+          fi
+
+      - name: Install SDK with trading and dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools wheel
+          pip install -e .[dev,trading]
+
+      - name: Run credentialed Kalshi smoke test
+        env:
+          KALSHI_API_KEY_ID: ${{ secrets.KALSHI_API_KEY_ID }}
+          KALSHI_PRIVATE_KEY_BASE64: ${{ secrets.KALSHI_PRIVATE_KEY_BASE64 }}
+          KALSHI_PRIVATE_KEY_PATH: ${{ secrets.KALSHI_PRIVATE_KEY_PATH }}
+          KALSHI_API_BASE: ${{ secrets.KALSHI_API_BASE || 'https://api.elections.kalshi.com' }}
+        run: |
+          pytest -q -s tests/infrastructure/test_auth_verify.py

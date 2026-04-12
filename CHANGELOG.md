@@ -6,15 +6,27 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-12
+
 ### Added
 - **Exchange Core:** Added exchange abstraction contracts and normalized models in `neural/exchanges/`.
 - **Kalshi Adapter Routing:** Refactored `TradingClient` to route Kalshi behavior through an exchange adapter without breaking default usage.
 - **Polymarket US Auth + Read Support:** Added signer/env credential loading, sports-first market discovery, quote fetching, and normalized mapping.
 - **Polymarket US Data Source:** Added `PolymarketUSMarketsSource` and config model for SDK data collection workflows.
+- **CLI + Package Smoke:** Added a supported `neural` CLI plus clean wheel/sdist smoke validation for release artifacts.
+- **Release Operations:** Added release dry-run and nightly Kalshi smoke workflows with documented operator checklists.
+- **Planning Artifacts:** Added beta release notes, launch checklists, positioning docs, and open-core roadmap artifacts under `docs/notion/`.
 
 ### Changed
 - **SDK Exports:** Updated auth/trading/data collection export surfaces for multi-exchange usage.
 - **Public API Tests:** Added exchange-level contract and signer tests plus updated public import surface tests.
+- **Package Loading:** Made top-level SDK imports lazier and narrowed default onboarding toward the Kalshi-first beta path.
+- **Public Docs:** Reworked README and Mintlify docs to make beta boundaries explicit and keep unfinished surfaces out of the default story.
+
+### Fixed
+- **Release Metadata:** Aligned package metadata and local release tooling so wheel and sdist dry runs both pass cleanly.
+- **Optional Dependency Fallbacks:** Hardened slim-install behavior so optional trading and websocket surfaces fail with guided import errors.
+- **Runtime Error Surfacing:** Reduced silent failures across auth, adapter, FIX streaming, and REST streaming flows.
 
 ## [0.3.1] - 2025-10-26
 

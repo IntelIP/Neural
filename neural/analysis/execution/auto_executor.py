@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 try:
-    from neural.analysis.risk import RiskEvent, RiskEventHandler
+    from neural.analysis.risk.risk_manager import RiskEvent, RiskEventHandler
 
     RISK_MODULE_AVAILABLE = True
 except ImportError:

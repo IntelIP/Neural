@@ -3,7 +3,9 @@ title: 'Data Collection Overview'
 description: 'Understand the Neural data ingestion stack and how sources plug into strategies.'
 ---
 
-Neural’s data layer normalizes everything required to research and trade Kalshi sports markets. It combines pull-based REST sources, push-based WebSockets, and enrichment services (ESPN, Twitter) behind a shared abstraction so research code can swap feeds without rewrites.
+Neural’s data layer centers on the Kalshi market data paths that are supported in the public beta. Research feeds still exist, but they are explicitly optional and sit outside the core launch surface so the default docs do not imply that every connector is production-ready.
+
+The supported beta path here is Kalshi REST and historical data. Generic WebSocket feeds, ESPN, and Twitter sources remain useful for research and experimentation, but they belong to the broader experimental surface and may require extras or operator review.
 
 ## Architecture
 
@@ -14,7 +16,7 @@ DataSource/registry → Transformers → Aggregator → Analysis/Trading
 - **`DataSource`** – asynchronous base class that all feeders implement. Provides `connect`, `disconnect`, and `collect` coroutines so pipelines can use `async with` to manage resources.
 - **Transformers** – optional post-processing steps that flatten, normalize, or timestamp incoming payloads before they reach analysis code.
 - **Registry** – `DataSourceRegistry` maps source names to their implementation and transformer, enabling dependency injection and configuration-driven assembly.
-- **Aggregator** – orchestrates multiple sources (Twitter, ESPN, Kalshi) and emits unified `AggregatedData` objects enriched with live sentiment metrics.
+- **Aggregator** – orchestrates multiple sources when you intentionally combine feeds and can emit unified `AggregatedData` objects for research workflows.
 
 ## Choosing a Source
 
@@ -22,9 +24,9 @@ DataSource/registry → Transformers → Aggregator → Analysis/Trading
 |----------|--------------------|-------|
 | Simple polling of any REST endpoint | `RestApiSource` | Wraps `requests` inside an asyncio-friendly loop with configurable interval. |
 | Authenticated Kalshi REST responses | `KalshiApiSource` | Extends `RestApiSource` to sign each request with `KalshiSigner`. |
-| Streaming market ticks | `WebSocketSource` or `KalshiWebSocketClient` | Use `WebSocketSource` for generic JSON feeds; use the trading client wrapper for Kalshi-specific logic. |
-| ESPN live play-by-play | `ESPNGameCastSource` | Supplies structured `PlayData` with computed momentum scores. |
-| Twitter sentiment | `TwitterAPISource` | Polls Twitter-API.io with rate limit handling and normalization. |
+| Streaming market ticks | `WebSocketSource` or `KalshiWebSocketClient` | Use `WebSocketSource` for generic JSON feeds only when you are intentionally working in the research surface; use the trading client wrapper for Kalshi-specific logic. |
+| ESPN live play-by-play | `ESPNGameCastSource` | Experimental source for structured `PlayData` and momentum scoring. Keep it out of the default beta story. |
+| Twitter sentiment | `TwitterAPISource` | Experimental source for polling Twitter-API.io with rate limit handling and normalization. Treat it as research-only. |
 | Historical research | `KalshiHistoricalDataSource` | Surfaces `/markets/trades` and candlestick endpoints via an authenticated HTTP client. |
 
 ## Working with the Registry
@@ -82,11 +84,10 @@ normalized = transformer.transform(raw_market)
 
 Leveraging transformers keeps downstream strategy code free from payload-shape conditionals.
 
-With these primitives you can assemble custom feeds, aggregate external analytics, or build reproducible historical datasets that feed back into the analysis stack.
+With these primitives you can assemble custom feeds, aggregate external analytics, or build reproducible historical datasets that feed back into the analysis stack. Keep ESPN/Twitter aggregation and generic WebSocket consumers in the research bucket until you are ready to promote them into the supported path.
 
 ## Next
 
 - Review source implementations: `data-collection/sources`
 - Learn the sport-specific helpers: `data-collection/kalshi-toolbox`
 - Orchestrate multi-feed pipelines: `data-collection/aggregator`
-

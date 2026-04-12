@@ -1,0 +1,89 @@
+---
+title: Why Neural
+description: How Neural fits relative to official SDKs, data vendors, and broader trading platforms
+---
+
+# Why Neural
+
+Neural is a Kalshi-first SDK for prediction-market developers.
+
+That is intentionally narrower than:
+
+- a full multi-exchange execution platform
+- a cross-venue market-data business
+- a general-purpose quant platform
+
+The current public beta is built for developers who want to move from credentials and market data to paper trading and selected live workflows without starting from raw exchange clients.
+
+## When To Use Neural
+
+Use Neural when you want:
+
+- a Kalshi-first workflow
+- a lightweight Python SDK instead of a broad hosted platform
+- auth, market data, paper trading, and selected live trading flows in one package
+- a CLI for readiness checks
+- an open-core path that can expand into premium tooling later
+
+## When To Use Kalshi Directly
+
+Use the official Kalshi SDKs and API docs when you want:
+
+- raw first-party exchange coverage
+- direct control over every exchange primitive
+- no extra workflow layer on top
+
+Neural does not replace Kalshi. It sits one layer above the exchange and gives you a narrower developer workflow path.
+
+## When To Use Polymarket Directly
+
+Use Polymarket directly when your work is primarily Polymarket-native.
+
+In Neural's current beta:
+
+- Polymarket reads are available
+- Polymarket streaming is available
+- Polymarket live order placement is not part of the supported beta
+
+That means Neural is not yet the right choice if your main goal is full Polymarket execution.
+
+## When To Use A Data Vendor
+
+Use a product like Oddpool when your main need is:
+
+- cross-venue discovery
+- normalized prediction-market data
+- arbitrage and whale-tracking workflows
+- a market-intelligence product rather than an execution SDK
+
+Neural is stronger as a workflow SDK than as a cross-venue data platform.
+
+## When To Use A Broad Quant Platform
+
+Use a product like QuantConnect when you want:
+
+- a large general-purpose quant platform
+- broad asset-class support
+- deeper platform-level backtesting and cloud workflows
+
+Neural is the better fit when you want a smaller, prediction-market-native surface focused on Kalshi-first development.
+
+## Current Boundary
+
+Neural's supported beta path is:
+
+- Kalshi auth
+- market data
+- paper trading
+- selected live workflows
+- CLI readiness checks
+
+Neural's experimental or limited surfaces are:
+
+- Polymarket reads and streaming only
+- backtesting and strategy helpers
+- FIX
+- sentiment and social-data tooling
+- deployment helpers
+
+If you stay inside the supported path, Neural is ready for beta adoption now.

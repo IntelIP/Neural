@@ -184,24 +184,25 @@ class FIXStreamingClient:
         """Handle incoming FIX message"""
         try:
             msg_dict = KalshiFIXClient.to_dict(message)
-            msg_type = msg_dict.get(35)
-
-            if msg_type == "W":  # Market Data Snapshot/Full Refresh
-                self._handle_market_data_snapshot(msg_dict)
-            elif msg_type == "X":  # Market Data Incremental Refresh
-                self._handle_market_data_update(msg_dict)
-            elif msg_type == "8":  # Execution Report
-                self._handle_execution_report(msg_dict)
-            elif msg_type == "Y":  # Market Data Request Reject
-                self._handle_market_data_reject(msg_dict)
-            elif msg_type == "5":  # Logout
-                self.connected = False
-                if self.auto_reconnect and self._running:
-                    self._reconnect_task = asyncio.create_task(self._reconnect())
-
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
             if self.on_error:
-                self.on_error(f"Error handling message: {e}")
+                self.on_error(f"Error parsing FIX message: {e}")
+            return
+
+        msg_type = msg_dict.get(35)
+
+        if msg_type == "W":  # Market Data Snapshot/Full Refresh
+            self._handle_market_data_snapshot(msg_dict)
+        elif msg_type == "X":  # Market Data Incremental Refresh
+            self._handle_market_data_update(msg_dict)
+        elif msg_type == "8":  # Execution Report
+            self._handle_execution_report(msg_dict)
+        elif msg_type == "Y":  # Market Data Request Reject
+            self._handle_market_data_reject(msg_dict)
+        elif msg_type == "5":  # Logout
+            self.connected = False
+            if self.auto_reconnect and self._running:
+                self._reconnect_task = asyncio.create_task(self._reconnect())
 
     def _handle_market_data_snapshot(self, msg: dict[int, Any]) -> None:
         """Handle market data snapshot"""
@@ -209,11 +210,16 @@ class FIXStreamingClient:
         if not symbol:
             return
 
-        # Extract bid/ask data
-        bid_price = self._parse_price(msg.get(132))  # BidPx
-        ask_price = self._parse_price(msg.get(133))  # OfferPx
-        bid_size = int(msg.get(134, 0))  # BidSize
-        ask_size = int(msg.get(135, 0))  # OfferSize
+        try:
+            # Extract bid/ask data
+            bid_price = self._parse_price(msg.get(132))  # BidPx
+            ask_price = self._parse_price(msg.get(133))  # OfferPx
+            bid_size = int(msg.get(134, 0))  # BidSize
+            ask_size = int(msg.get(135, 0))  # OfferSize
+        except (TypeError, ValueError) as e:
+            if self.on_error:
+                self.on_error(f"Error parsing market data snapshot for {symbol}: {e}")
+            return
 
         # Create snapshot
         snapshot = MarketDataSnapshot(
@@ -240,16 +246,21 @@ class FIXStreamingClient:
     def _handle_execution_report(self, msg: dict[int, Any]) -> None:
         """Handle execution report"""
         if self.on_execution:
-            exec_report = {
-                "order_id": msg.get(11),  # ClOrdID
-                "symbol": msg.get(55),  # Symbol
-                "side": msg.get(54),  # Side
-                "quantity": msg.get(38),  # OrderQty
-                "price": self._parse_price(msg.get(44)),  # Price
-                "status": msg.get(39),  # OrdStatus
-                "exec_type": msg.get(150),  # ExecType
-                "timestamp": datetime.now(),
-            }
+            try:
+                exec_report = {
+                    "order_id": msg.get(11),  # ClOrdID
+                    "symbol": msg.get(55),  # Symbol
+                    "side": msg.get(54),  # Side
+                    "quantity": msg.get(38),  # OrderQty
+                    "price": self._parse_price(msg.get(44)),  # Price
+                    "status": msg.get(39),  # OrdStatus
+                    "exec_type": msg.get(150),  # ExecType
+                    "timestamp": datetime.now(),
+                }
+            except (TypeError, ValueError) as e:
+                if self.on_error:
+                    self.on_error(f"Error parsing execution report: {e}")
+                return
             self.on_execution(exec_report)
 
     def _handle_market_data_reject(self, msg: dict[int, Any]) -> None:

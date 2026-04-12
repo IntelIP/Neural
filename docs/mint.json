@@ -59,6 +59,7 @@
       "pages": [
         "architecture/start-here",
         "architecture/overview",
+        "architecture/why-neural",
         "getting-started",
         "auth/credentials",
         "basics/infrastructure",
@@ -71,9 +72,7 @@
         "data-collection/overview",
         "data-collection/sources",
         "data-collection/kalshi-toolbox",
-        "data-collection/aggregator",
         "data-collection/historical",
-        "data-collection/sports-markets-guide",
         "data-collection/ticker-patterns"
       ]
     },
@@ -85,8 +84,7 @@
         "analysis/strategy-library",
         "analysis/backtesting",
         "analysis/risk-sizing",
-        "analysis/order-management",
-        "analysis/sentiment"
+        "analysis/order-management"
       ]
     },
     {
@@ -96,7 +94,6 @@
         "trading/quickstart",
         "trading/trading-client",
         "trading/market-data",
-        "trading/fix",
         "trading/paper-trading",
         "trading/reporting"
       ]
@@ -107,7 +104,6 @@
         "workflows/build-first-bot",
         "workflows/promotion-checklist",
         "workflows/data-pipeline",
-        "workflows/deployment-providers",
         "workflows/terraform-runbook"
       ]
     },

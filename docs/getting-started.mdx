@@ -17,7 +17,9 @@ Using `pip`:
 
 ```bash
 pip install neural-sdk
-pip install "neural-sdk[trading]"       # adds kalshi-python + streaming extras
+pip install "neural-sdk[trading]"       # Kalshi live trading, streaming, and FIX helpers
+pip install "neural-sdk[sentiment]"     # optional research tooling
+pip install "neural-sdk[deployment]"    # optional experimental deployment helpers
 ```
 
 Using `uv`:
@@ -25,7 +27,11 @@ Using `uv`:
 ```bash
 uv add neural-sdk
 uv add "neural-sdk[trading]"
+uv add "neural-sdk[sentiment]"
+uv add "neural-sdk[deployment]"
 ```
+
+The base install covers the supported beta imports, CLI, and paper-trading workflow. Add `trading` only when you need Kalshi execution or streaming; keep `sentiment` and `deployment` for explicitly experimental work.
 
 **Verify:**
 
@@ -129,6 +135,7 @@ This script fetches live markets, applies a toy signal, and routes simulated ord
 1. Swap `TradingClient` in for live trading (credentials required).
 2. Keep `PaperTradingClient` for rehearsals and backtesting comparisons.
 3. Use `OrderManager` to keep strategy logic independent from the execution target.
+4. Treat Polymarket US as read/stream beta only until live order placement is explicitly promoted.
 
 ## Step 8 – Run tests
 

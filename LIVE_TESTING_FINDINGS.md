@@ -431,7 +431,7 @@ The 42.1% mismatch between Kalshi's market pricing and ESPN's win probability mo
 
 ```bash
 # Run bot on live game
-cd /Users/hudson/Documents/GitHub/trading-bots
+cd /Users/hudson/Documents/GitHub/Neural/private/neural-bots
 source venv/bin/activate
 python nfl/run_live_test.py
 
@@ -460,4 +460,3 @@ numpy>=1.24.0,<2.0
 **Author:** Trading Bot Development Team  
 **Date:** October 11, 2025  
 **Next Review:** After NFL games on October 13, 2025
-

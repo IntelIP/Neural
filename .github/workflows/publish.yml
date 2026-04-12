@@ -20,11 +20,20 @@ jobs:
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build twine wheel "setuptools>=77"
 
       - name: Build package
         run: |
-          python -m build
+          python -m build --no-isolation
+
+      - name: Verify source distribution installs cleanly
+        run: |
+          python -m venv /tmp/neural-publish-sdist-venv
+          /tmp/neural-publish-sdist-venv/bin/python -m pip install --upgrade pip
+          /tmp/neural-publish-sdist-venv/bin/python -m pip install "setuptools>=77" wheel
+          /tmp/neural-publish-sdist-venv/bin/python -m pip install --no-build-isolation dist/*.tar.gz
+          cd /tmp
+          /tmp/neural-publish-sdist-venv/bin/python "${GITHUB_WORKSPACE}/scripts/package_smoke.py"
 
       - name: Publish to PyPI
         env:
@@ -49,11 +58,20 @@ jobs:
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build twine wheel "setuptools>=77"
 
       - name: Build package
         run: |
-          python -m build
+          python -m build --no-isolation
+
+      - name: Verify source distribution installs cleanly
+        run: |
+          python -m venv /tmp/neural-testpypi-sdist-venv
+          /tmp/neural-testpypi-sdist-venv/bin/python -m pip install --upgrade pip
+          /tmp/neural-testpypi-sdist-venv/bin/python -m pip install "setuptools>=77" wheel
+          /tmp/neural-testpypi-sdist-venv/bin/python -m pip install --no-build-isolation dist/*.tar.gz
+          cd /tmp
+          /tmp/neural-testpypi-sdist-venv/bin/python "${GITHUB_WORKSPACE}/scripts/package_smoke.py"
 
       - name: Publish to TestPyPI
         env:

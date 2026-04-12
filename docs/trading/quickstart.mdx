@@ -4,10 +4,10 @@ description: Configure trading and place your first order
 ---
 
 ## Purpose
-Bring up `TradingClient`, authenticate, and submit a live Kalshi order in minutes.
+Bring up `TradingClient`, authenticate, and submit a Kalshi order through the supported beta path in minutes.
 
 ## Prerequisites
-- `pip install "neural-sdk[trading]"` (or the equivalent `uv add` command)
+- Base install (`pip install neural-sdk`) plus `pip install "neural-sdk[trading]"` (or the equivalent `uv add` command)
 - Kalshi API key ID + RSA private key loaded into environment variables as shown below
 
 ## Step 1 – Install dependencies
@@ -16,6 +16,8 @@ Bring up `TradingClient`, authenticate, and submit a live Kalshi order in minute
 pip install neural-sdk
 pip install "neural-sdk[trading]"
 ```
+
+If you only need the CLI, docs, or the stable import surface, the base install is enough. Add the `trading` extra when you want Kalshi order entry or streaming helpers; FIX remains experimental.
 
 ## Step 2 – Load credentials
 
@@ -36,11 +38,12 @@ export $(grep -v '^#' secrets/.env | xargs)
 ```python
 from neural.trading import TradingClient
 
-client = TradingClient()  # reads env vars
-order = client.exchange.place_order(
-    ticker="EXAMPLE",  # replace with a real ticker
+client = TradingClient(exchange="kalshi")  # reads env vars
+order = client.place_order(
+    market_id="EXAMPLE",  # replace with a real ticker
     side="yes",
-    count=100,
+    quantity=100,
+    order_type="limit",
     price=55,
 )
 print(order)
@@ -48,9 +51,10 @@ print(order)
 
 Expect a JSON response containing the Kalshi order ID and status. If you receive a 401, re-check the credential file.
 
-## Optional – Streaming & FIX
+## Optional - Streaming & FIX
 - Market data: `neural.trading.KalshiWebSocketClient`, `neural.trading.rest_streaming.RESTStreamingClient`
-- Low-latency execution: `neural.trading.KalshiFIXClient` + `FIXStreamingClient`
+- Experimental low-latency execution: `neural.trading.KalshiFIXClient` + `FIXStreamingClient`
+- FIX remains experimental and requires the `trading` extra.
 
 Consult `trading/market-data` and `trading/fix` for setup details.
 

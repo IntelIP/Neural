@@ -1,0 +1,57 @@
+name: Release Dry Run
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  release-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel "setuptools>=77"
+
+      - name: Build release artifacts
+        run: |
+          python -m build --no-isolation
+
+      - name: Check package metadata
+        run: |
+          twine check dist/*
+
+      - name: Validate wheel install path
+        run: |
+          python -m venv /tmp/neural-release-wheel-venv
+          /tmp/neural-release-wheel-venv/bin/python -m pip install --upgrade pip
+          /tmp/neural-release-wheel-venv/bin/python -m pip install dist/*.whl
+          cd /tmp
+          /tmp/neural-release-wheel-venv/bin/python "${GITHUB_WORKSPACE}/scripts/package_smoke.py"
+
+      - name: Validate sdist install path
+        run: |
+          python -m venv /tmp/neural-release-sdist-venv
+          /tmp/neural-release-sdist-venv/bin/python -m pip install --upgrade pip
+          /tmp/neural-release-sdist-venv/bin/python -m pip install "setuptools>=77" wheel
+          /tmp/neural-release-sdist-venv/bin/python -m pip install --no-build-isolation dist/*.tar.gz
+          cd /tmp
+          /tmp/neural-release-sdist-venv/bin/python "${GITHUB_WORKSPACE}/scripts/package_smoke.py"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: neural-release-dry-run-dist
+          path: dist/*
+          if-no-files-found: error

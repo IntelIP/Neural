@@ -4,30 +4,30 @@ description: 'Purpose, entry points, and quick checks for Neural’s strategy la
 ---
 
 ## Purpose
-Translate raw market data into executable decisions. The analysis stack manages strategies, backtests, risk, and order hand-off so you can concentrate on signal design.
+Translate raw market data into executable decisions. The analysis stack manages strategies, backtests, risk, and order hand-off so you can concentrate on signal design. The default beta docs keep the core path focused on Kalshi data and supported execution, while optional research modules stay clearly labeled.
 
 ## When to use it
 - You have market data from `neural.data_collection` and need to generate trades.
 - You want to replay an idea on historical data before running it live.
-- You need reusable risk sizing, sentiment scoring, or an order bridge.
+- You need reusable risk sizing or an order bridge, with sentiment scoring treated as an optional research workflow.
 
 ## Key modules
 
 | Module | What it covers | Docs |
 |--------|----------------|------|
 | `neural.analysis.strategies` | Base class + prebuilt strategies (mean reversion, momentum, arbitrage, sentiment) | `analysis/strategy-foundations`, `analysis/strategy-library` |
-| `neural.analysis.backtesting` | Event-driven backtester with fee/slippage modelling and optional ESPN integration | `analysis/backtesting` |
+| `neural.analysis.backtesting` | Event-driven backtester with fee/slippage modelling and optional research integrations | `analysis/backtesting` |
 | `neural.analysis.risk` | Position sizing + real-time risk management, stop-loss, and automated execution | `analysis/risk-sizing`, `analysis/risk-management` |
 | `neural.analysis.execution` | Order management + automated risk execution layer | `analysis/order-management` |
-| `neural.analysis.sentiment` | Twitter/ESPN sentiment engines and trackers | `analysis/sentiment` |
+| `neural.analysis.sentiment` | Twitter/ESPN sentiment engines and trackers kept in the research bucket | `analysis/sentiment` |
 
 ## Inputs
 - `pandas.DataFrame` market snapshots (YES/NO prices, volume, timestamps).
-- Optional context (ESPN play-by-play, sentiment metrics, sportsbook lines).
+- Optional context for research workflows only (ESPN play-by-play, sentiment metrics, sportsbook lines).
 - Strategy configuration parameters (edges, thresholds, stop losses, etc.).
 
 ## Outputs
-- `Signal` and `Position` objects routed to paper or live execution.
+- `Signal` and `Position` objects routed to paper or supported live execution.
 - `BacktestResult` summaries (total return, Sharpe, drawdown, trade logs).
 - Risk metrics (exposure, Kelly sizing, anti-/martingale adjustments).
 
@@ -42,7 +42,7 @@ engine = Backtester(initial_capital=10_000)
 # Plug in your historical DataFrame: engine.backtest(strategy, start_date, end_date, markets)
 ```
 
-If that snippet imports cleanly, your environment is set up and you can dive into the strategy docs linked above.
+If that snippet imports cleanly, your environment is set up and you can dive into the strategy docs linked above. Start with paper trading before promoting any live order path into your default workflow.
 
 ## Connect it to the rest of the stack
 1. Collect live or historical data (`data-collection/overview`).
@@ -50,11 +50,10 @@ If that snippet imports cleanly, your environment is set up and you can dive int
 3. Backtest and tweak risk settings (`analysis/backtesting`, `analysis/risk-sizing`).
 4. Send resulting signals to the appropriate execution surface (`trading/overview`).
 
-Keep this page handy as a hub—every other analysis doc branches from the modules listed here.
+Keep this page handy as a hub—every other analysis doc branches from the modules listed here. If you are only shipping the public beta path, start with strategy foundations, backtesting, and risk sizing, then treat sentiment and broader research inputs as optional extras.
 
 ## Next
 
 - Choose a base strategy: `analysis/strategy-foundations`
 - Explore prebuilt strategies: `analysis/strategy-library`
 - Run a historical replay: `analysis/backtesting`
-

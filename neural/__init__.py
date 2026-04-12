@@ -12,24 +12,16 @@ This package provides tools for:
 modules (sentiment analysis, FIX streaming) are experimental.
 """
 
-__version__ = "0.4.0"
 __author__ = "Neural Contributors"
 __license__ = "MIT"
 
 import warnings
-from types import ModuleType
-from typing import Set  # noqa: UP035
+from importlib import import_module
+from typing import Any
 
-from . import analysis, auth, data_collection, exchanges, trading
+from ._version import __version__
 
-deployment: ModuleType | None
-try:
-    from . import deployment as deployment
-except ModuleNotFoundError as exc:
-    # Keep package importable when optional deployment deps (docker SDK) are absent.
-    if getattr(exc, "name", None) != "docker":
-        raise
-    deployment = None
+_LAZY_SUBMODULES = {"analysis", "auth", "data_collection", "deployment", "exchanges", "trading"}
 
 # Track which experimental features have been used
 _experimental_features_used: set[str] = set()
@@ -66,8 +58,27 @@ def _warn_beta() -> None:
         _beta_warning_issued = True
 
 
-# Issue beta warning on import
-_warn_beta()
+def __getattr__(name: str) -> Any:
+    """Load heavy SDK submodules on first access instead of at package import time."""
+    if name not in _LAZY_SUBMODULES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    if name == "deployment":
+        try:
+            module = import_module(f".{name}", __name__)
+        except ImportError as exc:
+            if not any(dep in str(exc) for dep in ("docker", "pydantic", "jinja2")):
+                raise
+            module = None
+    else:
+        module = import_module(f".{name}", __name__)
+
+    globals()[name] = module
+    return module
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | _LAZY_SUBMODULES)
 
 __all__ = [
     "__version__",

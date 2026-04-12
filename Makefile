@@ -1,5 +1,8 @@
-.PHONY: help install install-dev lint type test clean build publish-testpypi audit audit-security audit-deps
+.PHONY: help install install-dev lint type test clean build check release-dry-run publish-testpypi publish audit audit-security audit-deps
 .DEFAULT_GOAL := help
+
+PYTHON ?= python3
+USER_SITE := $(shell $(PYTHON) -c "import site; print(site.getusersitepackages())")
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -46,10 +49,18 @@ clean: ## Clean build artifacts
 	find . -type f -name "*.pyc" -delete
 
 build: clean ## Build package
-	python -m build
+	$(PYTHON) -m build --no-isolation
 
 check: build ## Check built package with twine
 	twine check dist/*
+
+release-dry-run: build check ## Validate release artifacts without publishing
+	$(PYTHON) -m venv --system-site-packages /tmp/neural-release-wheel-venv
+	/tmp/neural-release-wheel-venv/bin/python -m pip install dist/*.whl
+	cd /tmp && /tmp/neural-release-wheel-venv/bin/python "$(CURDIR)/scripts/package_smoke.py"
+	$(PYTHON) -m venv --system-site-packages /tmp/neural-release-sdist-venv
+	PYTHONPATH="$(USER_SITE):$$PYTHONPATH" /tmp/neural-release-sdist-venv/bin/python -m pip install --no-build-isolation dist/*.tar.gz
+	cd /tmp && PYTHONPATH="$(USER_SITE):$$PYTHONPATH" /tmp/neural-release-sdist-venv/bin/python "$(CURDIR)/scripts/package_smoke.py"
 
 publish-testpypi: build check ## Publish to TestPyPI
 	twine upload --repository testpypi --non-interactive --skip-existing dist/*

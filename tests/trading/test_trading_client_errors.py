@@ -60,3 +60,40 @@ def test_invalid_kwargs_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_unknown_exchange_raises_value_error() -> None:
     with pytest.raises(ValueError, match="Unsupported exchange"):
         TradingClient(exchange="unknown")  # type: ignore[arg-type]
+
+
+def test_place_order_with_risk_warns_when_risk_registration_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _DummyApi:
+        pass
+
+    class _DummyClient:
+        def __init__(self, **kwargs):  # type: ignore[no-untyped-def,unused-argument]
+            self.portfolio = _DummyApi()
+            self.markets = _DummyApi()
+            self.exchange = _DummyApi()
+
+    class _BrokenRiskManager:
+        def add_position(self, position):  # type: ignore[no-untyped-def,unused-argument]
+            raise RuntimeError("risk store unavailable")
+
+    monkeypatch.setenv("KALSHI_API_KEY_ID", "abc123")
+    monkeypatch.setenv("KALSHI_PRIVATE_KEY_BASE64", base64.b64encode(b"KEY").decode())
+
+    client = TradingClient(
+        client_factory=lambda **_: _DummyClient(),
+        risk_manager=_BrokenRiskManager(),
+    )
+
+    with pytest.warns(RuntimeWarning, match="Risk manager position registration failed"):
+        order = client.place_order_with_risk(
+            market_id="KX-1",
+            side="yes",
+            quantity=1,
+            stop_loss_config={"kind": "fixed", "value": 0.1},
+            price=0.55,
+            paper=True,
+        )
+
+    assert order["order_id"]

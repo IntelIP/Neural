@@ -12,7 +12,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from neural.data_collection import KalshiMarketsSource
+from neural.data_collection.kalshi import KalshiMarketsSource
 
 
 @dataclass
@@ -178,21 +178,32 @@ class RESTStreamingClient:
 
     async def _fetch_market(self, ticker: str) -> None:
         """Fetch and process single market"""
+        if not self.client:
+            return
+
+        # Get market data - fetch single ticker
         try:
-            if not self.client:
-                return
-
-            # Get market data - fetch single ticker
             markets_df = await self.client.fetch()
+        except Exception as e:
+            if self.on_error:
+                self.on_error(f"Error fetching {ticker}: {e}")
+            return
 
-            if markets_df.empty:
-                return
+        if markets_df.empty:
+            return
 
+        try:
             # Filter for specific ticker
             market_row = markets_df[markets_df["ticker"] == ticker]
-            if market_row.empty:
-                return
+        except (KeyError, TypeError, ValueError) as e:
+            if self.on_error:
+                self.on_error(f"Error parsing {ticker}: {e}")
+            return
 
+        if market_row.empty:
+            return
+
+        try:
             # Get first market (should be the only one for a specific ticker)
             market = market_row.iloc[0].to_dict()
 
@@ -209,36 +220,36 @@ class RESTStreamingClient:
                 open_interest=market.get("open_interest", 0),
                 last_price=market.get("last_price", 0) / 100 if market.get("last_price") else None,
             )
-
-            # Check for price changes
-            if ticker in self.market_cache:
-                old_snapshot = self.market_cache[ticker]
-                price_change = abs(snapshot.yes_mid - old_snapshot.yes_mid)
-
-                # Trigger callback on significant change
-                if price_change >= self.min_price_change:
-                    if self.on_price_change:
-                        self.on_price_change(ticker, old_snapshot.yes_mid, snapshot.yes_mid)
-
-                    # Show significant changes
-                    if price_change >= 0.01:  # 1 cent or more
-                        direction = "📈" if snapshot.yes_mid > old_snapshot.yes_mid else "📉"
-                        print(
-                            f"[{self._timestamp()}] {direction} {ticker}: "
-                            f"${old_snapshot.yes_mid:.3f} → ${snapshot.yes_mid:.3f} "
-                            f"({price_change * 100:.1f}¢ move)"
-                        )
-
-            # Update cache
-            self.market_cache[ticker] = snapshot
-
-            # Trigger update callback
-            if self.on_market_update:
-                self.on_market_update(snapshot)
-
-        except Exception as e:
+        except (AttributeError, IndexError, KeyError, TypeError, ValueError) as e:
             if self.on_error:
-                self.on_error(f"Error fetching {ticker}: {e}")
+                self.on_error(f"Error parsing {ticker}: {e}")
+            return
+
+        # Check for price changes
+        if ticker in self.market_cache:
+            old_snapshot = self.market_cache[ticker]
+            price_change = abs(snapshot.yes_mid - old_snapshot.yes_mid)
+
+            # Trigger callback on significant change
+            if price_change >= self.min_price_change:
+                if self.on_price_change:
+                    self.on_price_change(ticker, old_snapshot.yes_mid, snapshot.yes_mid)
+
+                # Show significant changes
+                if price_change >= 0.01:  # 1 cent or more
+                    direction = "📈" if snapshot.yes_mid > old_snapshot.yes_mid else "📉"
+                    print(
+                        f"[{self._timestamp()}] {direction} {ticker}: "
+                        f"${old_snapshot.yes_mid:.3f} → ${snapshot.yes_mid:.3f} "
+                        f"({price_change * 100:.1f}¢ move)"
+                    )
+
+        # Update cache
+        self.market_cache[ticker] = snapshot
+
+        # Trigger update callback
+        if self.on_market_update:
+            self.on_market_update(snapshot)
 
     def get_snapshot(self, ticker: str) -> MarketSnapshot | None:
         """Get latest snapshot for a ticker"""
