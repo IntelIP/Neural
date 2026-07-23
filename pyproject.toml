@@ -1,6 +1,6 @@
 [project]
 name = "neural-sdk"
-version = "0.4.1"
+version = "0.4.2"
 description = "Professional-grade SDK for algorithmic trading on prediction markets (Beta - Core features stable, advanced modules experimental)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,11 +19,10 @@ keywords = [
 ]
 authors = [
     { name = "Hudson Aikins", email = "hudson@intelip.co" },
-    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+    { name = "Neural Contributors" }
 ]
 maintainers = [
-    { name = "Advanced Intellectual Labs LLC", email = "hudson@intelip.co" },
-    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+    { name = "Advanced Intellectual Labs LLC", email = "hudson@intelip.co" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

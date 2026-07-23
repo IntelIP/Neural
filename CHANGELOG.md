@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-23
+
+### Security
+- Replaced public contact addresses on domains not controlled by the maintainers with the accountable maintainer address.
+- Removed the uncontrolled contributor-domain address from package author and maintainer metadata.
+
 ## [0.4.1] - 2026-04-12
 
 ### Added

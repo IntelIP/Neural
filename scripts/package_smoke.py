@@ -66,7 +66,7 @@ def _assert_clean_cli() -> None:
         text=True,
         check=True,
     )
-    assert version.stdout.strip() == "0.4.1"
+    assert version.stdout.strip() == "0.4.2"
     assert version.stderr == ""
 
     doctor = subprocess.run(
@@ -77,7 +77,7 @@ def _assert_clean_cli() -> None:
     )
     assert doctor.stderr == ""
     payload = json.loads(doctor.stdout)
-    assert payload["version"] == "0.4.1"
+    assert payload["version"] == "0.4.2"
     assert "credentials" in payload
     assert "optional_dependencies" in payload
 
@@ -89,7 +89,7 @@ def _assert_import_surface() -> None:
     import neural.data_collection as data_collection
     import neural.trading as trading
 
-    assert neural.__version__ == "0.4.1"
+    assert neural.__version__ == "0.4.2"
     assert neural.cli.main
     assert auth.__all__ and data_collection.__all__ and trading.__all__
     assert "site-packages" in neural.__file__

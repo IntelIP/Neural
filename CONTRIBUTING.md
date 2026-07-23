@@ -15,7 +15,7 @@ This document provides guidelines and instructions for contributing to Neural SD
 
 ## Code of Conduct
 
-This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to contributors@neural-sdk.dev.
+This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to hudson@intelip.co.
 
 ## Getting Started
 
@@ -430,6 +430,6 @@ Contributors are recognized in:
 
 - **Documentation**: https://neural-sdk.mintlify.app
 - **Discussions**: https://github.com/IntelIP/Neural/discussions
-- **Email**: contributors@neural-sdk.dev
+- **Email**: hudson@intelip.co
 
 Thank you for contributing to Neural SDK!

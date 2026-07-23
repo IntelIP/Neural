@@ -19,7 +19,7 @@ class OpenAPIGenerator:
                 "title": "Neural SDK API",
                 "version": "0.3.0",
                 "description": "REST API for Neural SDK trading and data collection functionality",
-                "contact": {"name": "Neural SDK Team", "email": "support@neural-sdk.com"},
+                "contact": {"name": "Neural SDK Team", "email": "hudson@intelip.co"},
                 "license": {
                     "name": "MIT",
                     "url": "https://github.com/IntelIP/Neural/blob/main/LICENSE",
