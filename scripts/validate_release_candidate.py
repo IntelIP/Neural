@@ -12,7 +12,10 @@ from email.policy import default
 from pathlib import Path
 from typing import BinaryIO
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by Python 3.10 CI
+    import tomli as tomllib
 from packaging.utils import (
     InvalidSdistFilename,
     InvalidWheelFilename,
