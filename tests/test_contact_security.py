@@ -17,16 +17,29 @@ CONTACT_SURFACES = (
 UNCONTROLLED_CONTACT_DOMAINS = ("neural-sdk.dev", "neural-sdk.com")
 
 
+def _find_uncontrolled_domains(relative_path: str, content: str) -> list[str]:
+    normalized_content = content.casefold()
+    return [
+        f"{relative_path}: {domain}"
+        for domain in UNCONTROLLED_CONTACT_DOMAINS
+        if domain.casefold() in normalized_content
+    ]
+
+
 def test_public_contact_surfaces_do_not_use_uncontrolled_domains() -> None:
     violations = []
 
     for relative_path in CONTACT_SURFACES:
         content = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
-        for domain in UNCONTROLLED_CONTACT_DOMAINS:
-            if domain in content:
-                violations.append(f"{relative_path}: {domain}")
+        violations.extend(_find_uncontrolled_domains(relative_path, content))
 
     assert not violations, "Uncontrolled contact domains found: " + ", ".join(violations)
+
+
+def test_uncontrolled_domain_detection_is_case_insensitive() -> None:
+    assert _find_uncontrolled_domains("synthetic.txt", "Contact EVIL@NEURAL-SDK.DEV") == [
+        "synthetic.txt: neural-sdk.dev"
+    ]
 
 
 def test_package_metadata_uses_accountable_maintainer_contact() -> None:
