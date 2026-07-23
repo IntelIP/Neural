@@ -1,0 +1,273 @@
+name: Release Candidate Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Immutable 40-character commit SHA to validate"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ inputs.candidate_sha }}
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize immutable candidate request
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require default-branch workflow and full SHA
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          WORKFLOW_REF: ${{ github.ref }}
+        run: |
+          test "${WORKFLOW_REF}" = "refs/heads/${DEFAULT_BRANCH}"
+          [[ "${CANDIDATE_SHA}" =~ ^[0-9a-f]{40}$ ]]
+
+  build:
+    name: Build candidate artifacts
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          path: candidate
+          persist-credentials: false
+
+      - name: Bind checkout to requested SHA
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          actual_sha="$(git -C candidate rev-parse HEAD)"
+          test "${actual_sha}" = "${CANDIDATE_SHA}"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install isolated build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel "setuptools>=77"
+
+      - name: Build wheel and source distribution
+        working-directory: candidate
+        run: |
+          python -m build --no-isolation --outdir dist
+
+      - name: Upload untrusted build output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: neural-release-build-${{ inputs.candidate_sha }}
+          path: candidate/dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  validate:
+    name: Validate source and artifact identity
+    needs: [authorize, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      version: ${{ steps.contract.outputs.version }}
+    steps:
+      - name: Checkout trusted validation harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: harness
+          persist-credentials: false
+
+      - name: Checkout candidate source without executing it
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          path: candidate
+          persist-credentials: false
+
+      - name: Download untrusted build output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: neural-release-build-${{ inputs.candidate_sha }}
+          path: artifacts
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install trusted validation tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install packaging twine
+
+      - name: Bind source checkout and validate public contacts
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          actual_sha="$(git -C candidate rev-parse HEAD)"
+          test "${actual_sha}" = "${CANDIDATE_SHA}"
+          test -z "$(git -C candidate status --short)"
+          python harness/scripts/validate_release_candidate.py validate-source candidate
+
+      - name: Validate artifact contract
+        id: contract
+        run: |
+          version="$(
+            python harness/scripts/validate_release_candidate.py \
+              project-version candidate/pyproject.toml
+          )"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          python -m twine check --strict artifacts/*
+          python harness/scripts/validate_release_candidate.py validate-artifacts \
+            --project-file candidate/pyproject.toml \
+            artifacts/*
+
+      - name: Record artifact digests
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_VERSION: ${{ steps.contract.outputs.version }}
+        run: |
+          mkdir -p evidence
+          sha256sum artifacts/* | tee evidence/SHA256SUMS
+          {
+            echo "### Trusted release candidate validation"
+            echo ""
+            echo "- Candidate: \`${CANDIDATE_SHA}\`"
+            echo "- Version: \`${EXPECTED_VERSION}\`"
+            echo "- Publication performed: no"
+            echo ""
+            echo '```text'
+            cat evidence/SHA256SUMS
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload contract-checked artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: neural-release-contract-${{ inputs.candidate_sha }}
+          path: |
+            artifacts/*
+            evidence/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
+
+  wheel-smoke:
+    name: Validate installed wheel
+    needs: [authorize, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout trusted smoke harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: harness
+          persist-credentials: false
+
+      - name: Download contract-checked artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: neural-release-contract-${{ inputs.candidate_sha }}
+          path: validated
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install and import wheel without dependency substitution
+        env:
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          python -m venv "${RUNNER_TEMP}/neural-release-wheel"
+          "${RUNNER_TEMP}/neural-release-wheel/bin/python" -m pip install \
+            --no-deps validated/artifacts/*.whl
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/neural-release-wheel/bin/python" \
+            "${GITHUB_WORKSPACE}/harness/scripts/release_candidate_smoke.py" \
+            --expected-version "${EXPECTED_VERSION}"
+
+  sdist-smoke:
+    name: Validate installed source distribution
+    needs: [authorize, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout trusted smoke harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: harness
+          persist-credentials: false
+
+      - name: Download contract-checked artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: neural-release-contract-${{ inputs.candidate_sha }}
+          path: validated
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install and import sdist without dependency substitution
+        env:
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          python -m venv "${RUNNER_TEMP}/neural-release-sdist"
+          "${RUNNER_TEMP}/neural-release-sdist/bin/python" -m pip install \
+            "setuptools>=77" wheel
+          "${RUNNER_TEMP}/neural-release-sdist/bin/python" -m pip install \
+            --no-build-isolation --no-deps validated/artifacts/*.tar.gz
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/neural-release-sdist/bin/python" \
+            "${GITHUB_WORKSPACE}/harness/scripts/release_candidate_smoke.py" \
+            --expected-version "${EXPECTED_VERSION}"
+
+  promote:
+    name: Promote fully validated evidence
+    needs: [authorize, validate, wheel-smoke, sdist-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Download contract-checked artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: neural-release-contract-${{ inputs.candidate_sha }}
+          path: validated
+
+      - name: Record completed validation
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          {
+            echo "### Release candidate passed"
+            echo ""
+            echo "- Candidate: \`${CANDIDATE_SHA}\`"
+            echo "- Version: \`${EXPECTED_VERSION}\`"
+            echo "- Structural contract: passed"
+            echo "- Wheel install smoke: passed"
+            echo "- Source distribution install smoke: passed"
+            echo "- Publication performed: no"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload fully validated artifacts and digests
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: neural-release-validated-${{ inputs.candidate_sha }}
+          path: validated
+          if-no-files-found: error
+          retention-days: 14
