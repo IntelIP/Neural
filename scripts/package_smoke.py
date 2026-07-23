@@ -46,7 +46,12 @@ def _assert_optional_dependency_contract() -> None:
             KalshiWebSocketClient,
         )
 
-        for symbol in (WebSocketSource, FIXConnectionConfig, KalshiFIXClient, KalshiWebSocketClient):
+        for symbol in (
+            WebSocketSource,
+            FIXConnectionConfig,
+            KalshiFIXClient,
+            KalshiWebSocketClient,
+        ):
             try:
                 symbol()
             except ImportError as exc:
@@ -107,7 +112,18 @@ def _assert_import_surface() -> None:
         TradingClient,
     )
 
-    assert AuthClient and Strategy and DataSource and TradingClient
+    assert all(
+        (
+            AuthClient,
+            Strategy,
+            DataSource,
+            WebSocketSource,
+            TradingClient,
+            FIXConnectionConfig,
+            KalshiFIXClient,
+            KalshiWebSocketClient,
+        )
+    )
 
     _assert_optional_dependency_contract()
 
