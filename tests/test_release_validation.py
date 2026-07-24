@@ -50,6 +50,11 @@ def test_prerelease_and_dev_tags_route_only_to_testpypi(tag: str) -> None:
         "v0.4.2+build",
         "v0.4.2.post1",
         "v0.4.2-preview.1",
+        "v0.4.2a01",
+        "v0.4.2rc01",
+        "v0.4.2dev01",
+        "v0.4.2.dev01",
+        "v0.4.2-alpha.01",
         "release-v0.4.2",
     ],
 )

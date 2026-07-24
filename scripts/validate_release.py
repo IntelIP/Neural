@@ -16,14 +16,16 @@ except ModuleNotFoundError:  # pragma: no cover - exercised by Python 3.10 CI
     import tomli as tomllib
 
 _VERSION_CORE = r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
+_VERSION_NUMBER = r"(?:0|[1-9]\d*)"
 _STABLE_VERSION = re.compile(rf"^{_VERSION_CORE}$")
 _TEST_VERSION = re.compile(
-    rf"^{_VERSION_CORE}(?:(?:a|b|rc)\d+|(?:\.?dev)\d+" rf"|-(?:alpha|beta|rc|dev)\.(?:0|[1-9]\d*))$"
+    rf"^{_VERSION_CORE}(?:(?:a|b|rc){_VERSION_NUMBER}|(?:\.?dev){_VERSION_NUMBER}"
+    rf"|-(?:alpha|beta|rc|dev)\.{_VERSION_NUMBER})$"
 )
 _VERSION_ALIAS = re.compile(
-    rf"^(?P<core>{_VERSION_CORE})-(?P<label>alpha|beta|rc|dev)\.(?P<number>\d+)$"
+    rf"^(?P<core>{_VERSION_CORE})-(?P<label>alpha|beta|rc|dev)" rf"\.(?P<number>{_VERSION_NUMBER})$"
 )
-_DEV_WITHOUT_DOT = re.compile(rf"^(?P<core>{_VERSION_CORE})dev(?P<number>\d+)$")
+_DEV_WITHOUT_DOT = re.compile(rf"^(?P<core>{_VERSION_CORE})dev(?P<number>{_VERSION_NUMBER})$")
 
 _BLOCKED_DOMAINS = tuple(f"neural-sdk.{suffix}".encode("ascii") for suffix in ("dev", "com"))
 _EXPECTED_METADATA = {
