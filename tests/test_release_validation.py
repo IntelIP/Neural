@@ -1,10 +1,12 @@
 import io
+import subprocess
 import tarfile
 import zipfile
 from pathlib import Path
 
 import pytest
 
+from scripts import package_smoke
 from scripts.validate_release import (
     ReleaseValidationError,
     classify_tag,
@@ -99,6 +101,23 @@ def test_artifact_versions_use_pep440_normalization(
     _write_sdist(sdist, _metadata(version=artifact_version))
 
     validate_artifacts([wheel, sdist], project_version_value)
+
+
+def test_package_smoke_uses_dynamic_prerelease_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = iter(
+        (
+            subprocess.CompletedProcess([], 0, stdout="0.4.2rc1\n", stderr=""),
+            subprocess.CompletedProcess(
+                [],
+                0,
+                stdout='{"version": "0.4.2rc1", "credentials": {}, "optional_dependencies": {}}',
+                stderr="",
+            ),
+        )
+    )
+    monkeypatch.setattr(package_smoke.subprocess, "run", lambda *args, **kwargs: next(responses))
+
+    package_smoke._assert_clean_cli("0.4.2rc1")
 
 
 def test_source_scan_is_recursive_and_ignores_test_fixtures(tmp_path: Path) -> None:
