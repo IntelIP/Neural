@@ -10,7 +10,6 @@ from scripts import package_smoke
 from scripts.validate_release import (
     ReleaseValidationError,
     classify_tag,
-    normalized_artifact_version,
     project_version,
     validate_artifacts,
     validate_source,
@@ -29,13 +28,10 @@ def test_stable_tags_route_only_to_pypi(tag: str) -> None:
 @pytest.mark.parametrize(
     "tag",
     [
+        "v0.4.2a1",
+        "v0.4.2b2",
         "v0.4.2rc1",
-        "v0.4.2dev1",
         "v0.4.2.dev1",
-        "v0.4.2-alpha.1",
-        "v0.4.2-beta.2",
-        "v0.4.2-rc.2",
-        "v0.4.2-dev.3",
     ],
 )
 def test_prerelease_and_dev_tags_route_only_to_testpypi(tag: str) -> None:
@@ -52,6 +48,11 @@ def test_prerelease_and_dev_tags_route_only_to_testpypi(tag: str) -> None:
         "v0.4.2+build",
         "v0.4.2.post1",
         "v0.4.2-preview.1",
+        "v0.4.2dev1",
+        "v0.4.2-alpha.1",
+        "v0.4.2-beta.2",
+        "v0.4.2-rc.2",
+        "v0.4.2-dev.3",
         "v0.4.2a01",
         "v0.4.2rc01",
         "v0.4.2dev01",
@@ -79,28 +80,23 @@ def test_project_version_reads_pyproject(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("project_version_value", "artifact_version"),
+    "version",
     [
-        ("0.4.2rc1", "0.4.2rc1"),
-        ("0.4.2dev1", "0.4.2.dev1"),
-        ("0.4.2.dev1", "0.4.2.dev1"),
-        ("0.4.2-alpha.1", "0.4.2a1"),
-        ("0.4.2-beta.2", "0.4.2b2"),
-        ("0.4.2-rc.2", "0.4.2rc2"),
-        ("0.4.2-dev.3", "0.4.2.dev3"),
+        "0.4.2a1",
+        "0.4.2b2",
+        "0.4.2rc1",
+        "0.4.2.dev1",
     ],
 )
-def test_artifact_versions_use_pep440_normalization(
-    tmp_path: Path, project_version_value: str, artifact_version: str
+def test_canonical_prerelease_versions_match_artifact_metadata(
+    tmp_path: Path, version: str
 ) -> None:
-    assert normalized_artifact_version(project_version_value) == artifact_version
-
     wheel = tmp_path / "neural_sdk-prerelease-py3-none-any.whl"
     sdist = tmp_path / "neural_sdk-prerelease.tar.gz"
-    _write_wheel(wheel, _metadata(version=artifact_version))
-    _write_sdist(sdist, _metadata(version=artifact_version))
+    _write_wheel(wheel, _metadata(version=version))
+    _write_sdist(sdist, _metadata(version=version))
 
-    validate_artifacts([wheel, sdist], project_version_value)
+    validate_artifacts([wheel, sdist], version)
 
 
 def test_package_smoke_uses_dynamic_prerelease_version(monkeypatch: pytest.MonkeyPatch) -> None:

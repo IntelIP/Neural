@@ -19,13 +19,8 @@ _VERSION_CORE = r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
 _VERSION_NUMBER = r"(?:0|[1-9]\d*)"
 _STABLE_VERSION = re.compile(rf"^{_VERSION_CORE}$")
 _TEST_VERSION = re.compile(
-    rf"^{_VERSION_CORE}(?:(?:a|b|rc){_VERSION_NUMBER}|(?:\.?dev){_VERSION_NUMBER}"
-    rf"|-(?:alpha|beta|rc|dev)\.{_VERSION_NUMBER})$"
+    rf"^{_VERSION_CORE}(?:(?:a|b|rc){_VERSION_NUMBER}|\.dev{_VERSION_NUMBER})$"
 )
-_VERSION_ALIAS = re.compile(
-    rf"^(?P<core>{_VERSION_CORE})-(?P<label>alpha|beta|rc|dev)" rf"\.(?P<number>{_VERSION_NUMBER})$"
-)
-_DEV_WITHOUT_DOT = re.compile(rf"^(?P<core>{_VERSION_CORE})dev(?P<number>{_VERSION_NUMBER})$")
 
 _BLOCKED_DOMAINS = tuple(f"neural-sdk.{suffix}".encode("ascii") for suffix in ("dev", "com"))
 _EXPECTED_METADATA = {
@@ -48,16 +43,6 @@ _IGNORED_SOURCE_PARTS = {
 
 class ReleaseValidationError(ValueError):
     """Release input failed a deterministic safety check."""
-
-
-def normalized_artifact_version(version: str) -> str:
-    """Return the PEP 440 version setuptools writes into artifact metadata."""
-    if alias := _VERSION_ALIAS.fullmatch(version):
-        label = {"alpha": "a", "beta": "b", "rc": "rc", "dev": ".dev"}[alias.group("label")]
-        return f"{alias.group('core')}{label}{alias.group('number')}"
-    if dev := _DEV_WITHOUT_DOT.fullmatch(version):
-        return f"{dev.group('core')}.dev{dev.group('number')}"
-    return version
 
 
 def project_version(project_file: Path) -> str:
@@ -203,7 +188,7 @@ def _sdist_metadata(path: Path) -> bytes:
 
 def _validate_core_metadata(path: Path, content: bytes, expected_version: str) -> None:
     metadata = BytesParser(policy=default).parsebytes(content)
-    expected = {"Version": normalized_artifact_version(expected_version), **_EXPECTED_METADATA}
+    expected = {"Version": expected_version, **_EXPECTED_METADATA}
     mismatches = [
         f"{header}: expected {value!r}, found {metadata.get(header)!r}"
         for header, value in expected.items()
