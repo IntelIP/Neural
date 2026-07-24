@@ -6,6 +6,7 @@ import importlib
 import json
 import subprocess
 import sys
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 
@@ -46,7 +47,12 @@ def _assert_optional_dependency_contract() -> None:
             KalshiWebSocketClient,
         )
 
-        for symbol in (WebSocketSource, FIXConnectionConfig, KalshiFIXClient, KalshiWebSocketClient):
+        for symbol in (
+            WebSocketSource,
+            FIXConnectionConfig,
+            KalshiFIXClient,
+            KalshiWebSocketClient,
+        ):
             try:
                 symbol()
             except ImportError as exc:
@@ -57,7 +63,7 @@ def _assert_optional_dependency_contract() -> None:
         builtins.__import__ = original_import
 
 
-def _assert_clean_cli() -> None:
+def _assert_clean_cli(expected_version: str) -> None:
     cli_path = Path(sys.executable).with_name("neural")
 
     version = subprocess.run(
@@ -66,7 +72,7 @@ def _assert_clean_cli() -> None:
         text=True,
         check=True,
     )
-    assert version.stdout.strip() == "0.4.1"
+    assert version.stdout.strip() == expected_version
     assert version.stderr == ""
 
     doctor = subprocess.run(
@@ -77,19 +83,19 @@ def _assert_clean_cli() -> None:
     )
     assert doctor.stderr == ""
     payload = json.loads(doctor.stdout)
-    assert payload["version"] == "0.4.1"
+    assert payload["version"] == expected_version
     assert "credentials" in payload
     assert "optional_dependencies" in payload
 
 
-def _assert_import_surface() -> None:
+def _assert_import_surface(expected_version: str) -> None:
     import neural
     import neural.auth as auth
     import neural.cli
     import neural.data_collection as data_collection
     import neural.trading as trading
 
-    assert neural.__version__ == "0.4.1"
+    assert neural.__version__ == expected_version
     assert neural.cli.main
     assert auth.__all__ and data_collection.__all__ and trading.__all__
     assert "site-packages" in neural.__file__
@@ -107,14 +113,26 @@ def _assert_import_surface() -> None:
         TradingClient,
     )
 
-    assert AuthClient and Strategy and DataSource and TradingClient
+    assert all(
+        (
+            AuthClient,
+            Strategy,
+            DataSource,
+            WebSocketSource,
+            TradingClient,
+            FIXConnectionConfig,
+            KalshiFIXClient,
+            KalshiWebSocketClient,
+        )
+    )
 
     _assert_optional_dependency_contract()
 
 
 def main() -> int:
-    _assert_import_surface()
-    _assert_clean_cli()
+    expected_version = distribution_version("neural-sdk")
+    _assert_import_surface(expected_version)
+    _assert_clean_cli(expected_version)
     return 0
 
 
