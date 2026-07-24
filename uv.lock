@@ -1845,6 +1845,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "twine" },
     { name = "types-requests" },
 ]
@@ -1896,6 +1897,7 @@ requires-dist = [
     { name = "simplefix", specifier = ">=1.0.17" },
     { name = "sqlalchemy", marker = "extra == 'deployment'", specifier = ">=2.0.0" },
     { name = "textblob", marker = "extra == 'sentiment'", specifier = ">=0.17.1" },
+    { name = "tomli", marker = "python_full_version < '3.11' and extra == 'dev'", specifier = ">=2.0.1" },
     { name = "torch", marker = "extra == 'sentiment'", specifier = ">=1.12.0" },
     { name = "transformers", marker = "extra == 'sentiment'", specifier = ">=4.21.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=4.0.0" },
