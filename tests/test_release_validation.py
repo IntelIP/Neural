@@ -8,6 +8,7 @@ import pytest
 from scripts.validate_release import (
     ReleaseValidationError,
     classify_tag,
+    normalized_artifact_version,
     project_version,
     validate_artifacts,
     validate_source,
@@ -31,6 +32,7 @@ def test_stable_tags_route_only_to_pypi(tag: str) -> None:
         "v0.4.2.dev1",
         "v0.4.2-alpha.1",
         "v0.4.2-beta.2",
+        "v0.4.2-rc.2",
         "v0.4.2-dev.3",
     ],
 )
@@ -47,6 +49,7 @@ def test_prerelease_and_dev_tags_route_only_to_testpypi(tag: str) -> None:
         "v0.4.2-01",
         "v0.4.2+build",
         "v0.4.2.post1",
+        "v0.4.2-preview.1",
         "release-v0.4.2",
     ],
 )
@@ -66,6 +69,31 @@ def test_project_version_reads_pyproject(tmp_path: Path) -> None:
     project_file.write_text('[project]\nversion = "1.2.3rc1"\n', encoding="utf-8")
 
     assert project_version(project_file) == "1.2.3rc1"
+
+
+@pytest.mark.parametrize(
+    ("project_version_value", "artifact_version"),
+    [
+        ("0.4.2rc1", "0.4.2rc1"),
+        ("0.4.2dev1", "0.4.2.dev1"),
+        ("0.4.2.dev1", "0.4.2.dev1"),
+        ("0.4.2-alpha.1", "0.4.2a1"),
+        ("0.4.2-beta.2", "0.4.2b2"),
+        ("0.4.2-rc.2", "0.4.2rc2"),
+        ("0.4.2-dev.3", "0.4.2.dev3"),
+    ],
+)
+def test_artifact_versions_use_pep440_normalization(
+    tmp_path: Path, project_version_value: str, artifact_version: str
+) -> None:
+    assert normalized_artifact_version(project_version_value) == artifact_version
+
+    wheel = tmp_path / "neural_sdk-prerelease-py3-none-any.whl"
+    sdist = tmp_path / "neural_sdk-prerelease.tar.gz"
+    _write_wheel(wheel, _metadata(version=artifact_version))
+    _write_sdist(sdist, _metadata(version=artifact_version))
+
+    validate_artifacts([wheel, sdist], project_version_value)
 
 
 def test_source_scan_is_recursive_and_ignores_test_fixtures(tmp_path: Path) -> None:

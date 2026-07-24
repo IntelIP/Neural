@@ -4,4 +4,6 @@ include CHANGELOG.md
 recursive-include docs *
 recursive-include neural *.py
 include neural/py.typed
+exclude tests/test_contact_security.py
+exclude tests/test_release_validation.py
 global-exclude *.py[cod] __pycache__ *.so *.dylib
