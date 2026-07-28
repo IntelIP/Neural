@@ -55,6 +55,8 @@ class FakeSession:
                             "closed": False,
                             "marketType": "moneyline",
                             "gameStartTime": "2026-03-10T23:00:00Z",
+                            "bestBidQuote": {"value": "0.61", "currency": "USD"},
+                            "bestAskQuote": {"value": "0.63", "currency": "USD"},
                             "marketSides": [
                                 {
                                     "description": "Team A",
@@ -93,8 +95,8 @@ class FakeSession:
             return FakeResponse(
                 {
                     "marketData": {
-                        "bestBid": 0.61,
-                        "bestAsk": 0.63,
+                        "bestBid": {"value": "0.61", "currency": "USD"},
+                        "bestAsk": {"value": "0.63", "currency": "USD"},
                         "lastTradePx": {"value": "0.62"},
                         "sharesTraded": "1234",
                     }
@@ -199,6 +201,8 @@ def test_list_markets_filters_non_sports_by_default() -> None:
     assert len(markets) == 1
     assert markets[0].market_id == "1"
     assert markets[0].sport == "nfl"
+    assert markets[0].yes_price == pytest.approx(0.63)
+    assert markets[0].no_price == pytest.approx(0.37)
 
 
 def test_get_quote_maps_book_shape() -> None:
@@ -402,6 +406,17 @@ def test_public_market_reads_work_without_credentials(
     assert "PM-ACCESS-KEY" not in first_headers
     assert "PM-ACCESS-SIGNATURE" not in first_headers
 
+
+def test_malformed_environment_credentials_are_not_silenced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise_invalid_secret() -> dict[str, object]:
+        raise ValueError("POLYMARKET_US_API_SECRET must be valid base64")
+
+    monkeypatch.setattr(adapter_module, "get_polymarket_us_credentials", _raise_invalid_secret)
+
+    with pytest.raises(ValueError, match="must be valid base64"):
+        PolymarketUSAdapter(session=FakeSession())
 
 
 def test_private_polymarket_methods_still_require_credentials(

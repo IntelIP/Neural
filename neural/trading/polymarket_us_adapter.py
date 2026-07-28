@@ -56,7 +56,7 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         if self.api_key is None or self.api_secret is None or self.passphrase is None:
             try:
                 creds = get_polymarket_us_credentials()
-            except (FileNotFoundError, ValueError):
+            except FileNotFoundError:
                 creds = {}
 
         api_key = self.api_key or creds.get("api_key")
@@ -129,8 +129,12 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         market_slug = str(market_row.get("slug") or market_id)
         payload = self._request_public("GET", f"/v1/markets/{market_slug}/bbo")
         row = payload.get("marketData") or payload.get("data") or payload
-        yes_bid = _to_prob(row.get("bestBid") or row.get("bid") or row.get("yes_bid"))
-        yes_ask = _to_prob(row.get("bestAsk") or row.get("ask") or row.get("yes_ask"))
+        yes_bid = _to_prob(
+            _amount_value(row.get("bestBid") or row.get("bid") or row.get("yes_bid"))
+        )
+        yes_ask = _to_prob(
+            _amount_value(row.get("bestAsk") or row.get("ask") or row.get("yes_ask"))
+        )
         no_bid = _to_prob(row.get("no_bid") or row.get("best_bid_no"))
         no_ask = _to_prob(row.get("no_ask") or row.get("best_ask_no"))
 
@@ -373,7 +377,13 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         sport = _extract_market_sport(raw) or str(raw.get("sport") or raw.get("league") or category)
 
         yes_price = _to_prob(
-            raw.get("yes_price") or raw.get("price_yes") or raw.get("best_ask_yes")
+            _amount_value(
+                raw.get("yes_price")
+                or raw.get("price_yes")
+                or raw.get("best_ask_yes")
+                or raw.get("bestAskQuote")
+                or raw.get("bestBidQuote")
+            )
         )
         no_price = _to_prob(raw.get("no_price") or raw.get("price_no") or raw.get("best_ask_no"))
         if no_price is None and yes_price is not None:
@@ -472,6 +482,12 @@ def _to_prob(value: Any) -> float | None:
     if out > 1:
         return out / 100.0
     return out
+
+
+def _amount_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return value.get("value")
+    return value
 
 
 def _to_float(value: Any) -> float | None:

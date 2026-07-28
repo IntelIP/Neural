@@ -22,7 +22,7 @@ import argparse
 import asyncio
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +53,7 @@ def _coerce_probability(value: Any) -> float | None:
 
 
 def _snapshot_now() -> pd.Timestamp:
-    return pd.Timestamp(datetime.now(UTC))
+    return pd.Timestamp(datetime.now(timezone.utc))
 
 
 async def fetch_kalshi_nba(limit: int) -> pd.DataFrame:
@@ -256,7 +256,7 @@ async def main() -> None:
     stream = await build_polling_stream(args.limit, args.rounds, args.interval)
     analysis = analyze_standardized_stream(stream)
 
-    date_stamp = datetime.now(UTC).strftime("%Y-%m-%d")
+    date_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     snapshot_path = output_dir / f"cross_provider_snapshot_{date_stamp}.csv"
     stream_path = output_dir / f"cross_provider_stream_{date_stamp}.csv"
     analysis_path = output_dir / f"cross_provider_analysis_{date_stamp}.csv"
