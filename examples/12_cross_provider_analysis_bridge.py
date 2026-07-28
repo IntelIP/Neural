@@ -1,4 +1,4 @@
-﻿"""
+"""
 Cross-provider public market normalization and analysis demo.
 
 This example shows how the SDK can:
@@ -137,7 +137,9 @@ def fetch_polymarket_nba(limit: int) -> pd.DataFrame:
 
 
 async def fetch_standardized_snapshots(limit: int) -> pd.DataFrame:
-    kalshi_df, polymarket_df = await asyncio.gather(fetch_kalshi_nba(limit), asyncio.to_thread(fetch_polymarket_nba, limit))
+    kalshi_df, polymarket_df = await asyncio.gather(
+        fetch_kalshi_nba(limit), asyncio.to_thread(fetch_polymarket_nba, limit)
+    )
     frames = [df for df in (kalshi_df, polymarket_df) if not df.empty]
     if not frames:
         return pd.DataFrame()
@@ -201,7 +203,9 @@ def analyze_standardized_stream(stream: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
     rows: list[dict[str, Any]] = []
-    for (exchange, market_id), market_events in stream.groupby(["exchange", "market_id"], sort=False):
+    for (exchange, market_id), market_events in stream.groupby(
+        ["exchange", "market_id"], sort=False
+    ):
         market_events = market_events.sort_values("stream_timestamp").reset_index(drop=True)
         market_data = market_events[["ticker", "yes_ask", "no_ask", "volume"]].copy()
 
@@ -238,7 +242,9 @@ def analyze_standardized_stream(stream: pd.DataFrame) -> pd.DataFrame:
         )
 
     result = pd.DataFrame(rows)
-    return result.sort_values(["exchange", "edge_vs_mean"], ascending=[True, False]).reset_index(drop=True)
+    return result.sort_values(["exchange", "edge_vs_mean"], ascending=[True, False]).reset_index(
+        drop=True
+    )
 
 
 async def main() -> None:
@@ -304,9 +310,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Pull public NBA data from multiple providers, normalize it, and run one analysis pass."
     )
-    parser.add_argument("--limit", type=int, default=3, help="Markets per provider to include, default: 3")
-    parser.add_argument("--rounds", type=int, default=2, help="Polling rounds for the standardized stream, default: 2")
-    parser.add_argument("--interval", type=float, default=1.0, help="Seconds between polling rounds, default: 1.0")
+    parser.add_argument(
+        "--limit", type=int, default=3, help="Markets per provider to include, default: 3"
+    )
+    parser.add_argument(
+        "--rounds",
+        type=int,
+        default=2,
+        help="Polling rounds for the standardized stream, default: 2",
+    )
+    parser.add_argument(
+        "--interval", type=float, default=1.0, help="Seconds between polling rounds, default: 1.0"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
