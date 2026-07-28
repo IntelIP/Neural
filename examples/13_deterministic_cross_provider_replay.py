@@ -21,7 +21,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -180,7 +180,9 @@ ROUND_TIMESTAMPS = [
 ]
 
 
-def _normalize_kalshi_round(records: list[dict[str, Any]], stream_timestamp: pd.Timestamp) -> pd.DataFrame:
+def _normalize_kalshi_round(
+    records: list[dict[str, Any]], stream_timestamp: pd.Timestamp
+) -> pd.DataFrame:
     rows = []
     for record in records:
         yes_price = float(record["yes_ask"]) / 100.0
@@ -262,7 +264,9 @@ def analyze_standardized_stream(stream: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
     rows: list[dict[str, Any]] = []
-    for (exchange, market_id), market_events in stream.groupby(["exchange", "market_id"], sort=False):
+    for (exchange, market_id), market_events in stream.groupby(
+        ["exchange", "market_id"], sort=False
+    ):
         market_events = market_events.sort_values("stream_timestamp").reset_index(drop=True)
         market_data = market_events[["ticker", "yes_price", "no_price", "volume"]].rename(
             columns={"yes_price": "yes_ask", "no_price": "no_ask"}
@@ -306,9 +310,11 @@ def analyze_standardized_stream(stream: pd.DataFrame) -> pd.DataFrame:
             }
         )
 
-    return pd.DataFrame.from_records(rows).sort_values(
-        ["exchange", "edge_vs_mean"], ascending=[True, False]
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame.from_records(rows)
+        .sort_values(["exchange", "edge_vs_mean"], ascending=[True, False])
+        .reset_index(drop=True)
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -333,7 +339,7 @@ def main() -> None:
     snapshot = latest_snapshot(stream)
     analysis = analyze_standardized_stream(stream)
 
-    date_stamp = datetime.now(UTC).strftime("%Y-%m-%d")
+    date_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     snapshot_path = output_dir / f"deterministic_snapshot_{date_stamp}.csv"
     stream_path = output_dir / f"deterministic_stream_{date_stamp}.csv"
     analysis_path = output_dir / f"deterministic_analysis_{date_stamp}.csv"
