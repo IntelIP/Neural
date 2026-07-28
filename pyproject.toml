@@ -18,11 +18,10 @@ keywords = [
 ]
 authors = [
     { name = "Hudson Aikins", email = "hudson@intelip.co" },
-    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+    { name = "Neural Contributors" }
 ]
 maintainers = [
-    { name = "Advanced Intellectual Labs LLC", email = "hudson@intelip.co" },
-    { name = "Neural Contributors", email = "contributors@neural-sdk.dev" }
+    { name = "Advanced Intellectual Labs LLC", email = "hudson@intelip.co" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

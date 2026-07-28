@@ -104,4 +104,4 @@ The SDK documentation lives in `docs/` and uses Mintlify. When you update docs a
 
 - Documentation: https://neural-sdk.mintlify.app
 - Discussions: https://github.com/IntelIP/Neural/discussions
-- Email: contributors@neural-sdk.dev
+- Email: hudson@intelip.co
