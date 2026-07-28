@@ -14,7 +14,7 @@ CONTACT_SURFACES = (
     "docs/openapi/websocket-api.yaml",
     "scripts/generate_openapi_specs.py",
 )
-UNCONTROLLED_CONTACT_DOMAINS = ("neural-sdk.dev", "neural-sdk.com")
+UNCONTROLLED_CONTACT_DOMAINS = tuple("neural-sdk" + suffix for suffix in (".dev", ".com"))
 
 
 def test_public_contact_surfaces_do_not_use_uncontrolled_domains() -> None:
