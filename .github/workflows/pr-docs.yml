@@ -29,6 +29,7 @@ jobs:
               - 'neural/**/*.py'
             docs:
               - 'docs/**'
+              - 'docs-site/**'
             examples:
               - 'examples/**'
             readme:
@@ -148,7 +149,11 @@ jobs:
             
             // Check if code changes require documentation
             const codeFiles = changedFiles.filter(file => file.startsWith('neural/') && file.endsWith('.py'));
-            const docFiles = changedFiles.filter(file => file.startsWith('docs/') || file === 'README.md');
+            const docFiles = changedFiles.filter(file =>
+              file.startsWith('docs/') ||
+              file.startsWith('docs-site/') ||
+              file === 'README.md'
+            );
             
             console.log('Code files changed:', codeFiles.length);
             console.log('Doc files changed:', docFiles.length);

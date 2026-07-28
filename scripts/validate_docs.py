@@ -20,7 +20,7 @@ class DocumentationValidator:
         """Run all validation checks."""
         print("🔍 Validating documentation...")
 
-        self.validate_mint_json()
+        self.validate_fumadocs_navigation()
         self.validate_required_sections()
         self.validate_code_blocks()
         self.validate_internal_links()
@@ -29,42 +29,46 @@ class DocumentationValidator:
 
         return self.report_results()
 
-    def validate_mint_json(self) -> None:
-        """Validate mint.json configuration."""
-        mint_file = self.docs_dir / "mint.json"
-        if not mint_file.exists():
-            self.errors.append("mint.json not found")
+    def validate_fumadocs_navigation(self) -> None:
+        """Validate Fumadocs metadata and every configured navigation entry."""
+        root_meta = self.docs_dir / "meta.json"
+        if not root_meta.exists():
+            self.errors.append("Fumadocs navigation missing: docs/meta.json")
             return
 
-        try:
-            with open(mint_file) as f:
-                config = json.load(f)
-
-            # Check required fields
-            required_fields = ["name", "navigation"]
-            for field in required_fields:
-                if field not in config:
-                    self.errors.append(f"mint.json missing required field: {field}")
-
-            # Validate navigation structure
-            if "navigation" in config:
-                self._validate_navigation(config["navigation"])
-
-        except json.JSONDecodeError as e:
-            self.errors.append(f"Invalid JSON in mint.json: {e}")
-
-    def _validate_navigation(self, navigation: list[dict]) -> None:
-        """Validate navigation structure."""
-        for group in navigation:
-            if "group" not in group or "pages" not in group:
-                self.errors.append("Navigation group missing 'group' or 'pages'")
+        for meta_file in self.docs_dir.rglob("meta.json"):
+            try:
+                with open(meta_file) as f:
+                    config = json.load(f)
+            except json.JSONDecodeError as e:
+                self.errors.append(f"Invalid JSON in {meta_file}: {e}")
                 continue
 
-            for page in group["pages"]:
-                if isinstance(page, str):
-                    page_path = self.docs_dir / f"{page}.mdx"
-                    if not page_path.exists():
-                        self.errors.append(f"Navigation page not found: {page}.mdx")
+            if not isinstance(config.get("title"), str):
+                self.errors.append(f"{meta_file} missing string field: title")
+
+            pages = config.get("pages")
+            if not isinstance(pages, list):
+                self.errors.append(f"{meta_file} missing list field: pages")
+                continue
+
+            for page in pages:
+                if not isinstance(page, str):
+                    self.errors.append(f"{meta_file} contains non-string navigation entry")
+                    continue
+
+                # Fumadocs separators are presentation-only entries.
+                if page.startswith("---") and page.endswith("---"):
+                    continue
+
+                page_path = meta_file.parent / page
+                if not page_path.with_suffix(".mdx").exists() and not (
+                    page_path.is_dir() and (page_path / "meta.json").exists()
+                ):
+                    relative_meta = meta_file.relative_to(self.docs_dir)
+                    self.errors.append(
+                        f"Navigation entry not found in {relative_meta}: {page}"
+                    )
 
     def validate_required_sections(self) -> None:
         """Check for required documentation sections."""

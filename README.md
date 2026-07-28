@@ -6,7 +6,7 @@
 
 Professional-grade SDK for algorithmic trading on prediction markets, built as the public surface of the Neural stack.
 
-[Documentation](https://neural-sdk.mintlify.app) | [Examples](./examples) | [Contributing](./CONTRIBUTING.md)
+[Documentation](./docs/index.mdx) | [Examples](./examples) | [Contributing](./CONTRIBUTING.md)
 
 ## Overview
 
@@ -90,7 +90,7 @@ uv run pytest --cov=neural tests/
 
 ## Resources
 
-- Documentation: [neural-sdk.mintlify.app](https://neural-sdk.mintlify.app)
+- Documentation: [docs/](./docs/index.mdx)
 - Examples: [examples/](./examples)
 - Issues: [GitHub Issues](https://github.com/IntelIP/Neural/issues)
 - Discussions: [GitHub Discussions](https://github.com/IntelIP/Neural/discussions)

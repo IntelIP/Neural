@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --neural-green: #01bd65;
+  --neural-green-bright: #07c983;
+  --neural-green-dark: #0d9373;
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(circle at 15% -10%, rgb(1 189 101 / 10%), transparent 28rem),
+    radial-gradient(circle at 90% 0%, rgb(13 147 115 / 8%), transparent 24rem);
+}
+
+::selection {
+  color: #03140c;
+  background: rgb(7 201 131 / 55%);
+}
+
+.neural-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.neural-mark {
+  display: inline-grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 0.5rem;
+  color: #02130b;
+  background: linear-gradient(135deg, var(--neural-green-bright), var(--neural-green));
+  box-shadow: 0 0 1.5rem rgb(1 189 101 / 25%);
+  font-size: 0.85rem;
+  font-weight: 850;
+}

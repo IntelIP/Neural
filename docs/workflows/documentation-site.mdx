@@ -1,0 +1,41 @@
+---
+title: 'Documentation Site'
+description: 'Run and validate the repository-owned Fumadocs site without deploying it.'
+---
+
+## Architecture
+
+Neural documentation uses a standalone Fumadocs application in `docs-site/`.
+The application reads MDX directly from `docs/`, so documentation content has one
+authoritative copy.
+
+| Surface | Location | Purpose |
+|---|---|---|
+| Content | `docs/` | Public MDX and navigation metadata |
+| Application | `docs-site/` | Fumadocs, Next.js, search, and visual shell |
+| Validation | `.github/workflows/docs.yml` | Content checks, typecheck, and production build |
+
+## Local development
+
+```bash
+cd docs-site
+bun install --frozen-lockfile
+bun run dev
+```
+
+Open `http://localhost:3000/docs`.
+
+## Required validation
+
+```bash
+uv run python scripts/validate_docs.py
+uv run python scripts/validate_examples.py
+cd docs-site
+bun run typecheck
+bun run build
+```
+
+<Callout type="info" title="Deployment boundary">
+  The repository does not deploy documentation automatically. Hosting, DNS, and
+  production publication require a separate approved workflow.
+</Callout>
