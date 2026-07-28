@@ -129,3 +129,4 @@ temp/
 !docs-site/*.json
 !docs-site/lib/
 !docs-site/lib/**
+!docs/**/meta.json

@@ -1,0 +1,18 @@
+{
+  "title": "Neural SDK",
+  "pages": [
+    "index",
+    "---Start Here---",
+    "architecture",
+    "getting-started",
+    "auth",
+    "basics",
+    "README",
+    "---Build---",
+    "data-collection",
+    "analysis",
+    "trading",
+    "workflows",
+    "examples"
+  ]
+}
