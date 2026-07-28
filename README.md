@@ -6,7 +6,7 @@
 
 Professional-grade SDK for algorithmic trading on prediction markets, built as the public surface of the Neural stack.
 
-[Documentation](./docs/index.mdx) | [Examples](./examples) | [Contributing](./CONTRIBUTING.md)
+[Documentation](https://github.com/IntelIP/Neural/tree/main/docs) | [Examples](./examples) | [Contributing](./CONTRIBUTING.md)
 
 ## Overview
 

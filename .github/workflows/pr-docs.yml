@@ -44,7 +44,7 @@ jobs:
 
       - name: Sync dependencies
         if: steps.changes.outputs.code == 'true' || steps.changes.outputs.examples == 'true'
-        run: uv sync --extra dev --extra docs
+        run: uv sync --extra dev
 
       - name: Check for docstring coverage
         if: steps.changes.outputs.code == 'true'
