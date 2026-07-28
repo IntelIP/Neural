@@ -10,12 +10,16 @@ import {
 import { source } from '@/lib/source';
 import { getMDXComponents } from '@/mdx-components';
 
+interface DocsPageProps {
+  params: Promise<{ slug?: string[] }>;
+}
+
 export function generateStaticParams() {
   return source.generateParams();
 }
 
 export async function generateMetadata(
-  props: PageProps<'/docs/[[...slug]]'>,
+  props: DocsPageProps,
 ): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
@@ -30,7 +34,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
+export default async function Page(props: DocsPageProps) {
   const params = await props.params;
   const page = source.getPage(params.slug);
 

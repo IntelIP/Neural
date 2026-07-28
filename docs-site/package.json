@@ -1,0 +1,29 @@
+{
+  "name": "neural-sdk-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "typecheck": "fumadocs-mdx && tsc --noEmit"
+  },
+  "dependencies": {
+    "@types/mdx": "^2.0.13",
+    "fumadocs-core": "^16.10.7",
+    "fumadocs-mdx": "^15.0.13",
+    "fumadocs-ui": "^16.10.7",
+    "next": "^16.2.10",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}

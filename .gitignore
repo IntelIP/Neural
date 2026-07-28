@@ -124,3 +124,8 @@ site/
 tmp/
 temp/
 *.tmp
+
+# Repository-owned documentation application
+!docs-site/*.json
+!docs-site/lib/
+!docs-site/lib/**
