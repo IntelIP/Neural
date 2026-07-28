@@ -70,11 +70,6 @@ dev = [
     "twine>=4.0.0",
     "tomli>=2.0.1; python_version < '3.11'",
 ]
-docs = [
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.1.0",
-    "mkdocstrings[python]>=0.22.0",
-]
 analysis = [
     "plotly>=5.15.0",
 ]
@@ -98,7 +93,7 @@ deployment = [
 
 [project.urls]
 Homepage = "https://github.com/IntelIP/Neural"
-Documentation = "https://neural-sdk.mintlify.app"
+Documentation = "https://github.com/IntelIP/Neural/tree/main/docs"
 Repository = "https://github.com/IntelIP/Neural"
 Issues = "https://github.com/IntelIP/Neural/issues"
 Changelog = "https://github.com/IntelIP/Neural/blob/main/CHANGELOG.md"

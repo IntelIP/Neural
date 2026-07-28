@@ -56,9 +56,13 @@ uv run pytest
 If your change touches docs or examples, validate those paths too:
 
 ```bash
-uv sync --extra dev --extra docs
+uv sync --extra dev
 uv run python scripts/validate_docs.py
 uv run python scripts/validate_examples.py
+cd docs-site
+bun install --frozen-lockfile
+bun run typecheck
+bun run build
 ```
 
 ## Pull Request Expectations
@@ -98,10 +102,13 @@ uv run pytest --cov=neural --cov-report=term-missing
 
 ## Documentation Layout
 
-The SDK documentation lives in `docs/` and uses Mintlify. When you update docs automation or local docs checks, prefer Bun-based tooling for JavaScript CLI dependencies and `uv` for Python scripts.
+The SDK documentation content lives in `docs/` and is rendered by the Fumadocs
+application in `docs-site/`. Keep content in `docs/`; do not duplicate pages into
+the application directory. Use Bun for the locked Fumadocs toolchain and `uv`
+for Python content validators.
 
 ## Questions
 
-- Documentation: https://neural-sdk.mintlify.app
+- Documentation source: https://github.com/IntelIP/Neural/tree/main/docs
 - Discussions: https://github.com/IntelIP/Neural/discussions
 - Email: hudson@intelip.co

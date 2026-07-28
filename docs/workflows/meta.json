@@ -1,0 +1,11 @@
+{
+  "title": "Workflows",
+  "pages": [
+    "build-first-bot",
+    "documentation-site",
+    "promotion-checklist",
+    "data-pipeline",
+    "deployment-providers",
+    "terraform-runbook"
+  ]
+}

@@ -2,112 +2,34 @@ name: Documentation
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'neural/**/*.py'
-      - 'docs/**'
-      - 'examples/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
+      - "docs/**"
+      - "docs-site/**"
+      - "examples/**"
+      - "neural/**/*.py"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - ".github/workflows/docs.yml"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'neural/**/*.py'
-      - 'docs/**'
-      - 'examples/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
+      - "docs/**"
+      - "docs-site/**"
+      - "examples/**"
+      - "neural/**/*.py"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
-    inputs:
-      deploy:
-        description: 'Deploy to production'
-        required: false
-        default: 'false'
-        type: boolean
+
+permissions:
+  contents: read
 
 jobs:
-  generate-api-docs:
+  content:
+    name: Validate Documentation Content
     runs-on: ubuntu-latest
-    name: Generate API Documentation
-    outputs:
-      docs-changed: ${{ steps.changes.outputs.docs }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect file changes
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            docs:
-              - 'neural/**/*.py'
-              - 'docs/**'
-              - 'examples/**'
-              - 'README.md'
-              - 'CHANGELOG.md'
-
-      - name: Set up uv
-        if: steps.changes.outputs.docs == 'true'
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-
-      - name: Sync dependencies
-        if: steps.changes.outputs.docs == 'true'
-        run: uv sync --extra dev --extra docs
-
-      - name: Generate API docs with mkdocstrings
-        if: steps.changes.outputs.docs == 'true'
-        run: |
-          mkdir -p docs/api
-          echo "API documentation generation skipped for beta release"
-          # TODO: Re-enable API doc generation in stable release
-          # python -c "... complex doc generation code ..."
-
-      - name: Generate examples documentation
-        if: steps.changes.outputs.docs == 'true'
-        run: |
-          mkdir -p docs/examples/generated
-          uv run python scripts/generate_examples_docs.py
-
-      - name: Validate documentation links
-        if: steps.changes.outputs.docs == 'true'
-        run: |
-          # Check for broken internal links
-          find docs -name "*.mdx" -exec grep -l "\[.*\](.*.mdx)" {} \; | while read file; do
-            echo "Checking links in $file"
-            grep -o "\[.*\](.*.mdx)" "$file" | while read link; do
-              target=$(echo "$link" | sed 's/.*(\(.*\))/\1/')
-              if [ ! -f "docs/$target" ] && [ ! -f "$target" ]; then
-                echo "Broken link found: $target in $file"
-                exit 1
-              fi
-            done
-          done
-
-      - name: Check documentation quality
-        if: steps.changes.outputs.docs == 'true'
-        run: |
-          # Check for required sections in documentation
-          uv run python scripts/validate_docs.py
-
-      - name: Upload generated docs
-        if: steps.changes.outputs.docs == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-docs
-          path: docs/
-          retention-days: 7
-
-  validate-examples:
-    runs-on: ubuntu-latest
-    name: Validate Examples
-    if: needs.generate-api-docs.outputs.docs-changed == 'true'
-    needs: generate-api-docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,115 +40,43 @@ jobs:
           python-version: "3.11"
           enable-cache: true
 
-      - name: Sync dependencies
+      - name: Sync Python validation dependencies
         run: uv sync --extra dev
 
-      - name: Test examples syntax
-        run: |
-          for example in examples/*.py; do
-            echo "Checking syntax of $example"
-            uv run python -m py_compile "$example"
-          done
+      - name: Validate documentation
+        run: uv run python scripts/validate_docs.py
 
-      - name: Validate example imports
-        run: |
-          uv run python -c "
-          import ast
-          import sys
-          from pathlib import Path
-          
-          examples_dir = Path('examples')
-          for py_file in examples_dir.glob('*.py'):
-              try:
-                  with open(py_file) as f:
-                      ast.parse(f.read())
-                  print(f'✓ {py_file.name}: Valid syntax')
-              except SyntaxError as e:
-                  print(f'✗ {py_file.name}: Syntax error - {e}')
-                  sys.exit(1)
-          "
+      - name: Validate examples
+        run: uv run python scripts/validate_examples.py
 
-  validate-docs:
+  site:
+    name: Build Fumadocs Site
     runs-on: ubuntu-latest
-    name: Validate Documentation
-    needs: [generate-api-docs, validate-examples]
-    if: needs.generate-api-docs.outputs.docs-changed == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Download generated docs
-        uses: actions/download-artifact@v4
-        with:
-          name: generated-docs
-          path: docs/
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
-
-      - name: Validate Mintlify CLI availability
-        run: bunx @mintlify/cli@latest --version
-
-      - name: Validate Mintlify configuration
-        run: |
-          # Validate repository Mintlify config syntax (this repo uses docs/mint.json)
-          if [ -f "docs/mint.json" ]; then
-            jq . docs/mint.json > /dev/null
-          else
-            echo "::warning::docs/mint.json not found; skipping Mintlify validation"
-            exit 0
-          fi
-
-          # mintlify dev expects docs.json; run preview only when that layout exists.
-          if [ -f "docs.json" ] || [ -f "docs/docs.json" ]; then
-            timeout 30s bunx @mintlify/cli@latest dev --no-open --port 3000 || \
-              echo "::warning::Documentation preview failed; continuing as advisory check"
-          else
-            echo "::notice::Skipping mintlify dev preview because docs.json is not present"
-          fi
-
-      - name: Documentation Summary
-        run: |
-          echo "## 📚 Documentation Status" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Mint.json configuration valid" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ $(find docs -name '*.mdx' | wc -l) MDX files found" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ All examples validated" >> $GITHUB_STEP_SUMMARY
-          echo "- 📝 Manual deployment required via Mintlify dashboard" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Visit [Mintlify Dashboard](https://mintlify.com/dashboard)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Select project: neural-sdk" >> $GITHUB_STEP_SUMMARY
-          echo "3. Click 'Deploy' to publish changes" >> $GITHUB_STEP_SUMMARY
-
-  update-changelog:
-    runs-on: ubuntu-latest
-    name: Update Changelog
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          bun-version: "1.3.3"
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
+      - name: Install locked dependencies
+        working-directory: docs-site
+        run: bun install --frozen-lockfile
 
-      - name: Auto-update changelog
+      - name: Typecheck
+        working-directory: docs-site
+        run: bun run typecheck
+
+      - name: Build
+        working-directory: docs-site
+        run: bun run build
+
+      - name: Documentation summary
         run: |
-          uv run --with gitpython python scripts/update_changelog.py
-
-      - name: Commit changelog updates
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "docs: auto-update changelog [skip ci]"
-            git push
-          fi
+          echo "## Fumadocs validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fumadocs dependencies installed from bun.lock" >> "$GITHUB_STEP_SUMMARY"
+          echo "- TypeScript passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production build passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment intentionally excluded" >> "$GITHUB_STEP_SUMMARY"

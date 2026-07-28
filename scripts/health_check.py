@@ -15,7 +15,7 @@ import requests
 
 
 class DocumentationHealthChecker:
-    def __init__(self, base_url: str = "https://neural-sdk.mintlify.app"):
+    def __init__(self, base_url: str):
         self.base_url = base_url
         self.issues: list[dict[str, Any]] = []
 
@@ -28,21 +28,15 @@ class DocumentationHealthChecker:
 
         # Check key sections
         key_sections = [
-            "/getting-started",
-            "/api/overview",
-            "/data-collection/overview",
-            "/trading/overview",
-            "/analysis/overview",
+            "/docs",
+            "/docs/getting-started",
+            "/docs/data-collection/overview",
+            "/docs/trading/overview",
+            "/docs/analysis/overview",
         ]
 
         for section in key_sections:
             self._check_page(section)
-
-        # Check API endpoints
-        self._check_api_endpoints()
-
-        # Check assets
-        self._check_assets()
 
         self._generate_report()
         return len(self.issues) == 0
@@ -84,68 +78,6 @@ class DocumentationHealthChecker:
         except requests.exceptions.RequestException as e:
             self.issues.append({"type": "request_error", "url": url, "message": str(e)})
 
-    def _check_api_endpoints(self) -> None:
-        """Check API documentation endpoints."""
-        api_endpoints = [
-            "/openapi/trading-api.json",
-            "/openapi/data-collection-api.json",
-            "/openapi/auth-api.json",
-        ]
-
-        for endpoint in api_endpoints:
-            url = urljoin(self.base_url, endpoint)
-
-            try:
-                response = requests.get(url, timeout=10)
-
-                if response.status_code == 200:
-                    try:
-                        # Validate JSON
-                        json.loads(response.text)
-                    except json.JSONDecodeError:
-                        self.issues.append(
-                            {
-                                "type": "invalid_json",
-                                "url": url,
-                                "message": "Invalid JSON in API spec",
-                            }
-                        )
-                else:
-                    self.issues.append(
-                        {
-                            "type": "api_endpoint_error",
-                            "url": url,
-                            "status_code": response.status_code,
-                            "message": f"API endpoint returned {response.status_code}",
-                        }
-                    )
-
-            except requests.exceptions.RequestException as e:
-                self.issues.append({"type": "api_request_error", "url": url, "message": str(e)})
-
-    def _check_assets(self) -> None:
-        """Check static assets."""
-        assets = ["/favicon.svg", "/logo/dark.svg", "/logo/light.svg"]
-
-        for asset in assets:
-            url = urljoin(self.base_url, asset)
-
-            try:
-                response = requests.head(url, timeout=10)
-
-                if response.status_code != 200:
-                    self.issues.append(
-                        {
-                            "type": "asset_error",
-                            "url": url,
-                            "status_code": response.status_code,
-                            "message": f"Asset returned {response.status_code}",
-                        }
-                    )
-
-            except requests.exceptions.RequestException as e:
-                self.issues.append({"type": "asset_request_error", "url": url, "message": str(e)})
-
     def _generate_report(self) -> None:
         """Generate health check report."""
         print("\n📊 Health Check Report")
@@ -185,9 +117,7 @@ class DocumentationHealthChecker:
 
 def main():
     parser = argparse.ArgumentParser(description="Documentation health check")
-    parser.add_argument(
-        "--url", default="https://neural-sdk.mintlify.app", help="Base URL to check"
-    )
+    parser.add_argument("--url", required=True, help="Deployed Fumadocs base URL to check")
     parser.add_argument("--output", help="Output file for report")
 
     args = parser.parse_args()

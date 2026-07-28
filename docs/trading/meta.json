@@ -1,0 +1,12 @@
+{
+  "title": "Trading",
+  "pages": [
+    "overview",
+    "quickstart",
+    "trading-client",
+    "market-data",
+    "fix",
+    "paper-trading",
+    "reporting"
+  ]
+}

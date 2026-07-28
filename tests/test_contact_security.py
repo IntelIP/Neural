@@ -5,7 +5,7 @@ CONTACT_SURFACES = (
     "pyproject.toml",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
-    "docs/mint.json",
+    "docs-site/lib/layout.shared.tsx",
     "docs/openapi/authentication-schemes.yaml",
     "docs/openapi/data-collection-apis.yaml",
     "docs/openapi/data-models.yaml",

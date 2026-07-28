@@ -1,0 +1,12 @@
+{
+  "title": "Analysis",
+  "pages": [
+    "overview",
+    "strategy-foundations",
+    "strategy-library",
+    "backtesting",
+    "risk-sizing",
+    "order-management",
+    "sentiment"
+  ]
+}
