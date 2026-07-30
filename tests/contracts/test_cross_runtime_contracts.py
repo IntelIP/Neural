@@ -107,6 +107,19 @@ def test_signed_fixture_accepts_once_then_rejects_replay(
     assert replay.value.code == "nonce_replay"
 
 
+def test_signed_fixture_rejects_a_naive_verifier_clock(
+    fixture_bundle: dict[str, object],
+) -> None:
+    with pytest.raises(ContractEnvelopeError) as failure:
+        verify_envelope(
+            fixture_bundle["signedExecutionIntent"],
+            secrets={"fixture-key-v1": FIXTURE_SECRET},
+            replay_guard=InMemoryNonceReplayGuard(),
+            now=datetime(2026, 7, 29, 12, 30),
+        )
+    assert failure.value.code == "timestamp_invalid"
+
+
 @pytest.mark.parametrize(
     ("mutation", "now", "expected_code"),
     [

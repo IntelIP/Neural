@@ -137,6 +137,8 @@ def verify_envelope(
     if not hmac.compare_digest(str(contract["payloadHash"]), expected_hash):
         raise ContractEnvelopeError("payload_hash_mismatch", "contract payloadHash is invalid")
 
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ContractEnvelopeError("timestamp_invalid", "now")
     current = now.astimezone(timezone.utc)
     issued_at = _timestamp(str(validated_envelope["issuedAt"]), field_name="issuedAt")
     expires_at = _timestamp(str(validated_envelope["expiresAt"]), field_name="expiresAt")
