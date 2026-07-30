@@ -75,6 +75,8 @@ def sign_envelope(
     nonce: str,
 ) -> dict[str, Any]:
     """Build and sign one v1 transport envelope."""
+    if not secret:
+        raise ContractEnvelopeError("unknown_key", key_id)
     expected_hash = contract_payload_hash(contract)
     if not hmac.compare_digest(str(contract.get("payloadHash", "")), expected_hash):
         raise ContractEnvelopeError("payload_hash_mismatch", "contract payloadHash is invalid")
@@ -155,7 +157,7 @@ def verify_envelope(
 
     key_id = str(validated_envelope["keyId"])
     secret = secrets.get(key_id)
-    if secret is None:
+    if not secret:
         raise ContractEnvelopeError("unknown_key", key_id)
     expected_signature = _signature(validated_envelope, secret)
     if not hmac.compare_digest(str(validated_envelope["signature"]), expected_signature):

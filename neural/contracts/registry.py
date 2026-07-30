@@ -36,12 +36,16 @@ class ContractValidationError(ValueError):
 
 
 @lru_cache(maxsize=1)
-def load_contract_bundle() -> dict[str, Any]:
-    """Load and validate the packaged authoritative schema bundle."""
+def _load_contract_bundle() -> dict[str, Any]:
     content = resources.files(__package__).joinpath(_SCHEMA_RESOURCE).read_text(encoding="utf-8")
     bundle = json.loads(content)
     Draft202012Validator.check_schema(bundle)
     return bundle
+
+
+def load_contract_bundle() -> dict[str, Any]:
+    """Load a detached copy of the packaged authoritative schema bundle."""
+    return deepcopy(_load_contract_bundle())
 
 
 def schema_for(name: str) -> dict[str, Any]:

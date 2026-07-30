@@ -15,6 +15,8 @@ from neural.contracts import (
     InMemoryNonceReplayGuard,
     contract_model,
     contract_payload_hash,
+    load_contract_bundle,
+    sign_envelope,
     validate_contract,
     validate_json_schema,
     verify_envelope,
@@ -73,6 +75,13 @@ def test_unknown_versions_and_fields_fail_closed(fixture_bundle: dict[str, objec
         validate_contract(intent)
 
 
+def test_contract_bundle_callers_cannot_mutate_cached_authority() -> None:
+    first = load_contract_bundle()
+    first["$defs"].clear()
+
+    assert "ExecutionIntent" in load_contract_bundle()["$defs"]
+
+
 def test_malformed_lineage_fails_closed(fixture_bundle: dict[str, object]) -> None:
     contracts = fixture_bundle["contracts"]
     assert isinstance(contracts, dict)
@@ -81,6 +90,31 @@ def test_malformed_lineage_fails_closed(fixture_bundle: dict[str, object]) -> No
 
     with pytest.raises(ValueError):
         validate_contract(intent)
+
+
+def test_lineage_ids_timestamps_and_uris_use_runtime_format_validation(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["lineageRefs"][0]["objectId"] = "contains spaces"
+    intent["payloadHash"] = contract_payload_hash(intent)
+    with pytest.raises(ValueError):
+        validate_contract(intent)
+
+    snapshot = copy.deepcopy(contracts["MarketSnapshot"])
+    snapshot["createdAt"] = "not-a-date"
+    snapshot["payloadHash"] = contract_payload_hash(snapshot)
+    with pytest.raises(ValueError):
+        validate_contract(snapshot)
+
+    evidence = copy.deepcopy(contracts["ResearchEvidenceRef"])
+    evidence["payload"]["uri"] = "not a uri"
+    evidence["payloadHash"] = contract_payload_hash(evidence)
+    with pytest.raises(ValueError):
+        validate_contract(evidence)
 
 
 def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
@@ -147,6 +181,31 @@ def test_signed_fixture_rejects_a_naive_verifier_clock(
             now=datetime(2026, 7, 29, 12, 30),
         )
     assert failure.value.code == "timestamp_invalid"
+
+
+def test_empty_hmac_secrets_fail_closed(fixture_bundle: dict[str, object]) -> None:
+    envelope = fixture_bundle["signedExecutionIntent"]
+    with pytest.raises(ContractEnvelopeError) as verification:
+        verify_envelope(
+            envelope,
+            secrets={"fixture-key-v1": ""},
+            replay_guard=InMemoryNonceReplayGuard(),
+            now=FIXED_NOW,
+        )
+    assert verification.value.code == "unknown_key"
+
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    with pytest.raises(ContractEnvelopeError) as signing:
+        sign_envelope(
+            contracts["ExecutionIntent"],
+            secret="",
+            key_id="fixture-key-v1",
+            issued_at="2026-07-29T12:00:00Z",
+            expires_at="2026-07-29T13:00:00Z",
+            nonce="nrcl-67-fixture-0002",
+        )
+    assert signing.value.code == "unknown_key"
 
 
 @pytest.mark.parametrize(
