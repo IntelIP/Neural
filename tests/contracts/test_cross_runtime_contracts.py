@@ -146,6 +146,53 @@ def test_paper_fill_semantics_fail_closed(fixture_bundle: dict[str, object]) -> 
         validate_contract(paper)
 
 
+def test_cross_field_semantics_fail_closed(fixture_bundle: dict[str, object]) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    risk = copy.deepcopy(contracts["RiskDecision"])
+    risk["payload"]["decision"] = "reject"
+    risk["payloadHash"] = contract_payload_hash(risk)
+    with pytest.raises(ValueError, match="reject requires at least one violation"):
+        validate_contract(risk)
+
+    cancelled = copy.deepcopy(contracts["PaperOrder"])
+    cancelled["payload"]["status"] = "cancelled"
+    cancelled["payloadHash"] = contract_payload_hash(cancelled)
+    with pytest.raises(ValueError, match="cancelled cannot be completely filled"):
+        validate_contract(cancelled)
+
+    review = copy.deepcopy(contracts["PostTradeReview"])
+    review["payload"]["outcome"] = "unresolved"
+    review["payloadHash"] = contract_payload_hash(review)
+    with pytest.raises(ValueError, match="unresolved requires zero realized PnL"):
+        validate_contract(review)
+
+
+def test_maximum_evidence_intent_has_lineage_capacity(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    evidence = contracts["ResearchEvidenceRef"]
+    intent["payload"]["evidenceObjectIds"] = [f"evidence-{index:03d}" for index in range(32)]
+    intent["lineageRefs"] = [
+        intent["lineageRefs"][0],
+        *[
+            {
+                **intent["lineageRefs"][1],
+                "objectId": evidence_id,
+                "payloadHash": evidence["payloadHash"],
+            }
+            for evidence_id in intent["payload"]["evidenceObjectIds"]
+        ],
+    ]
+    intent["payloadHash"] = contract_payload_hash(intent)
+
+    assert validate_contract(intent) == intent
+
+
 def test_signed_fixture_accepts_once_then_rejects_replay(
     fixture_bundle: dict[str, object],
 ) -> None:

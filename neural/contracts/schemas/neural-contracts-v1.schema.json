@@ -19,7 +19,7 @@
           "items": {
             "$ref": "#/$defs/LineageRef"
           },
-          "maxItems": 32,
+          "maxItems": 33,
           "type": "array",
           "uniqueItems": true
         },

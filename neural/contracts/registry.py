@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 from copy import deepcopy
+from decimal import Decimal
 from functools import cache, lru_cache
 from importlib import resources
 from typing import Any
@@ -128,6 +129,12 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
             contract_payload["intentObjectId"],
             contract_payload["intentPayloadHash"],
         )
+        decision = contract_payload["decision"]
+        violations = contract_payload["violations"]
+        if decision == "reject" and not violations:
+            details.append("payload.violations: reject requires at least one violation")
+        elif decision == "pass" and violations:
+            details.append("payload.violations: pass requires no violations")
     elif name == "PaperOrder":
         require_lineage("ExecutionIntent", contract_payload["intentObjectId"])
         require_lineage("RiskDecision", contract_payload["riskDecisionObjectId"])
@@ -139,16 +146,22 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
             details.append("payload.filledContracts: cannot exceed countContracts")
         if status == "filled" and (filled != requested or average is None):
             details.append("payload.status: filled requires a complete priced fill")
-        elif status == "partially_filled" and (
-            not 0 < filled < requested or average is None
-        ):
+        elif status == "partially_filled" and (not 0 < filled < requested or average is None):
             details.append("payload.status: partially_filled requires a partial priced fill")
         elif status in {"accepted", "rejected"} and (filled != 0 or average is not None):
             details.append(f"payload.status: {status} requires zero unpriced fills")
-        elif status == "cancelled" and ((filled == 0) != (average is None)):
-            details.append("payload.status: cancelled fill quantity and price disagree")
+        elif status == "cancelled":
+            if filled >= requested:
+                details.append("payload.status: cancelled cannot be completely filled")
+            if (filled == 0) != (average is None):
+                details.append("payload.status: cancelled fill quantity and price disagree")
     elif name == "PostTradeReview":
         require_lineage("PaperOrder", contract_payload["paperOrderObjectId"])
+        if (
+            contract_payload["outcome"] == "unresolved"
+            and Decimal(contract_payload["realizedPnlDollars"]) != 0
+        ):
+            details.append("payload.realizedPnlDollars: unresolved requires zero realized PnL")
     return details
 
 
