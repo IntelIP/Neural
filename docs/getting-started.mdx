@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install, configure credentials, and ship your first Neural workflow
+description: Install the stable kernel and run a deterministic replay
 ---
 
 Follow these steps in order. Every command has a matching verification check so you know the environment is ready before moving on.
@@ -9,7 +9,7 @@ Follow these steps in order. Every command has a matching verification check so 
 
 - Python 3.10 or newer
 - `pip` or `uv`
-- Kalshi API key ID and RSA private key (downloadable from the Kalshi console)
+- No credentials for the stable kernel path
 
 ## Step 1 – Install Neural
 
@@ -29,12 +29,21 @@ uv add "neural-sdk[trading]"
 
 **Verify:**
 
-```bash
-python - <<'PY'
-import neural
-print("Neural version:", neural.__version__)
-PY
+```console
+neural --json capabilities
+neural --json replay demo
 ```
+
+Both commands run without provider credentials or network access. The replay
+returns a deterministic digest and final market snapshot.
+
+See `architecture/stability` before importing experimental modules.
+
+## Experimental provider path
+
+Everything below this point uses experimental provider or analysis modules.
+It is not part of the stable base contract and does not grant live-execution
+authority.
 
 ## Step 2 – Configure credentials
 
@@ -124,11 +133,11 @@ python examples/build_first_bot.py
 
 This script fetches live markets, applies a toy signal, and routes simulated orders through `PaperTradingClient`. Use it as a template before wiring in your own strategy.
 
-## Step 7 – Move into paper or live trading
+## Step 7 – Continue with paper execution
 
-1. Swap `TradingClient` in for live trading (credentials required).
-2. Keep `PaperTradingClient` for rehearsals and backtesting comparisons.
-3. Use `OrderManager` to keep strategy logic independent from the execution target.
+1. Keep `PaperTradingClient` for rehearsals and backtesting comparisons.
+2. Use `OrderManager` to keep strategy logic independent from the execution target.
+3. Treat any provider write or live order as a separate human-approved action.
 
 ## Step 8 – Run tests
 

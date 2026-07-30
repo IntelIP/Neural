@@ -1668,6 +1668,10 @@ dev = [
     { name = "twine" },
     { name = "types-requests" },
 ]
+fix = [
+    { name = "cryptography" },
+    { name = "simplefix" },
+]
 sentiment = [
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1688,6 +1692,7 @@ requires-dist = [
     { name = "bump2version", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "certifi", specifier = ">=2023.0.0" },
     { name = "cryptography", specifier = ">=41.0.0" },
+    { name = "cryptography", marker = "extra == 'fix'", specifier = ">=41.0.0" },
     { name = "docker", marker = "extra == 'deployment'", specifier = ">=6.1.0" },
     { name = "fastapi", marker = "extra == 'deployment'", specifier = ">=0.100.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
@@ -1706,6 +1711,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.0.282" },
     { name = "scikit-learn", marker = "extra == 'sentiment'", specifier = ">=1.1.0" },
     { name = "simplefix", specifier = ">=1.0.17" },
+    { name = "simplefix", marker = "extra == 'fix'", specifier = ">=1.0.17" },
     { name = "sqlalchemy", marker = "extra == 'deployment'", specifier = ">=2.0.0" },
     { name = "textblob", marker = "extra == 'sentiment'", specifier = ">=0.17.1" },
     { name = "tomli", marker = "python_full_version < '3.11' and extra == 'dev'", specifier = ">=2.0.1" },
@@ -1718,7 +1724,7 @@ requires-dist = [
     { name = "websocket-client", specifier = ">=1.7.0" },
     { name = "websockets", specifier = ">=11.0.0" },
 ]
-provides-extras = ["dev", "analysis", "trading", "sentiment", "deployment"]
+provides-extras = ["dev", "analysis", "trading", "fix", "sentiment", "deployment"]
 
 [[package]]
 name = "nh3"

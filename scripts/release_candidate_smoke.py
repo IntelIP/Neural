@@ -7,6 +7,8 @@ import argparse
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+EXPECTED_DEMO_REPLAY_DIGEST = "569f87947428d4d093425134181b754ca974675aa7c74fc2cb73a8e193f5b4e6"
+
 
 class ReleaseSmokeError(AssertionError):
     """An installed release artifact failed its smoke contract."""
@@ -31,6 +33,19 @@ def validate_install(
         raise ReleaseSmokeError(f"neural imported outside an installed package: {module_file}")
 
 
+def validate_kernel_replay(result: dict[str, object]) -> None:
+    """Validate the installed dependency-free replay contract."""
+    digest = result.get("digest")
+    if not isinstance(digest, str) or len(digest) != 64:
+        raise ReleaseSmokeError("kernel replay did not produce a SHA-256 digest")
+    if digest != EXPECTED_DEMO_REPLAY_DIGEST:
+        raise ReleaseSmokeError("kernel replay digest changed")
+    if result.get("event_count") != 4:
+        raise ReleaseSmokeError("kernel replay event count changed")
+    if result.get("market_count") != 2:
+        raise ReleaseSmokeError("kernel replay market count changed")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--expected-version", required=True)
@@ -42,6 +57,7 @@ def main() -> int:
         raise ReleaseSmokeError("neural-sdk distribution is not installed") from exc
 
     import neural
+    from neural.kernel import run_demo_replay
 
     validate_install(
         args.expected_version,
@@ -49,6 +65,7 @@ def main() -> int:
         getattr(neural, "__version__", None),
         Path(neural.__file__).resolve(),
     )
+    validate_kernel_replay(run_demo_replay().as_dict())
     return 0
 
 

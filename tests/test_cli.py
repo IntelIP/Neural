@@ -45,8 +45,27 @@ def test_capabilities_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
     assert exit_code == 0
     payload = json.loads(stdout.getvalue())
     assert payload["ok"] is True
+    assert payload["data"]["kernel"]["stable"] is True
+    assert payload["data"]["kernel"]["dependency_free"] is True
+    assert any(
+        item["name"] == "kernel.replay" for item in payload["data"]["kernel"]["capabilities"]
+    )
     assert payload["data"]["platform"]["private_provider_installed"] is True
     assert "stop" in payload["data"]["platform"]["deployment_controls"]
+
+
+def test_replay_demo_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    stdout, stderr = _capture(monkeypatch)
+
+    exit_code = cli.main(["--json", "replay", "demo"])
+
+    assert exit_code == 0
+    assert stderr.getvalue() == ""
+    payload = json.loads(stdout.getvalue())
+    assert payload["ok"] is True
+    assert payload["data"]["replay"]["event_count"] == 4
+    assert payload["data"]["replay"]["market_count"] == 2
+    assert len(payload["data"]["replay"]["digest"]) == 64
 
 
 def test_paper_order_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -203,6 +222,7 @@ def test_python_module_cli_json_is_clean_on_stderr() -> None:
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert payload["ok"] is True
+
 
 def test_missing_subcommand_json_output(monkeypatch: pytest.MonkeyPatch) -> None:
     stdout, stderr = _capture(monkeypatch)
