@@ -1,0 +1,53 @@
+---
+title: Cross-runtime contracts
+description: Versioned Neural objects shared with hosted consumers
+---
+
+Neural owns the JSON Schema for six versioned objects used across Python and
+TypeScript runtimes:
+
+- `MarketSnapshot`
+- `ResearchEvidenceRef`
+- `ExecutionIntent`
+- `RiskDecision`
+- `PaperOrder`
+- `PostTradeReview`
+
+The authoritative bundle is
+`neural/contracts/schemas/neural-contracts-v1.schema.json`. Pydantic validators,
+golden fixtures, and the digest manifest are derived from that source. A
+consumer must pin the manifest digests rather than reinterpret the contract.
+
+## Validate an object
+
+```python
+from neural.contracts import validate_contract
+
+validated = validate_contract(candidate)
+```
+
+Validation rejects unknown schema names, unknown versions, extra fields, and
+malformed lineage. Decimal probabilities and prices use strings so canonical
+JSON bytes are stable across runtimes.
+
+## Verify a signed envelope
+
+```python
+from datetime import datetime, timezone
+
+from neural.contracts import InMemoryNonceReplayGuard, verify_envelope
+
+contract = verify_envelope(
+    envelope,
+    secrets={"consumer-key-v1": secret},
+    replay_guard=InMemoryNonceReplayGuard(),
+    now=datetime.now(timezone.utc),
+)
+```
+
+Verification fails closed on schema, payload hash, lifetime, key identity,
+HMAC signature, and nonce replay. Inject a durable replay guard in a hosted
+consumer; the in-memory guard is intended for local and test use.
+
+Signing does not grant execution authority. Risk policy and order execution
+remain consumer-owned gates.

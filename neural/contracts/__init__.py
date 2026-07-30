@@ -1,0 +1,51 @@
+"""Versioned cross-runtime contracts for Neural consumers."""
+
+from .canonical import (
+    ContractEnvelopeError,
+    InMemoryNonceReplayGuard,
+    canonical_json,
+    contract_payload_hash,
+    sign_envelope,
+    verify_envelope,
+    with_payload_hash,
+)
+from .registry import (
+    CONTRACT_NAMES,
+    CONTRACT_VERSION,
+    ContractValidationError,
+    ExecutionIntent,
+    MarketSnapshot,
+    PaperOrder,
+    PostTradeReview,
+    ResearchEvidenceRef,
+    RiskDecision,
+    contract_model,
+    load_contract_bundle,
+    schema_for,
+    validate_contract,
+    validate_json_schema,
+)
+
+__all__ = [
+    "CONTRACT_NAMES",
+    "CONTRACT_VERSION",
+    "ContractEnvelopeError",
+    "ContractValidationError",
+    "ExecutionIntent",
+    "InMemoryNonceReplayGuard",
+    "MarketSnapshot",
+    "PaperOrder",
+    "PostTradeReview",
+    "ResearchEvidenceRef",
+    "RiskDecision",
+    "canonical_json",
+    "contract_model",
+    "contract_payload_hash",
+    "load_contract_bundle",
+    "schema_for",
+    "sign_envelope",
+    "validate_contract",
+    "validate_json_schema",
+    "verify_envelope",
+    "with_payload_hash",
+]
