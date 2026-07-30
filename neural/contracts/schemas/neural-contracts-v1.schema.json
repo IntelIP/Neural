@@ -268,9 +268,6 @@
     "PaperOrderPayload": {
       "additionalProperties": false,
       "properties": {
-        "approvedIntent": {
-          "$ref": "#/$defs/ExecutionIntent"
-        },
         "averageFillPrice": {
           "oneOf": [
             {
@@ -306,9 +303,6 @@
           "minLength": 1,
           "type": "string"
         },
-        "riskDecision": {
-          "$ref": "#/$defs/RiskDecision"
-        },
         "riskDecisionPayloadHash": {
           "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
@@ -332,10 +326,8 @@
         }
       },
       "required": [
-        "approvedIntent",
         "intentObjectId",
         "approvedIntentPayloadHash",
-        "riskDecision",
         "riskDecisionObjectId",
         "riskDecisionPayloadHash",
         "side",
@@ -392,14 +384,12 @@
           "minLength": 1,
           "type": "string"
         },
-        "paperOrder": {
-          "$ref": "#/$defs/PaperOrder"
-        },
         "paperOrderPayloadHash": {
           "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "realizedPnlDollars": {
+          "maxLength": 32,
           "pattern": "^-?[0-9]+(\\.[0-9]+)?(?![\\s\\S])",
           "type": "string"
         },
@@ -409,7 +399,6 @@
         }
       },
       "required": [
-        "paperOrder",
         "paperOrderObjectId",
         "paperOrderPayloadHash",
         "reviewedAt",
@@ -420,6 +409,7 @@
       "type": "object"
     },
     "Probability": {
+      "maxLength": 32,
       "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)(?![\\s\\S])",
       "type": "string"
     },

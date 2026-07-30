@@ -24,6 +24,7 @@ class ContractEnvelopeError(ValueError):
 
 def canonical_json(value: Any) -> str:
     """Serialize JSON data with stable UTF-8 cross-runtime bytes."""
+    _reject_lone_surrogates(value)
     try:
         return json.dumps(
             value,
@@ -34,6 +35,24 @@ def canonical_json(value: Any) -> str:
         )
     except (TypeError, ValueError) as exc:
         raise ContractEnvelopeError("canonicalization_failed", str(exc)) from exc
+
+
+def _reject_lone_surrogates(value: Any) -> None:
+    if isinstance(value, str):
+        if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+            raise ContractEnvelopeError(
+                "canonicalization_failed",
+                "lone surrogate code points are not valid contract text",
+            )
+        return
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            _reject_lone_surrogates(key)
+            _reject_lone_surrogates(item)
+        return
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _reject_lone_surrogates(item)
 
 
 def contract_payload_hash(contract: Mapping[str, Any]) -> str:

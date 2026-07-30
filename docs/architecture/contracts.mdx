@@ -30,6 +30,12 @@ Validation rejects unknown schema names, unknown versions, extra fields, and
 malformed lineage. Decimal probabilities and prices use strings so canonical
 JSON bytes are stable across runtimes.
 
+This layer is a structural transport boundary. It validates shape, canonical
+hashes, exact lineage identities, and transport safety. It does not decide
+market coherence, risk approval, order-fill correctness, temporal business
+ordering, redaction policy, or realized PnL. Consumers must run their owning
+domain validator before treating a structurally valid object as actionable.
+
 ## Verify a signed envelope
 
 ```python

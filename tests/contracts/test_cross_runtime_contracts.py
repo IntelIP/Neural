@@ -129,6 +129,24 @@ def test_identifiers_reject_trailing_newlines(fixture_bundle: dict[str, object])
         validate_contract(intent)
 
 
+def test_transport_text_and_decimal_lengths_are_bounded(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["payload"]["rationale"] = "\ud800"
+    with pytest.raises(ContractEnvelopeError, match="lone surrogate"):
+        contract_payload_hash(intent)
+
+    snapshot = copy.deepcopy(contracts["MarketSnapshot"])
+    snapshot["payload"]["yesPrice"] = f"0.{('1' * 40)}"
+    snapshot["payloadHash"] = contract_payload_hash(snapshot)
+    with pytest.raises(ValueError):
+        validate_contract(snapshot)
+
+
 def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
     fixture_bundle: dict[str, object],
 ) -> None:
@@ -161,61 +179,7 @@ def test_validate_contract_preserves_contract_validation_error(
     assert failure.value.code == "semantic_invalid"
 
 
-def test_paper_fill_semantics_fail_closed(fixture_bundle: dict[str, object]) -> None:
-    contracts = fixture_bundle["contracts"]
-    assert isinstance(contracts, dict)
-    paper = copy.deepcopy(contracts["PaperOrder"])
-    paper["payload"]["countContracts"] = 1
-    paper["payloadHash"] = contract_payload_hash(paper)
-
-    with pytest.raises(ValueError, match="cannot exceed countContracts"):
-        validate_contract(paper)
-
-
-def test_cross_field_semantics_fail_closed(fixture_bundle: dict[str, object]) -> None:
-    contracts = fixture_bundle["contracts"]
-    assert isinstance(contracts, dict)
-
-    risk = copy.deepcopy(contracts["RiskDecision"])
-    risk["payload"]["decision"] = "reject"
-    risk["payloadHash"] = contract_payload_hash(risk)
-    with pytest.raises(ValueError, match="reject requires at least one violation"):
-        validate_contract(risk)
-
-    cancelled = copy.deepcopy(contracts["PaperOrder"])
-    cancelled["payload"]["status"] = "cancelled"
-    cancelled["payloadHash"] = contract_payload_hash(cancelled)
-    with pytest.raises(ValueError, match="cancelled cannot be completely filled"):
-        validate_contract(cancelled)
-
-    review = copy.deepcopy(contracts["PostTradeReview"])
-    review["payload"]["outcome"] = "unresolved"
-    review["payloadHash"] = contract_payload_hash(review)
-    with pytest.raises(ValueError, match="unresolved requires zero realized PnL"):
-        validate_contract(review)
-
-
-@pytest.mark.parametrize(
-    ("outcome", "realized_pnl"),
-    [("win", "-0.01"), ("loss", "0.01"), ("push", "0.01")],
-)
-def test_review_outcome_matches_realized_pnl(
-    fixture_bundle: dict[str, object],
-    outcome: str,
-    realized_pnl: str,
-) -> None:
-    contracts = fixture_bundle["contracts"]
-    assert isinstance(contracts, dict)
-    review = copy.deepcopy(contracts["PostTradeReview"])
-    review["payload"]["outcome"] = outcome
-    review["payload"]["realizedPnlDollars"] = realized_pnl
-    review["payloadHash"] = contract_payload_hash(review)
-
-    with pytest.raises(ValueError, match="realizedPnlDollars"):
-        validate_contract(review)
-
-
-def test_paper_order_hashes_bind_exact_risked_intent(
+def test_order_and_review_hashes_bind_exact_lineage(
     fixture_bundle: dict[str, object],
 ) -> None:
     contracts = fixture_bundle["contracts"]
@@ -227,53 +191,10 @@ def test_paper_order_hashes_bind_exact_risked_intent(
     with pytest.raises(ValueError, match="ExecutionIntent"):
         validate_contract(paper)
 
-
-def test_paper_order_requires_passing_risk_and_approved_terms(
-    fixture_bundle: dict[str, object],
-) -> None:
-    contracts = fixture_bundle["contracts"]
-    assert isinstance(contracts, dict)
-
-    rejected = copy.deepcopy(contracts["PaperOrder"])
-    embedded_risk = rejected["payload"]["riskDecision"]
-    embedded_risk["payload"]["decision"] = "reject"
-    embedded_risk["payload"]["violations"] = ["blocked"]
-    embedded_risk["payloadHash"] = contract_payload_hash(embedded_risk)
-    rejected["payload"]["riskDecisionPayloadHash"] = embedded_risk["payloadHash"]
-    rejected["lineageRefs"][1]["payloadHash"] = embedded_risk["payloadHash"]
-    rejected["payloadHash"] = contract_payload_hash(rejected)
-    with pytest.raises(ValueError, match="passing decision"):
-        validate_contract(rejected)
-
-    wrong_side = copy.deepcopy(contracts["PaperOrder"])
-    wrong_side["payload"]["side"] = "sell_no"
-    wrong_side["payloadHash"] = contract_payload_hash(wrong_side)
-    with pytest.raises(ValueError, match="does not match approved intent"):
-        validate_contract(wrong_side)
-
-
-def test_fill_limit_and_review_exposure_fail_closed(
-    fixture_bundle: dict[str, object],
-) -> None:
-    contracts = fixture_bundle["contracts"]
-    assert isinstance(contracts, dict)
-
-    paper = copy.deepcopy(contracts["PaperOrder"])
-    paper["payload"]["averageFillPrice"] = "0.99"
-    paper["payloadHash"] = contract_payload_hash(paper)
-    with pytest.raises(ValueError, match="violates order limit"):
-        validate_contract(paper)
-
     review = copy.deepcopy(contracts["PostTradeReview"])
     review["payload"]["paperOrderPayloadHash"] = "f" * 64
     review["payloadHash"] = contract_payload_hash(review)
     with pytest.raises(ValueError, match="PaperOrder"):
-        validate_contract(review)
-
-    review = copy.deepcopy(contracts["PostTradeReview"])
-    review["payload"]["realizedPnlDollars"] = "3"
-    review["payloadHash"] = contract_payload_hash(review)
-    with pytest.raises(ValueError, match="exceeds paper order exposure"):
         validate_contract(review)
 
 

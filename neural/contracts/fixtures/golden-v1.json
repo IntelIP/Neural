@@ -82,87 +82,18 @@
       ],
       "objectId": "paper-order-001",
       "payload": {
-        "approvedIntent": {
-          "createdAt": "2026-07-29T12:00:00Z",
-          "environment": "test",
-          "lineageRefs": [
-            {
-              "objectId": "market-snapshot-001",
-              "payloadHash": "8bb1bdfa5d1debf6c99566f5e27b189780cd7aa75694a78083b8b079dc8149ed",
-              "schemaName": "MarketSnapshot",
-              "schemaVersion": "1.0.0"
-            },
-            {
-              "objectId": "evidence-001",
-              "payloadHash": "293672517493344913c831d1e36dd781c5d638c6b4f95659de6cef8c7645a05e",
-              "schemaName": "ResearchEvidenceRef",
-              "schemaVersion": "1.0.0"
-            }
-          ],
-          "objectId": "execution-intent-001",
-          "payload": {
-            "evidenceObjectIds": [
-              "evidence-001"
-            ],
-            "limitPrice": "0.52",
-            "marketSnapshotObjectId": "market-snapshot-001",
-            "maxContracts": 2,
-            "rationale": "Deterministic fixture intent for cross-runtime validation.",
-            "side": "buy_yes",
-            "ticker": "KX-DEMO-YES"
-          },
-          "payloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-          "producer": {
-            "name": "neural-sdk",
-            "version": "0.4.0"
-          },
-          "redaction": "internal",
-          "schemaName": "ExecutionIntent",
-          "schemaVersion": "1.0.0",
-          "sourceRef": "fixture://nrcl-67/golden-v1"
-        },
         "approvedIntentPayloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
         "averageFillPrice": "0.51",
         "countContracts": 2,
         "filledContracts": 2,
         "intentObjectId": "execution-intent-001",
         "limitPrice": "0.52",
-        "riskDecision": {
-          "createdAt": "2026-07-29T12:00:00Z",
-          "environment": "test",
-          "lineageRefs": [
-            {
-              "objectId": "execution-intent-001",
-              "payloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-              "schemaName": "ExecutionIntent",
-              "schemaVersion": "1.0.0"
-            }
-          ],
-          "objectId": "risk-decision-001",
-          "payload": {
-            "checkedAt": "2026-07-29T12:01:00Z",
-            "decision": "pass",
-            "intentObjectId": "execution-intent-001",
-            "intentPayloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-            "policyVersion": "fixture-policy-v1",
-            "violations": []
-          },
-          "payloadHash": "173f9c9d58d6b8551ab7cb8d33a046c0caf89ffee25b9f739f80ac6e8fc0c728",
-          "producer": {
-            "name": "neural-sdk",
-            "version": "0.4.0"
-          },
-          "redaction": "internal",
-          "schemaName": "RiskDecision",
-          "schemaVersion": "1.0.0",
-          "sourceRef": "fixture://nrcl-67/golden-v1"
-        },
         "riskDecisionObjectId": "risk-decision-001",
         "riskDecisionPayloadHash": "173f9c9d58d6b8551ab7cb8d33a046c0caf89ffee25b9f739f80ac6e8fc0c728",
         "side": "buy_yes",
         "status": "filled"
       },
-      "payloadHash": "1f38e6d3d48cc69e0937543f03ef26f0f31b02182207a4aa8d4bf240bd978b56",
+      "payloadHash": "e72f266b73acfd5f539d11053df632a6721ff5a7ea4454b87995803128fcd5c2",
       "producer": {
         "name": "neural-sdk",
         "version": "0.4.0"
@@ -178,7 +109,7 @@
       "lineageRefs": [
         {
           "objectId": "paper-order-001",
-          "payloadHash": "1f38e6d3d48cc69e0937543f03ef26f0f31b02182207a4aa8d4bf240bd978b56",
+          "payloadHash": "e72f266b73acfd5f539d11053df632a6721ff5a7ea4454b87995803128fcd5c2",
           "schemaName": "PaperOrder",
           "schemaVersion": "1.0.0"
         }
@@ -189,121 +120,12 @@
           "Fixture preserves exact lineage and deterministic decimals."
         ],
         "outcome": "win",
-        "paperOrder": {
-          "createdAt": "2026-07-29T12:00:00Z",
-          "environment": "test",
-          "lineageRefs": [
-            {
-              "objectId": "execution-intent-001",
-              "payloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-              "schemaName": "ExecutionIntent",
-              "schemaVersion": "1.0.0"
-            },
-            {
-              "objectId": "risk-decision-001",
-              "payloadHash": "173f9c9d58d6b8551ab7cb8d33a046c0caf89ffee25b9f739f80ac6e8fc0c728",
-              "schemaName": "RiskDecision",
-              "schemaVersion": "1.0.0"
-            }
-          ],
-          "objectId": "paper-order-001",
-          "payload": {
-            "approvedIntent": {
-              "createdAt": "2026-07-29T12:00:00Z",
-              "environment": "test",
-              "lineageRefs": [
-                {
-                  "objectId": "market-snapshot-001",
-                  "payloadHash": "8bb1bdfa5d1debf6c99566f5e27b189780cd7aa75694a78083b8b079dc8149ed",
-                  "schemaName": "MarketSnapshot",
-                  "schemaVersion": "1.0.0"
-                },
-                {
-                  "objectId": "evidence-001",
-                  "payloadHash": "293672517493344913c831d1e36dd781c5d638c6b4f95659de6cef8c7645a05e",
-                  "schemaName": "ResearchEvidenceRef",
-                  "schemaVersion": "1.0.0"
-                }
-              ],
-              "objectId": "execution-intent-001",
-              "payload": {
-                "evidenceObjectIds": [
-                  "evidence-001"
-                ],
-                "limitPrice": "0.52",
-                "marketSnapshotObjectId": "market-snapshot-001",
-                "maxContracts": 2,
-                "rationale": "Deterministic fixture intent for cross-runtime validation.",
-                "side": "buy_yes",
-                "ticker": "KX-DEMO-YES"
-              },
-              "payloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-              "producer": {
-                "name": "neural-sdk",
-                "version": "0.4.0"
-              },
-              "redaction": "internal",
-              "schemaName": "ExecutionIntent",
-              "schemaVersion": "1.0.0",
-              "sourceRef": "fixture://nrcl-67/golden-v1"
-            },
-            "approvedIntentPayloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-            "averageFillPrice": "0.51",
-            "countContracts": 2,
-            "filledContracts": 2,
-            "intentObjectId": "execution-intent-001",
-            "limitPrice": "0.52",
-            "riskDecision": {
-              "createdAt": "2026-07-29T12:00:00Z",
-              "environment": "test",
-              "lineageRefs": [
-                {
-                  "objectId": "execution-intent-001",
-                  "payloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-                  "schemaName": "ExecutionIntent",
-                  "schemaVersion": "1.0.0"
-                }
-              ],
-              "objectId": "risk-decision-001",
-              "payload": {
-                "checkedAt": "2026-07-29T12:01:00Z",
-                "decision": "pass",
-                "intentObjectId": "execution-intent-001",
-                "intentPayloadHash": "84de412d0cc67bec2d300c551cce307353cd346c4d214c27b901b9e9cdbdfe99",
-                "policyVersion": "fixture-policy-v1",
-                "violations": []
-              },
-              "payloadHash": "173f9c9d58d6b8551ab7cb8d33a046c0caf89ffee25b9f739f80ac6e8fc0c728",
-              "producer": {
-                "name": "neural-sdk",
-                "version": "0.4.0"
-              },
-              "redaction": "internal",
-              "schemaName": "RiskDecision",
-              "schemaVersion": "1.0.0",
-              "sourceRef": "fixture://nrcl-67/golden-v1"
-            },
-            "riskDecisionObjectId": "risk-decision-001",
-            "riskDecisionPayloadHash": "173f9c9d58d6b8551ab7cb8d33a046c0caf89ffee25b9f739f80ac6e8fc0c728",
-            "side": "buy_yes",
-            "status": "filled"
-          },
-          "payloadHash": "1f38e6d3d48cc69e0937543f03ef26f0f31b02182207a4aa8d4bf240bd978b56",
-          "producer": {
-            "name": "neural-sdk",
-            "version": "0.4.0"
-          },
-          "redaction": "internal",
-          "schemaName": "PaperOrder",
-          "schemaVersion": "1.0.0",
-          "sourceRef": "fixture://nrcl-67/golden-v1"
-        },
         "paperOrderObjectId": "paper-order-001",
-        "paperOrderPayloadHash": "1f38e6d3d48cc69e0937543f03ef26f0f31b02182207a4aa8d4bf240bd978b56",
+        "paperOrderPayloadHash": "e72f266b73acfd5f539d11053df632a6721ff5a7ea4454b87995803128fcd5c2",
         "realizedPnlDollars": "0.98",
         "reviewedAt": "2026-07-29T13:00:00Z"
       },
-      "payloadHash": "8c4fc5b3c9735803a3970dd1c3505cc07b2c2a03ed18d95d311d10390409172d",
+      "payloadHash": "68316c4c067827858d820bd95a46352ca42aa8c4feaec5c9f0aa6d678b01c9ca",
       "producer": {
         "name": "neural-sdk",
         "version": "0.4.0"
