@@ -141,6 +141,31 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
         elif decision == "pass" and violations:
             details.append("payload.violations: pass requires no violations")
     elif name == "PaperOrder":
+        approved_intent = validate_contract(contract_payload["approvedIntent"])
+        risk_decision = validate_contract(contract_payload["riskDecision"])
+        approved_payload = approved_intent["payload"]
+        risk_payload = risk_decision["payload"]
+        if approved_intent["objectId"] != contract_payload["intentObjectId"]:
+            details.append("payload.intentObjectId: does not match approvedIntent")
+        if approved_intent["payloadHash"] != contract_payload["approvedIntentPayloadHash"]:
+            details.append("payload.approvedIntentPayloadHash: does not match approvedIntent")
+        if risk_decision["objectId"] != contract_payload["riskDecisionObjectId"]:
+            details.append("payload.riskDecisionObjectId: does not match riskDecision")
+        if risk_decision["payloadHash"] != contract_payload["riskDecisionPayloadHash"]:
+            details.append("payload.riskDecisionPayloadHash: does not match riskDecision")
+        if risk_payload["decision"] != "pass":
+            details.append("payload.riskDecision: paper orders require a passing decision")
+        if (
+            risk_payload["intentObjectId"] != approved_intent["objectId"]
+            or risk_payload["intentPayloadHash"] != approved_intent["payloadHash"]
+        ):
+            details.append("payload.riskDecision: does not approve the embedded intent")
+        if contract_payload["side"] != approved_payload["side"]:
+            details.append("payload.side: does not match approved intent")
+        if contract_payload["limitPrice"] != approved_payload["limitPrice"]:
+            details.append("payload.limitPrice: does not match approved intent")
+        if contract_payload["countContracts"] > approved_payload["maxContracts"]:
+            details.append("payload.countContracts: exceeds approved intent maximum")
         require_lineage(
             "ExecutionIntent",
             contract_payload["intentObjectId"],
@@ -168,8 +193,25 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
                 details.append("payload.status: cancelled cannot be completely filled")
             if (filled == 0) != (average is None):
                 details.append("payload.status: cancelled fill quantity and price disagree")
+        if average is not None and filled > 0:
+            average_decimal = Decimal(average)
+            limit_decimal = Decimal(contract_payload["limitPrice"])
+            is_buy = contract_payload["side"] in {"buy_yes", "buy_no"}
+            if (is_buy and average_decimal > limit_decimal) or (
+                not is_buy and average_decimal < limit_decimal
+            ):
+                details.append("payload.averageFillPrice: violates order limit")
     elif name == "PostTradeReview":
-        require_lineage("PaperOrder", contract_payload["paperOrderObjectId"])
+        paper_order = validate_contract(contract_payload["paperOrder"])
+        if paper_order["objectId"] != contract_payload["paperOrderObjectId"]:
+            details.append("payload.paperOrderObjectId: does not match paperOrder")
+        if paper_order["payloadHash"] != contract_payload["paperOrderPayloadHash"]:
+            details.append("payload.paperOrderPayloadHash: does not match paperOrder")
+        require_lineage(
+            "PaperOrder",
+            contract_payload["paperOrderObjectId"],
+            contract_payload["paperOrderPayloadHash"],
+        )
         outcome = contract_payload["outcome"]
         realized_pnl = Decimal(contract_payload["realizedPnlDollars"])
         if outcome == "win" and realized_pnl <= 0:
@@ -178,6 +220,8 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
             details.append("payload.realizedPnlDollars: loss requires negative realized PnL")
         elif outcome in {"push", "unresolved"} and realized_pnl != 0:
             details.append(f"payload.realizedPnlDollars: {outcome} requires zero realized PnL")
+        if abs(realized_pnl) > paper_order["payload"]["countContracts"]:
+            details.append("payload.realizedPnlDollars: exceeds paper order exposure")
     return details
 
 

@@ -1,6 +1,6 @@
 {
   "bundleVersion": "1.0.0",
-  "canonicalFixtureSha256": "bdee27837fda10333a8990684f3b29a3adc642880eb71e1a7fff992849a509be",
+  "canonicalFixtureSha256": "8d73ae9297fb277e09ea213474c584449c6443850fec313b0d7e607b8c7d0b8e",
   "contractNames": [
     "MarketSnapshot",
     "ResearchEvidenceRef",
@@ -10,8 +10,8 @@
     "PostTradeReview"
   ],
   "files": {
-    "fixtures/golden-v1.json": "f90370b710dda06661496ba0146bda5d458f78dd25abec80e6ef4547b55a3845",
-    "schemas/neural-contracts-v1.schema.json": "9407e46e057e8563c96a72f8bad4a8d0b1de392362660cb4882964c2231b8b6d"
+    "fixtures/golden-v1.json": "2ce615b7ad857c46378602ff2daf2c3a8cdc976053cfeefe3cf17c8bf2259dce",
+    "schemas/neural-contracts-v1.schema.json": "429dfc96dfcfa1ec4b748ecd2aed0ac8cae24a4e46e42916ebbe97c16ad36fc3"
   },
   "generator": "scripts/generate_contract_bundle.py"
 }

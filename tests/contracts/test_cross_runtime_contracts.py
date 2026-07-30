@@ -228,6 +228,55 @@ def test_paper_order_hashes_bind_exact_risked_intent(
         validate_contract(paper)
 
 
+def test_paper_order_requires_passing_risk_and_approved_terms(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    rejected = copy.deepcopy(contracts["PaperOrder"])
+    embedded_risk = rejected["payload"]["riskDecision"]
+    embedded_risk["payload"]["decision"] = "reject"
+    embedded_risk["payload"]["violations"] = ["blocked"]
+    embedded_risk["payloadHash"] = contract_payload_hash(embedded_risk)
+    rejected["payload"]["riskDecisionPayloadHash"] = embedded_risk["payloadHash"]
+    rejected["lineageRefs"][1]["payloadHash"] = embedded_risk["payloadHash"]
+    rejected["payloadHash"] = contract_payload_hash(rejected)
+    with pytest.raises(ValueError, match="passing decision"):
+        validate_contract(rejected)
+
+    wrong_side = copy.deepcopy(contracts["PaperOrder"])
+    wrong_side["payload"]["side"] = "sell_no"
+    wrong_side["payloadHash"] = contract_payload_hash(wrong_side)
+    with pytest.raises(ValueError, match="does not match approved intent"):
+        validate_contract(wrong_side)
+
+
+def test_fill_limit_and_review_exposure_fail_closed(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    paper = copy.deepcopy(contracts["PaperOrder"])
+    paper["payload"]["averageFillPrice"] = "0.99"
+    paper["payloadHash"] = contract_payload_hash(paper)
+    with pytest.raises(ValueError, match="violates order limit"):
+        validate_contract(paper)
+
+    review = copy.deepcopy(contracts["PostTradeReview"])
+    review["payload"]["paperOrderPayloadHash"] = "f" * 64
+    review["payloadHash"] = contract_payload_hash(review)
+    with pytest.raises(ValueError, match="PaperOrder"):
+        validate_contract(review)
+
+    review = copy.deepcopy(contracts["PostTradeReview"])
+    review["payload"]["realizedPnlDollars"] = "3"
+    review["payloadHash"] = contract_payload_hash(review)
+    with pytest.raises(ValueError, match="exceeds paper order exposure"):
+        validate_contract(review)
+
+
 def test_maximum_evidence_intent_has_lineage_capacity(
     fixture_bundle: dict[str, object],
 ) -> None:

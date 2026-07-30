@@ -117,6 +117,7 @@ def build_contracts() -> dict[str, dict[str, Any]]:
                 lineage=[_lineage(intent), _lineage(risk)],
             ),
             "payload": {
+                "approvedIntent": intent,
                 "approvedIntentPayloadHash": intent["payloadHash"],
                 "averageFillPrice": "0.51",
                 "countContracts": 2,
@@ -124,6 +125,7 @@ def build_contracts() -> dict[str, dict[str, Any]]:
                 "intentObjectId": intent["objectId"],
                 "limitPrice": "0.52",
                 "riskDecisionObjectId": risk["objectId"],
+                "riskDecision": risk,
                 "riskDecisionPayloadHash": risk["payloadHash"],
                 "side": "buy_yes",
                 "status": "filled",
@@ -136,7 +138,9 @@ def build_contracts() -> dict[str, dict[str, Any]]:
             "payload": {
                 "lessons": ["Fixture preserves exact lineage and deterministic decimals."],
                 "outcome": "win",
+                "paperOrder": paper,
                 "paperOrderObjectId": paper["objectId"],
+                "paperOrderPayloadHash": paper["payloadHash"],
                 "realizedPnlDollars": "0.98",
                 "reviewedAt": "2026-07-29T13:00:00Z",
             },
