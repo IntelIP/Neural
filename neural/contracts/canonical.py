@@ -81,6 +81,10 @@ def sign_envelope(
     if not hmac.compare_digest(str(contract.get("payloadHash", "")), expected_hash):
         raise ContractEnvelopeError("payload_hash_mismatch", "contract payloadHash is invalid")
     validated = validate_contract(contract)
+    issued = _timestamp(issued_at, field_name="issuedAt")
+    expires = _timestamp(expires_at, field_name="expiresAt")
+    if issued >= expires:
+        raise ContractEnvelopeError("lifetime_invalid", "issuedAt must precede expiresAt")
     envelope: dict[str, Any] = {
         "algorithm": "hmac-sha256-v1",
         "contract": validated,

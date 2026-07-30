@@ -102,6 +102,11 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
 
     lineage = payload["lineageRefs"]
     contract_payload = payload["payload"]
+    lineage_identities = [
+        (str(ref["schemaName"]), str(ref["objectId"])) for ref in lineage
+    ]
+    if len(lineage_identities) != len(set(lineage_identities)):
+        details.append("lineageRefs: duplicate schemaName and objectId")
 
     def require_lineage(
         schema_name: str,

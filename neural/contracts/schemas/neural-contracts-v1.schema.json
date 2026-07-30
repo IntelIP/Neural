@@ -26,14 +26,14 @@
         "objectId": {
           "maxLength": 128,
           "minLength": 1,
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "payload": {
           "type": "object"
         },
         "payloadHash": {
-          "pattern": "^[0-9a-f]{64}$",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "producer": {
@@ -155,11 +155,11 @@
         "objectId": {
           "maxLength": 128,
           "minLength": 1,
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "payloadHash": {
-          "pattern": "^[0-9a-f]{64}$",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "schemaName": {
@@ -375,7 +375,7 @@
           "type": "string"
         },
         "realizedPnlDollars": {
-          "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+          "pattern": "^-?[0-9]+(\\.[0-9]+)?(?![\\s\\S])",
           "type": "string"
         },
         "reviewedAt": {
@@ -393,7 +393,7 @@
       "type": "object"
     },
     "Probability": {
-      "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$",
+      "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)(?![\\s\\S])",
       "type": "string"
     },
     "Producer": {
@@ -454,7 +454,7 @@
           ]
         },
         "sha256": {
-          "pattern": "^[0-9a-f]{64}$",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "uri": {
@@ -510,7 +510,7 @@
           "type": "string"
         },
         "intentPayloadHash": {
-          "pattern": "^[0-9a-f]{64}$",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "policyVersion": {
@@ -589,11 +589,11 @@
         "nonce": {
           "maxLength": 128,
           "minLength": 8,
-          "pattern": "^[A-Za-z0-9._:-]+$",
+          "pattern": "^[A-Za-z0-9._:-]+(?![\\s\\S])",
           "type": "string"
         },
         "signature": {
-          "pattern": "^sha256=[0-9a-f]{64}$",
+          "pattern": "^sha256=[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         }
       },

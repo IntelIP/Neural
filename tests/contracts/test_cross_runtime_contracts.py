@@ -117,6 +117,17 @@ def test_lineage_ids_timestamps_and_uris_use_runtime_format_validation(
         validate_contract(evidence)
 
 
+def test_identifiers_reject_trailing_newlines(fixture_bundle: dict[str, object]) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["objectId"] += "\n"
+    intent["payloadHash"] = contract_payload_hash(intent)
+
+    with pytest.raises(ValueError):
+        validate_contract(intent)
+
+
 def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
     fixture_bundle: dict[str, object],
 ) -> None:
@@ -193,6 +204,19 @@ def test_maximum_evidence_intent_has_lineage_capacity(
     assert validate_contract(intent) == intent
 
 
+def test_duplicate_lineage_identity_fails_closed(fixture_bundle: dict[str, object]) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    duplicate = copy.deepcopy(intent["lineageRefs"][0])
+    duplicate["payloadHash"] = "f" * 64
+    intent["lineageRefs"].append(duplicate)
+    intent["payloadHash"] = contract_payload_hash(intent)
+
+    with pytest.raises(ValueError, match="duplicate schemaName and objectId"):
+        validate_contract(intent)
+
+
 def test_signed_fixture_accepts_once_then_rejects_replay(
     fixture_bundle: dict[str, object],
 ) -> None:
@@ -253,6 +277,22 @@ def test_empty_hmac_secrets_fail_closed(fixture_bundle: dict[str, object]) -> No
             nonce="nrcl-67-fixture-0002",
         )
     assert signing.value.code == "unknown_key"
+
+
+def test_signing_rejects_an_unusable_lifetime(fixture_bundle: dict[str, object]) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    with pytest.raises(ContractEnvelopeError) as failure:
+        sign_envelope(
+            contracts["ExecutionIntent"],
+            secret=FIXTURE_SECRET,
+            key_id="fixture-key-v1",
+            issued_at="2026-07-29T13:00:00Z",
+            expires_at="2026-07-29T13:00:00Z",
+            nonce="nrcl-67-fixture-0003",
+        )
+    assert failure.value.code == "lifetime_invalid"
 
 
 @pytest.mark.parametrize(
