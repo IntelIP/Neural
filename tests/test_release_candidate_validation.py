@@ -200,7 +200,24 @@ def test_installed_smoke_requires_deterministic_kernel_replay() -> None:
             "digest": EXPECTED_DEMO_REPLAY_DIGEST,
             "event_count": 4,
             "market_count": 2,
-            "snapshot": [],
+            "snapshot": [
+                {
+                    "market_id": "KX-DEMO-NO",
+                    "no_price": "0.42",
+                    "observed_at": "2026-07-29T12:01:00Z",
+                    "source": "kalshi-fixture",
+                    "volume": "9",
+                    "yes_price": "0.58",
+                },
+                {
+                    "market_id": "KX-DEMO-YES",
+                    "no_price": "0.48",
+                    "observed_at": "2026-07-29T12:01:00Z",
+                    "source": "kalshi-fixture",
+                    "volume": "14",
+                    "yes_price": "0.52",
+                },
+            ],
         }
     )
 
@@ -214,6 +231,15 @@ def test_installed_smoke_requires_deterministic_kernel_replay() -> None:
                 "digest": EXPECTED_DEMO_REPLAY_DIGEST,
                 "event_count": 3,
                 "market_count": 2,
+            }
+        )
+    with pytest.raises(ReleaseSmokeError, match="snapshot"):
+        validate_kernel_replay(
+            {
+                "digest": EXPECTED_DEMO_REPLAY_DIGEST,
+                "event_count": 4,
+                "market_count": 2,
+                "snapshot": [],
             }
         )
 

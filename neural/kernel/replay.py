@@ -42,10 +42,10 @@ def _timestamp(value: str) -> str:
 
 
 def _decimal_text(value: Decimal) -> str:
-    normalized = value.normalize()
-    if normalized == normalized.to_integral():
-        return f"{normalized:.0f}"
-    return format(normalized, "f")
+    if value.is_zero():
+        return "0"
+    text = format(value, "f")
+    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,10 +115,10 @@ class ReplayResult:
         }
 
 
-def _event_sort_key(event: ReplayEvent) -> tuple[str, str, str, str, str, str]:
+def _event_sort_key(event: ReplayEvent) -> tuple[datetime, str, str, str, str, str]:
     payload = event.as_dict()
     return (
-        payload["observed_at"],
+        datetime.fromisoformat(payload["observed_at"].replace("Z", "+00:00")),
         payload["source"],
         payload["market_id"],
         payload["yes_price"],

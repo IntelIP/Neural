@@ -8,6 +8,24 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 EXPECTED_DEMO_REPLAY_DIGEST = "569f87947428d4d093425134181b754ca974675aa7c74fc2cb73a8e193f5b4e6"
+EXPECTED_DEMO_SNAPSHOT = [
+    {
+        "market_id": "KX-DEMO-NO",
+        "no_price": "0.42",
+        "observed_at": "2026-07-29T12:01:00Z",
+        "source": "kalshi-fixture",
+        "volume": "9",
+        "yes_price": "0.58",
+    },
+    {
+        "market_id": "KX-DEMO-YES",
+        "no_price": "0.48",
+        "observed_at": "2026-07-29T12:01:00Z",
+        "source": "kalshi-fixture",
+        "volume": "14",
+        "yes_price": "0.52",
+    },
+]
 
 
 class ReleaseSmokeError(AssertionError):
@@ -44,6 +62,8 @@ def validate_kernel_replay(result: dict[str, object]) -> None:
         raise ReleaseSmokeError("kernel replay event count changed")
     if result.get("market_count") != 2:
         raise ReleaseSmokeError("kernel replay market count changed")
+    if result.get("snapshot") != EXPECTED_DEMO_SNAPSHOT:
+        raise ReleaseSmokeError("kernel replay snapshot changed")
 
 
 def main() -> int:

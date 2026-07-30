@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -31,6 +31,38 @@ def test_replay_snapshot_keeps_latest_market_observation() -> None:
 
     assert snapshot["KX-DEMO-YES"].yes_price == Decimal("0.52")
     assert snapshot["KX-DEMO-NO"].no_price == Decimal("0.42")
+
+
+def test_replay_orders_fractional_timestamps_chronologically() -> None:
+    result = replay(
+        [
+            {
+                "observed_at": "2026-07-29T12:00:00.100000Z",
+                "market_id": "KX-DEMO",
+                "yes_price": "0.6",
+                "no_price": "0.4",
+            },
+            {
+                "observed_at": "2026-07-29T12:00:00Z",
+                "market_id": "KX-DEMO",
+                "yes_price": "0.5",
+                "no_price": "0.5",
+            },
+        ]
+    )
+
+    assert result.snapshot[0].yes_price == Decimal("0.6")
+
+
+def test_replay_digest_is_independent_of_decimal_context() -> None:
+    expected = run_demo_replay()
+
+    with localcontext() as context:
+        context.prec = 1
+        actual = run_demo_replay()
+
+    assert actual.digest == expected.digest
+    assert actual.as_dict() == expected.as_dict()
 
 
 def test_replay_normalizes_timestamps_to_utc() -> None:
