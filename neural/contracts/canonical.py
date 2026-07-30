@@ -75,10 +75,10 @@ def sign_envelope(
     nonce: str,
 ) -> dict[str, Any]:
     """Build and sign one v1 transport envelope."""
-    validated = validate_contract(contract)
-    expected_hash = contract_payload_hash(validated)
-    if not hmac.compare_digest(str(validated["payloadHash"]), expected_hash):
+    expected_hash = contract_payload_hash(contract)
+    if not hmac.compare_digest(str(contract.get("payloadHash", "")), expected_hash):
         raise ContractEnvelopeError("payload_hash_mismatch", "contract payloadHash is invalid")
+    validated = validate_contract(contract)
     envelope: dict[str, Any] = {
         "algorithm": "hmac-sha256-v1",
         "contract": validated,
@@ -129,13 +129,17 @@ def verify_envelope(
     """Verify schema, hash, lifetime, signature, and nonce exactly once."""
     try:
         validated_envelope = validate_json_schema("SignedContractEnvelope", dict(envelope))
-        contract = validate_contract(validated_envelope["contract"])
     except ValueError as exc:
         raise ContractEnvelopeError("schema_invalid", str(exc)) from exc
 
-    expected_hash = contract_payload_hash(contract)
-    if not hmac.compare_digest(str(contract["payloadHash"]), expected_hash):
+    raw_contract = validated_envelope["contract"]
+    expected_hash = contract_payload_hash(raw_contract)
+    if not hmac.compare_digest(str(raw_contract["payloadHash"]), expected_hash):
         raise ContractEnvelopeError("payload_hash_mismatch", "contract payloadHash is invalid")
+    try:
+        contract = validate_contract(raw_contract)
+    except ValueError as exc:
+        raise ContractEnvelopeError("schema_invalid", str(exc)) from exc
 
     if now.tzinfo is None or now.utcoffset() is None:
         raise ContractEnvelopeError("timestamp_invalid", "now")

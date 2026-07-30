@@ -83,6 +83,35 @@ def test_malformed_lineage_fails_closed(fixture_bundle: dict[str, object]) -> No
         validate_contract(intent)
 
 
+def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    tampered = copy.deepcopy(contracts["ExecutionIntent"])
+    tampered["payload"]["rationale"] += "!"
+    with pytest.raises(ValueError, match="payloadHash"):
+        validate_contract(tampered)
+
+    wrong_lineage = copy.deepcopy(contracts["ExecutionIntent"])
+    wrong_lineage["lineageRefs"] = []
+    wrong_lineage["payloadHash"] = contract_payload_hash(wrong_lineage)
+    with pytest.raises(ValueError, match="MarketSnapshot"):
+        validate_contract(wrong_lineage)
+
+
+def test_paper_fill_semantics_fail_closed(fixture_bundle: dict[str, object]) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    paper = copy.deepcopy(contracts["PaperOrder"])
+    paper["payload"]["countContracts"] = 1
+    paper["payloadHash"] = contract_payload_hash(paper)
+
+    with pytest.raises(ValueError, match="cannot exceed countContracts"):
+        validate_contract(paper)
+
+
 def test_signed_fixture_accepts_once_then_rejects_replay(
     fixture_bundle: dict[str, object],
 ) -> None:

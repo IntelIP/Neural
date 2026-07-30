@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 from copy import deepcopy
 from functools import cache, lru_cache
@@ -74,11 +76,86 @@ def validate_json_schema(name: str, payload: Any) -> dict[str, Any]:
     return deepcopy(payload)
 
 
+def _payload_hash(payload: dict[str, Any]) -> str:
+    unsigned = dict(payload)
+    unsigned.pop("payloadHash", None)
+    serialized = json.dumps(
+        unsigned,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _semantic_details(payload: dict[str, Any]) -> list[str]:
+    details: list[str] = []
+    actual_hash = str(payload["payloadHash"])
+    if not hmac.compare_digest(actual_hash, _payload_hash(payload)):
+        details.append("payloadHash: does not match canonical contract bytes")
+
+    lineage = payload["lineageRefs"]
+    contract_payload = payload["payload"]
+
+    def require_lineage(
+        schema_name: str,
+        object_id: str,
+        payload_hash: str | None = None,
+    ) -> None:
+        matches = [
+            ref
+            for ref in lineage
+            if ref["schemaName"] == schema_name and ref["objectId"] == object_id
+        ]
+        if payload_hash is not None:
+            matches = [ref for ref in matches if ref["payloadHash"] == payload_hash]
+        if not matches:
+            details.append(f"lineageRefs: missing {schema_name} {object_id}")
+
+    name = payload["schemaName"]
+    if name == "ExecutionIntent":
+        require_lineage("MarketSnapshot", contract_payload["marketSnapshotObjectId"])
+        for evidence_id in contract_payload["evidenceObjectIds"]:
+            require_lineage("ResearchEvidenceRef", evidence_id)
+    elif name == "RiskDecision":
+        require_lineage(
+            "ExecutionIntent",
+            contract_payload["intentObjectId"],
+            contract_payload["intentPayloadHash"],
+        )
+    elif name == "PaperOrder":
+        require_lineage("ExecutionIntent", contract_payload["intentObjectId"])
+        require_lineage("RiskDecision", contract_payload["riskDecisionObjectId"])
+        requested = contract_payload["countContracts"]
+        filled = contract_payload["filledContracts"]
+        average = contract_payload["averageFillPrice"]
+        status = contract_payload["status"]
+        if filled > requested:
+            details.append("payload.filledContracts: cannot exceed countContracts")
+        if status == "filled" and (filled != requested or average is None):
+            details.append("payload.status: filled requires a complete priced fill")
+        elif status == "partially_filled" and (
+            not 0 < filled < requested or average is None
+        ):
+            details.append("payload.status: partially_filled requires a partial priced fill")
+        elif status in {"accepted", "rejected"} and (filled != 0 or average is not None):
+            details.append(f"payload.status: {status} requires zero unpriced fills")
+        elif status == "cancelled" and ((filled == 0) != (average is None)):
+            details.append("payload.status: cancelled fill quantity and price disagree")
+    elif name == "PostTradeReview":
+        require_lineage("PaperOrder", contract_payload["paperOrderObjectId"])
+    return details
+
+
 def _build_model(name: str) -> type[RootModel[dict[str, Any]]]:
     class GeneratedContractModel(RootModel[dict[str, Any]]):
         @model_validator(mode="after")
         def validate_authoritative_schema(self) -> Any:
             validate_json_schema(name, self.root)
+            details = _semantic_details(self.root)
+            if details:
+                raise ContractValidationError("semantic_invalid", details)
             return self
 
     GeneratedContractModel.__name__ = name
