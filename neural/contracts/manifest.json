@@ -1,0 +1,17 @@
+{
+  "bundleVersion": "1.0.0",
+  "canonicalFixtureSha256": "0faa40b643d11460df2f44bb01ceb483154530c0596c6f5ab39f4b71f40f0b7f",
+  "contractNames": [
+    "MarketSnapshot",
+    "ResearchEvidenceRef",
+    "ExecutionIntent",
+    "RiskDecision",
+    "PaperOrder",
+    "PostTradeReview"
+  ],
+  "files": {
+    "fixtures/golden-v1.json": "e93bd6c6bffe1309c3c45c9edc668b1bfe8850b16fa1d5fc9a792706fd2ea853",
+    "schemas/neural-contracts-v1.schema.json": "b006c2b3bf44fbe04c346cf0d1aff07c644ba87d6d3efa89f456b789002d45a1"
+  },
+  "generator": "scripts/generate_contract_bundle.py"
+}

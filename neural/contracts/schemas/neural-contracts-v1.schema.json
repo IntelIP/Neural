@@ -1,0 +1,666 @@
+{
+  "$defs": {
+    "BaseContract": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "local",
+            "test",
+            "staging",
+            "production"
+          ]
+        },
+        "lineageRefs": {
+          "items": {
+            "$ref": "#/$defs/LineageRef"
+          },
+          "maxItems": 33,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "objectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/Producer"
+        },
+        "redaction": {
+          "enum": [
+            "public",
+            "internal",
+            "restricted"
+          ]
+        },
+        "schemaName": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "sourceRef": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaName",
+        "schemaVersion",
+        "producer",
+        "createdAt",
+        "objectId",
+        "sourceRef",
+        "payloadHash",
+        "lineageRefs",
+        "environment",
+        "redaction",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "ExecutionIntent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/ExecutionIntentPayload"
+            },
+            "schemaName": {
+              "const": "ExecutionIntent"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionIntentPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "evidenceObjectIds": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "limitPrice": {
+          "$ref": "#/$defs/Probability"
+        },
+        "marketSnapshotObjectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "maxContracts": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "buy_yes",
+            "buy_no",
+            "sell_yes",
+            "sell_no"
+          ]
+        },
+        "ticker": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticker",
+        "marketSnapshotObjectId",
+        "evidenceObjectIds",
+        "side",
+        "limitPrice",
+        "maxContracts",
+        "rationale"
+      ],
+      "type": "object"
+    },
+    "LineageRef": {
+      "additionalProperties": false,
+      "properties": {
+        "objectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "payloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "schemaName": {
+          "enum": [
+            "MarketSnapshot",
+            "ResearchEvidenceRef",
+            "ExecutionIntent",
+            "RiskDecision",
+            "PaperOrder",
+            "PostTradeReview"
+          ]
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        }
+      },
+      "required": [
+        "schemaName",
+        "schemaVersion",
+        "objectId",
+        "payloadHash"
+      ],
+      "type": "object"
+    },
+    "MarketSnapshot": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/MarketSnapshotPayload"
+            },
+            "schemaName": {
+              "const": "MarketSnapshot"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "MarketSnapshotPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "marketId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "noPrice": {
+          "$ref": "#/$defs/Probability"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticker": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "yesPrice": {
+          "$ref": "#/$defs/Probability"
+        }
+      },
+      "required": [
+        "marketId",
+        "ticker",
+        "source",
+        "observedAt",
+        "yesPrice",
+        "noPrice"
+      ],
+      "type": "object"
+    },
+    "PaperOrder": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/PaperOrderPayload"
+            },
+            "schemaName": {
+              "const": "PaperOrder"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "PaperOrderPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "averageFillPrice": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Probability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approvedIntentPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "countContracts": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "filledContracts": {
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "intentObjectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "limitPrice": {
+          "$ref": "#/$defs/Probability"
+        },
+        "riskDecisionObjectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "riskDecisionPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "buy_yes",
+            "buy_no",
+            "sell_yes",
+            "sell_no"
+          ]
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "partially_filled",
+            "filled",
+            "rejected",
+            "cancelled"
+          ]
+        }
+      },
+      "required": [
+        "intentObjectId",
+        "approvedIntentPayloadHash",
+        "riskDecisionObjectId",
+        "riskDecisionPayloadHash",
+        "side",
+        "limitPrice",
+        "countContracts",
+        "filledContracts",
+        "averageFillPrice",
+        "status"
+      ],
+      "type": "object"
+    },
+    "PostTradeReview": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/PostTradeReviewPayload"
+            },
+            "schemaName": {
+              "const": "PostTradeReview"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "PostTradeReviewPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "lessons": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "outcome": {
+          "enum": [
+            "win",
+            "loss",
+            "push",
+            "unresolved"
+          ]
+        },
+        "paperOrderObjectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "paperOrderPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "realizedPnlDollars": {
+          "maxLength": 32,
+          "pattern": "^-?[0-9]+(\\.[0-9]+)?(?![\\s\\S])",
+          "type": "string"
+        },
+        "reviewedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "paperOrderObjectId",
+        "paperOrderPayloadHash",
+        "reviewedAt",
+        "outcome",
+        "realizedPnlDollars",
+        "lessons"
+      ],
+      "type": "object"
+    },
+    "Probability": {
+      "maxLength": 32,
+      "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)(?![\\s\\S])",
+      "type": "string"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "ResearchEvidenceRef": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/ResearchEvidenceRefPayload"
+            },
+            "schemaName": {
+              "const": "ResearchEvidenceRef"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ResearchEvidenceRefPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "capturedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "evidenceType": {
+          "enum": [
+            "market",
+            "event",
+            "orderbook",
+            "research",
+            "fixture"
+          ]
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "uri": {
+          "format": "uri",
+          "maxLength": 1000,
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "evidenceType",
+        "capturedAt",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "RiskDecision": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BaseContract"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/RiskDecisionPayload"
+            },
+            "schemaName": {
+              "const": "RiskDecision"
+            },
+            "schemaVersion": {
+              "const": "1.0.0"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "RiskDecisionPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "checkedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "pass",
+            "reject"
+          ]
+        },
+        "intentObjectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
+          "type": "string"
+        },
+        "intentPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
+        "policyVersion": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "violations": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "intentObjectId",
+        "intentPayloadHash",
+        "policyVersion",
+        "decision",
+        "violations",
+        "checkedAt"
+      ],
+      "type": "object"
+    },
+    "SignedContractEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "hmac-sha256-v1"
+        },
+        "contract": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MarketSnapshot"
+            },
+            {
+              "$ref": "#/$defs/ResearchEvidenceRef"
+            },
+            {
+              "$ref": "#/$defs/ExecutionIntent"
+            },
+            {
+              "$ref": "#/$defs/RiskDecision"
+            },
+            {
+              "$ref": "#/$defs/PaperOrder"
+            },
+            {
+              "$ref": "#/$defs/PostTradeReview"
+            }
+          ]
+        },
+        "envelopeSchemaName": {
+          "const": "SignedContractEnvelope"
+        },
+        "envelopeVersion": {
+          "const": "1.0.0"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "issuedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "keyId": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nonce": {
+          "maxLength": 128,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9._:-]+(?![\\s\\S])",
+          "type": "string"
+        },
+        "signature": {
+          "pattern": "^sha256=[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        }
+      },
+      "required": [
+        "envelopeSchemaName",
+        "envelopeVersion",
+        "algorithm",
+        "keyId",
+        "issuedAt",
+        "expiresAt",
+        "nonce",
+        "contract",
+        "signature"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:intelip:neural:contracts:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/MarketSnapshot"
+    },
+    {
+      "$ref": "#/$defs/ResearchEvidenceRef"
+    },
+    {
+      "$ref": "#/$defs/ExecutionIntent"
+    },
+    {
+      "$ref": "#/$defs/RiskDecision"
+    },
+    {
+      "$ref": "#/$defs/PaperOrder"
+    },
+    {
+      "$ref": "#/$defs/PostTradeReview"
+    }
+  ],
+  "title": "Neural cross-runtime contracts v1"
+}
