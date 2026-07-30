@@ -11,7 +11,7 @@
   ],
   "files": {
     "fixtures/golden-v1.json": "e93bd6c6bffe1309c3c45c9edc668b1bfe8850b16fa1d5fc9a792706fd2ea853",
-    "schemas/neural-contracts-v1.schema.json": "6b971e00893425c15419a0a2e13658eaffc8640a13d5a849edff353f54640dc5"
+    "schemas/neural-contracts-v1.schema.json": "b006c2b3bf44fbe04c346cf0d1aff07c644ba87d6d3efa89f456b789002d45a1"
   },
   "generator": "scripts/generate_contract_bundle.py"
 }

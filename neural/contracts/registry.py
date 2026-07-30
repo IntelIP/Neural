@@ -83,14 +83,18 @@ def validate_json_schema(name: str, payload: Any) -> dict[str, Any]:
 def _payload_hash(payload: dict[str, Any]) -> str:
     unsigned = dict(payload)
     unsigned.pop("payloadHash", None)
-    serialized = json.dumps(
-        unsigned,
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    )
-    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    try:
+        serialized = json.dumps(
+            unsigned,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        encoded = serialized.encode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError) as exc:
+        raise ContractValidationError("canonicalization_failed", [str(exc)]) from exc
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _semantic_details(payload: dict[str, Any]) -> list[str]:

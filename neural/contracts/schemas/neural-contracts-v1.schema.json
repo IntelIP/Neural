@@ -99,7 +99,9 @@
       "properties": {
         "evidenceObjectIds": {
           "items": {
+            "maxLength": 128,
             "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
             "type": "string"
           },
           "maxItems": 32,
@@ -111,7 +113,9 @@
           "$ref": "#/$defs/Probability"
         },
         "marketSnapshotObjectId": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "maxContracts": {
@@ -293,14 +297,18 @@
           "type": "integer"
         },
         "intentObjectId": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "limitPrice": {
           "$ref": "#/$defs/Probability"
         },
         "riskDecisionObjectId": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "riskDecisionPayloadHash": {
@@ -381,7 +389,9 @@
           ]
         },
         "paperOrderObjectId": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "paperOrderPayloadHash": {
@@ -523,7 +533,9 @@
           ]
         },
         "intentObjectId": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])",
           "type": "string"
         },
         "intentPayloadHash": {

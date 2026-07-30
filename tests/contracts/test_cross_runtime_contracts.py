@@ -147,6 +147,40 @@ def test_transport_text_and_decimal_lengths_are_bounded(
         validate_contract(snapshot)
 
 
+def test_registry_hash_rejects_lone_surrogates_as_contract_error(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["payload"]["rationale"] = "\ud800"
+
+    with pytest.raises(ContractValidationError) as failure:
+        validate_contract(intent)
+    assert failure.value.code == "canonicalization_failed"
+
+
+def test_payload_object_id_references_use_bounded_identifier_shape(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["payload"]["evidenceObjectIds"][0] = "x" * 129
+    intent["payloadHash"] = contract_payload_hash(intent)
+    with pytest.raises(ContractValidationError) as oversized:
+        validate_contract(intent)
+    assert oversized.value.code == "schema_invalid"
+
+    risk = copy.deepcopy(contracts["RiskDecision"])
+    risk["payload"]["intentObjectId"] = "contains spaces"
+    risk["payloadHash"] = contract_payload_hash(risk)
+    with pytest.raises(ContractValidationError) as malformed:
+        validate_contract(risk)
+    assert malformed.value.code == "schema_invalid"
+
+
 def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
     fixture_bundle: dict[str, object],
 ) -> None:
