@@ -16,6 +16,7 @@ _OPTIONAL_SUBMODULES = {
     "data_collection",
     "deployment",
     "exchanges",
+    "kernel",
     "trading",
 }
 
@@ -72,7 +73,6 @@ def __dir__() -> list[str]:
     return sorted(set(globals()) | _OPTIONAL_SUBMODULES)
 
 
-
 __all__ = [
     "__version__",
     "analysis",
@@ -80,7 +80,7 @@ __all__ = [
     "data_collection",
     "deployment",
     "exchanges",
+    "kernel",
     "trading",
     "_warn_experimental",
 ]
-

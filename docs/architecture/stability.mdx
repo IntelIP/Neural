@@ -1,0 +1,72 @@
+---
+title: Stable Kernel and Compatibility
+description: Neural's supported kernel surface, experimental modules, and deprecation policy
+---
+
+Neural is the deterministic Python kernel beneath Vaticor. The stable base
+does not authorize provider calls, live orders, deployment, or model-driven
+side effects.
+
+## Stable surface
+
+Import stable capabilities from `neural.kernel`:
+
+```python
+from neural.kernel import NormalizedMarket, ReplayEvent, replay
+```
+
+The stable surface contains:
+
+- normalized market, quote, order, position, capability, and policy types;
+- dependency-free deterministic replay with a canonical SHA-256 digest;
+- `neural doctor`, `neural capabilities`, and `neural replay demo`.
+
+Run the installed-wheel demo without credentials or network access:
+
+```bash
+neural --json replay demo
+```
+
+The result contains a digest, event count, market count, and final snapshot.
+The same fixture must produce the same result regardless of input order.
+
+## Capability matrix
+
+`neural --json capabilities` is the machine-readable source for the current
+matrix.
+
+| Capability | Status | Install path | Compatibility |
+| --- | --- | --- | --- |
+| Kernel normalization | Stable | base wheel | Public `neural.kernel` contract |
+| Kernel replay | Stable | base wheel | Deterministic output and digest |
+| CLI diagnostics | Stable | base wheel | JSON envelope retained |
+| Kalshi auth and collection | Experimental | `neural-sdk[trading]` | May change before 1.0 |
+| Paper and venue adapters | Experimental | `neural-sdk[trading]` | Paper-first; no live authority |
+| Strategy and backtesting | Experimental | `neural-sdk[analysis]` | May change before 1.0 |
+| Sentiment | Deprecated | `neural-sdk[sentiment]` | Compatibility only |
+| Generic deployment | Deprecated | `neural-sdk[deployment]` | Move runtime ownership to Vaticor |
+| FIX experiments | Deprecated | `neural-sdk[fix]` | Compatibility only |
+
+Existing imports remain available during the `0.4.x` compatibility window.
+New code should use `neural.kernel` for stable contracts.
+
+## Compatibility policy
+
+- Stable symbols retain compatible behavior within a minor release line.
+- Experimental symbols can change before `1.0`; changes require release notes.
+- Deprecated symbols remain through at least one later minor release and name
+  their replacement before removal.
+- Removal never silently enables a provider, credential, deployment, or live
+  execution path.
+- Model output remains untrusted. Schema or replay success cannot authorize an
+  external side effect.
+- Exact wheel compatibility requires the Neural commit, wheel digest, Python
+  version, and validator result. Local source-path imports are insufficient.
+
+## Legacy import path
+
+Existing `neural.exchanges`, `neural.trading`, `neural.analysis`,
+`neural.data_collection`, and `neural.deployment` imports are preserved for
+compatibility. Install the matching extra before using those surfaces. Moving
+to `neural.kernel` removes provider and optional-stack coupling from portable
+contract and replay code.

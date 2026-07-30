@@ -4,13 +4,16 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/neural-sdk.svg)](https://pypi.org/project/neural-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Professional-grade SDK for algorithmic trading on prediction markets, built as the public surface of the Neural stack.
+Deterministic prediction-market kernel for portable contracts, normalization,
+replay, and paper-first integration beneath Vaticor.
 
 [Documentation](https://github.com/IntelIP/Neural/tree/main/docs) | [Examples](./examples) | [Contributing](./CONTRIBUTING.md)
 
-## Overview
+## Stable Kernel
 
-Neural SDK is the public Python control surface for market access, paper trading, provider discovery, and the CLI bridge consumed by the Neural TUI.
+The dependency-free stable surface lives at `neural.kernel`. Provider access,
+strategy analysis, deployment, sentiment, and FIX helpers remain experimental
+or deprecated compatibility modules.
 
 ## Install
 
@@ -28,6 +31,16 @@ pip install neural-sdk
 pip install "neural-sdk[trading]"
 ```
 
+Verify the stable installed surface without credentials or network access:
+
+```bash
+neural --json capabilities
+neural --json replay demo
+```
+
+See [Stable Kernel and Compatibility](./docs/architecture/stability.mdx) for
+the capability matrix, extras, and deprecation policy.
+
 ## CLI Bridge
 
 The base install ships a `neural` CLI intended to be the stable machine-readable bridge for the TypeScript Neural TUI.
@@ -41,6 +54,7 @@ neural --json providers list
 Current bridge commands:
 - `doctor`
 - `capabilities`
+- `replay demo`
 - `providers list`
 - `markets list`
 - `quote`

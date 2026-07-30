@@ -1,16 +1,19 @@
 ---
 title: 'Neural SDK'
-description: 'Build, test, and operate prediction-market systems with one Python SDK.'
+description: 'Use a deterministic prediction-market kernel beneath Vaticor.'
 ---
 
-Neural SDK is the public Python control surface for market data, strategy analysis,
-paper trading, provider discovery, and automation.
+Neural SDK supplies portable normalization, deterministic replay, and
+paper-first compatibility primitives beneath the Vaticor product.
 
 ## Choose your path
 
 <Cards>
   <Card title="Start with the architecture" href="/docs/architecture/start-here">
     Map data collection, analysis, and execution before writing code.
+  </Card>
+  <Card title="Inspect the stable kernel" href="/docs/architecture/stability">
+    Review supported imports, experimental extras, and deprecation policy.
   </Card>
   <Card title="Install the SDK" href="/docs/getting-started">
     Configure a local environment and run the first authenticated checks.
@@ -21,6 +24,6 @@ paper trading, provider discovery, and automation.
 </Cards>
 
 <Callout type="warn" title="Trading risk">
-  Neural is beta software. Prediction-market trading can lose money. Validate
-  strategies with deterministic tests and paper execution before using live funds.
+  Neural is beta software. Stable kernel output cannot authorize provider
+  calls, deployment, or live execution.
 </Callout>

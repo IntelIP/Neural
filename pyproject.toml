@@ -76,6 +76,10 @@ analysis = [
 trading = [
     "kalshi-python>=2.1.4,<3",
 ]
+fix = [
+    "simplefix>=1.0.17",
+    "cryptography>=41.0.0",
+]
 sentiment = [
     "textblob>=0.17.1",
     "vaderSentiment>=3.3.2",

@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from scripts.release_candidate_smoke import ReleaseSmokeError, validate_install
+from scripts.release_candidate_smoke import (
+    EXPECTED_DEMO_REPLAY_DIGEST,
+    ReleaseSmokeError,
+    validate_install,
+    validate_kernel_replay,
+)
 from scripts.validate_release_candidate import (
     ReleaseCandidateError,
     project_version,
@@ -186,6 +191,56 @@ def test_installed_smoke_requires_version_agreement_and_installed_path() -> None
             "0.4.2",
             "0.4.2",
             Path("/workspace/neural/__init__.py"),
+        )
+
+
+def test_installed_smoke_requires_deterministic_kernel_replay() -> None:
+    validate_kernel_replay(
+        {
+            "digest": EXPECTED_DEMO_REPLAY_DIGEST,
+            "event_count": 4,
+            "market_count": 2,
+            "snapshot": [
+                {
+                    "market_id": "KX-DEMO-NO",
+                    "no_price": "0.42",
+                    "observed_at": "2026-07-29T12:01:00Z",
+                    "source": "kalshi-fixture",
+                    "volume": "9",
+                    "yes_price": "0.58",
+                },
+                {
+                    "market_id": "KX-DEMO-YES",
+                    "no_price": "0.48",
+                    "observed_at": "2026-07-29T12:01:00Z",
+                    "source": "kalshi-fixture",
+                    "volume": "14",
+                    "yes_price": "0.52",
+                },
+            ],
+        }
+    )
+
+    with pytest.raises(ReleaseSmokeError, match="digest"):
+        validate_kernel_replay({"digest": "", "event_count": 4, "market_count": 2})
+    with pytest.raises(ReleaseSmokeError, match="digest changed"):
+        validate_kernel_replay({"digest": "a" * 64, "event_count": 4, "market_count": 2})
+    with pytest.raises(ReleaseSmokeError, match="event count"):
+        validate_kernel_replay(
+            {
+                "digest": EXPECTED_DEMO_REPLAY_DIGEST,
+                "event_count": 3,
+                "market_count": 2,
+            }
+        )
+    with pytest.raises(ReleaseSmokeError, match="snapshot"):
+        validate_kernel_replay(
+            {
+                "digest": EXPECTED_DEMO_REPLAY_DIGEST,
+                "event_count": 4,
+                "market_count": 2,
+                "snapshot": [],
+            }
         )
 
 

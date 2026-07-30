@@ -19,6 +19,7 @@ LOGGER = logging.getLogger(__name__)
 CLI_COMMANDS = [
     "doctor",
     "capabilities",
+    "replay demo",
     "providers list",
     "markets list",
     "quote",
@@ -68,9 +69,18 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     capabilities_parser.set_defaults(handler=_handle_capabilities, formatter=_format_capabilities)
 
+    replay_parser = subparsers.add_parser("replay", help="Run deterministic Neural kernel replays")
+    replay_subparsers = replay_parser.add_subparsers(dest="replay_command")
+    replay_demo_parser = replay_subparsers.add_parser(
+        "demo", help="Run the dependency-free deterministic fixture"
+    )
+    replay_demo_parser.set_defaults(handler=_handle_replay_demo)
+
     providers_parser = subparsers.add_parser("providers", help="Inspect deployment providers")
     providers_subparsers = providers_parser.add_subparsers(dest="providers_command")
-    providers_list_parser = providers_subparsers.add_parser("list", help="List discovered providers")
+    providers_list_parser = providers_subparsers.add_parser(
+        "list", help="List discovered providers"
+    )
     providers_list_parser.set_defaults(handler=_handle_providers_list, formatter=_format_providers)
 
     markets_parser = subparsers.add_parser("markets", help="Query Neural market data")
@@ -102,7 +112,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     deployments_parser = subparsers.add_parser("deployments", help="Inspect runtime deployments")
     deployments_parser.add_argument("--provider", default=os.getenv("NEURAL_DEPLOYMENT_PROVIDER"))
-    deployments_parser.add_argument("--workspace-name", default=os.getenv("NEURAL_DAYTONA_WORKSPACE"))
+    deployments_parser.add_argument(
+        "--workspace-name", default=os.getenv("NEURAL_DAYTONA_WORKSPACE")
+    )
     deployments_parser.add_argument("--runner-image", default=os.getenv("NEURAL_DAYTONA_IMAGE"))
     deployments_parser.add_argument("--project-name", default="neural")
     deployments_parser.add_argument("--environment", default="paper")
@@ -110,15 +122,21 @@ def _build_parser() -> argparse.ArgumentParser:
     deployments_subparsers = deployments_parser.add_subparsers(dest="deployments_command")
 
     deployments_list_parser = deployments_subparsers.add_parser("list", help="List deployments")
-    deployments_list_parser.set_defaults(handler=_handle_deployments_list, formatter=_format_deployments)
+    deployments_list_parser.set_defaults(
+        handler=_handle_deployments_list, formatter=_format_deployments
+    )
 
-    deployments_status_parser = deployments_subparsers.add_parser("status", help="Get deployment status")
+    deployments_status_parser = deployments_subparsers.add_parser(
+        "status", help="Get deployment status"
+    )
     deployments_status_parser.add_argument("deployment_id")
     deployments_status_parser.set_defaults(
         handler=_handle_deployments_status, formatter=_format_deployment_status
     )
 
-    deployments_logs_parser = deployments_subparsers.add_parser("logs", help="Fetch deployment logs")
+    deployments_logs_parser = deployments_subparsers.add_parser(
+        "logs", help="Fetch deployment logs"
+    )
     deployments_logs_parser.add_argument("deployment_id")
     deployments_logs_parser.add_argument("--tail", type=int, default=50)
     deployments_logs_parser.set_defaults(
@@ -166,8 +184,15 @@ def _handle_doctor(_: argparse.Namespace) -> dict[str, Any]:
 
 
 def _handle_capabilities(_: argparse.Namespace) -> dict[str, Any]:
+    from neural.kernel import capability_matrix
+
     providers = _safe_list_providers()
     return {
+        "kernel": {
+            "stable": True,
+            "dependency_free": True,
+            "capabilities": capability_matrix(),
+        },
         "cli": {
             "commands": CLI_COMMANDS,
             "json_envelope": {
@@ -191,6 +216,12 @@ def _handle_capabilities(_: argparse.Namespace) -> dict[str, Any]:
             "deployment_controls": ["list", "status", "logs", "stop"],
         },
     }
+
+
+def _handle_replay_demo(_: argparse.Namespace) -> dict[str, Any]:
+    from neural.kernel import run_demo_replay
+
+    return {"replay": run_demo_replay().as_dict()}
 
 
 def _handle_providers_list(_: argparse.Namespace) -> dict[str, Any]:
@@ -315,7 +346,11 @@ def _handle_deployments_logs(args: argparse.Namespace) -> dict[str, Any]:
 def _handle_deployments_stop(args: argparse.Namespace) -> dict[str, Any]:
     provider_name, provider = _build_provider(args)
     stopped = asyncio.run(provider.stop(args.deployment_id))
-    return {"provider": provider_name, "deployment_id": args.deployment_id, "stopped": bool(stopped)}
+    return {
+        "provider": provider_name,
+        "deployment_id": args.deployment_id,
+        "stopped": bool(stopped),
+    }
 
 
 def _build_provider(args: argparse.Namespace) -> tuple[str, Any]:
