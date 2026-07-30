@@ -278,6 +278,10 @@
             }
           ]
         },
+        "approvedIntentPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "type": "string"
+        },
         "countContracts": {
           "maximum": 5,
           "minimum": 1,
@@ -297,6 +301,10 @@
         },
         "riskDecisionObjectId": {
           "minLength": 1,
+          "type": "string"
+        },
+        "riskDecisionPayloadHash": {
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
           "type": "string"
         },
         "side": {
@@ -319,7 +327,9 @@
       },
       "required": [
         "intentObjectId",
+        "approvedIntentPayloadHash",
         "riskDecisionObjectId",
+        "riskDecisionPayloadHash",
         "side",
         "limitPrice",
         "countContracts",

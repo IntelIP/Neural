@@ -12,6 +12,7 @@ import pytest
 from neural.contracts import (
     CONTRACT_NAMES,
     ContractEnvelopeError,
+    ContractValidationError,
     InMemoryNonceReplayGuard,
     contract_model,
     contract_payload_hash,
@@ -146,6 +147,20 @@ def test_semantically_wrong_lineage_and_payload_hash_fail_closed(
         validate_contract(wrong_lineage)
 
 
+def test_validate_contract_preserves_contract_validation_error(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    intent = copy.deepcopy(contracts["ExecutionIntent"])
+    intent["lineageRefs"] = []
+    intent["payloadHash"] = contract_payload_hash(intent)
+
+    with pytest.raises(ContractValidationError) as failure:
+        validate_contract(intent)
+    assert failure.value.code == "semantic_invalid"
+
+
 def test_paper_fill_semantics_fail_closed(fixture_bundle: dict[str, object]) -> None:
     contracts = fixture_bundle["contracts"]
     assert isinstance(contracts, dict)
@@ -178,6 +193,39 @@ def test_cross_field_semantics_fail_closed(fixture_bundle: dict[str, object]) ->
     review["payloadHash"] = contract_payload_hash(review)
     with pytest.raises(ValueError, match="unresolved requires zero realized PnL"):
         validate_contract(review)
+
+
+@pytest.mark.parametrize(
+    ("outcome", "realized_pnl"),
+    [("win", "-0.01"), ("loss", "0.01"), ("push", "0.01")],
+)
+def test_review_outcome_matches_realized_pnl(
+    fixture_bundle: dict[str, object],
+    outcome: str,
+    realized_pnl: str,
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    review = copy.deepcopy(contracts["PostTradeReview"])
+    review["payload"]["outcome"] = outcome
+    review["payload"]["realizedPnlDollars"] = realized_pnl
+    review["payloadHash"] = contract_payload_hash(review)
+
+    with pytest.raises(ValueError, match="realizedPnlDollars"):
+        validate_contract(review)
+
+
+def test_paper_order_hashes_bind_exact_risked_intent(
+    fixture_bundle: dict[str, object],
+) -> None:
+    contracts = fixture_bundle["contracts"]
+    assert isinstance(contracts, dict)
+    paper = copy.deepcopy(contracts["PaperOrder"])
+    paper["payload"]["approvedIntentPayloadHash"] = "f" * 64
+    paper["payloadHash"] = contract_payload_hash(paper)
+
+    with pytest.raises(ValueError, match="ExecutionIntent"):
+        validate_contract(paper)
 
 
 def test_maximum_evidence_intent_has_lineage_capacity(

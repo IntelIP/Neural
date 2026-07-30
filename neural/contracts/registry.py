@@ -141,8 +141,16 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
         elif decision == "pass" and violations:
             details.append("payload.violations: pass requires no violations")
     elif name == "PaperOrder":
-        require_lineage("ExecutionIntent", contract_payload["intentObjectId"])
-        require_lineage("RiskDecision", contract_payload["riskDecisionObjectId"])
+        require_lineage(
+            "ExecutionIntent",
+            contract_payload["intentObjectId"],
+            contract_payload["approvedIntentPayloadHash"],
+        )
+        require_lineage(
+            "RiskDecision",
+            contract_payload["riskDecisionObjectId"],
+            contract_payload["riskDecisionPayloadHash"],
+        )
         requested = contract_payload["countContracts"]
         filled = contract_payload["filledContracts"]
         average = contract_payload["averageFillPrice"]
@@ -162,11 +170,14 @@ def _semantic_details(payload: dict[str, Any]) -> list[str]:
                 details.append("payload.status: cancelled fill quantity and price disagree")
     elif name == "PostTradeReview":
         require_lineage("PaperOrder", contract_payload["paperOrderObjectId"])
-        if (
-            contract_payload["outcome"] == "unresolved"
-            and Decimal(contract_payload["realizedPnlDollars"]) != 0
-        ):
-            details.append("payload.realizedPnlDollars: unresolved requires zero realized PnL")
+        outcome = contract_payload["outcome"]
+        realized_pnl = Decimal(contract_payload["realizedPnlDollars"])
+        if outcome == "win" and realized_pnl <= 0:
+            details.append("payload.realizedPnlDollars: win requires positive realized PnL")
+        elif outcome == "loss" and realized_pnl >= 0:
+            details.append("payload.realizedPnlDollars: loss requires negative realized PnL")
+        elif outcome in {"push", "unresolved"} and realized_pnl != 0:
+            details.append(f"payload.realizedPnlDollars: {outcome} requires zero realized PnL")
     return details
 
 
@@ -226,5 +237,9 @@ def validate_contract(payload: Any) -> dict[str, Any]:
             "unsupported_version",
             [f"{name} version {version!r}; expected {CONTRACT_VERSION!r}"],
         )
+    validated = validate_json_schema(str(name), payload)
+    details = _semantic_details(validated)
+    if details:
+        raise ContractValidationError("semantic_invalid", details)
     model = contract_model(str(name))
-    return model.model_validate(payload).root
+    return model.model_validate(validated).root
