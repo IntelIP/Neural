@@ -61,7 +61,9 @@ Nothing connects until `run` executes.
 - Recovery closes the old connection and subscribes again with newly signed
   headers. Deltas cannot restore readiness; a replacement snapshot must arrive.
   REST snapshots are not merged into a WebSocket sequence.
-- Receive timeout or disconnection also invalidates. Recovery has a total
+- Receive timeout or disconnection also invalidates. The disconnected reset is
+  recorded and delivered before socket teardown can yield; consumers must not
+  retain the last usable book while waiting for transport closure. Recovery has a total
   reconnect budget, not an unlimited counter that resets after each snapshot.
   Backoff starts at 250 ms and caps at 4 seconds. Exhaustion raises
   `RecoveryRequired`. Authentication/handshake and server subscription errors

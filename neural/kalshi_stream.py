@@ -10,6 +10,7 @@ import json
 import math
 import os
 from collections.abc import Callable, Iterator, Mapping
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, localcontext
@@ -340,10 +341,20 @@ class KalshiBookStream:
         try:
             for attempt in range(self._max_reconnects + 1):
                 emit("reset", reason="connecting")
+                disconnected = False
+
+                def disconnect() -> None:
+                    nonlocal disconnected
+                    if not disconnected:
+                        disconnected = True
+                        emit("reset", reason="disconnected")
+
                 # Fresh authentication for every connection; never persisted.
                 headers = dict(self._signer("GET", WS_PATH))
                 try:
-                    async with _connect(self._url, headers) as socket:
+                    async with _connect(self._url, headers) as socket, AsyncExitStack() as cleanup:
+                        # Notify consumers before transport teardown can yield.
+                        cleanup.callback(disconnect)
                         acknowledged_sid = None
                         await socket.send(
                             json.dumps(
@@ -392,7 +403,7 @@ class KalshiBookStream:
                     if attempt == self._max_reconnects:
                         raise RecoveryRequired("stream recovery budget exhausted") from exc
                 finally:
-                    emit("reset", reason="disconnected")
+                    disconnect()
                 await asyncio.sleep(min(0.25 * 2**attempt, 4))
         finally:
             self.book.reset()

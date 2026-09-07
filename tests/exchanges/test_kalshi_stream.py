@@ -108,6 +108,38 @@ def test_sequence_and_shape_fail_closed(frame):
     assert book.latest is None
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["timeout", "disconnect", "cancel", "gap"])
+async def test_invalidate_before_socket_teardown(monkeypatch, tmp_path, failure):
+    failures = {
+        "timeout": asyncio.TimeoutError(),
+        "disconnect": OSError("connection lost"),
+        "cancel": asyncio.CancelledError(),
+        "gap": delta(5),
+    }
+    events = []
+    path = tmp_path / "teardown.jsonl"
+    stream = KalshiBookStream(TICKER, signer_headers=lambda *args: {}, max_reconnects=0)
+
+    class SlowCloseSocket(Socket):
+        async def __aexit__(self, *args):
+            # This is the start of transport teardown, before any close await.
+            assert stream.book.latest is None
+            assert events[-1].kind == "reset"
+            assert events[-1].reason == "disconnected"
+            assert list(replay_book_recording(path)) == events
+            await super().__aexit__(*args)
+
+    socket = SlowCloseSocket([snapshot(), failures[failure]])
+    monkeypatch.setattr(streaming, "_connect", lambda *args: socket)
+    error = asyncio.CancelledError if failure == "cancel" else RecoveryRequired
+    with BookRecording(path) as recording:
+        with pytest.raises(error):
+            await stream.run(events.append, recording=recording)
+    assert socket.closed
+    assert [e.kind for e in events] == ["reset", "book", "reset"]
+
+
 class Socket:
     def __init__(self, frames):
         self.frames = iter(frames)
