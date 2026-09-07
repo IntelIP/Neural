@@ -1,0 +1,91 @@
+---
+title: Current Kalshi decimal data
+description: Read standard event markets without losing price or quantity precision
+---
+
+# Kalshi data v1 — NRCL-87
+
+`neural.kalshi.KalshiDataClient` is an additive, read-only interface for current
+Kalshi REST data. It uses explicit endpoint mappings rather than guessing SDK
+method names. It does not modify the legacy `TradingClient`, float-valued
+exchange types, stable kernel replay, or cross-runtime v1 bundle.
+
+## Developer interface
+
+The following example makes public network requests when you run it:
+
+```python
+from neural.kalshi import KalshiDataClient, snapshot_json
+
+with KalshiDataClient(timeout=10, max_retries=2) as client:
+    for market in client.iter_markets(status="open", page_size=10, max_pages=2):
+        print(snapshot_json(market))
+        break  # Explicitly select one result, rather than claim complete discovery.
+```
+
+`get_market(ticker)` returns a decimal-valued market snapshot.
+`get_orderbook(ticker, depth=0)` returns both bid sides; `book.asks("yes")`
+and `book.asks("no")` derive ascending asks from opposite bids while retaining
+fractional size. There is no constant-price or unlimited-liquidity fallback.
+
+Default sessions do not load `.env`, netrc, exchange keys, or proxy environment
+settings. Book endpoint documentation requires authentication, while public
+quickstarts describe unauthenticated market data. This client does not assume
+account access: a 401 is surfaced without retry. Callers with authorized read
+access may pass `signer_headers=existing_signer.headers`; the signer receives
+`GET` and the query-free `/trade-api/v2/...` path. No key discovery is performed.
+Injected sessions are caller-owned and must be configured securely by the caller.
+
+## Exact values and data boundaries
+
+- Dollar prices are `Decimal`, bounded to [0, 1] and four fractional digits.
+- Quantities/volume retain two fractional digits and never pass through floats.
+- Current fields take precedence; legacy-only cent fields fail explicitly.
+- Missing optional quotes remain `None`; zero is retained as zero.
+- `price_ranges` is preserved dynamically. Missing grids are not replaced with
+  guessed ticks. Empty grids remain empty, not permission to submit orders.
+- Native ticker/event identity, status, shard index and update time are retained.
+- Discovery defaults to all categories and excludes combos with `mve_filter`.
+  A scalar or combo response fails rather than enter the standard-binary core.
+- Book depth is retained in `requested_depth`; a limited book is not a full book.
+
+Snapshots are frozen data containers. Use `parse_market` and `parse_orderbook`
+for untrusted wire input; direct dataclass construction is for already-validated
+internal data. `snapshot_json` writes versioned JSON with decimal strings,
+sorted keys and timezone-aware timestamps for future recording/replay consumers.
+This is a new data format, not input directly accepted by stable kernel replay.
+
+## Freshness and failures
+
+`received_at` is local UTC receive time. Market `updated_at` is the upstream
+market-update timestamp; it is not proof that a bid/ask changed at that time.
+REST books supply no exchange event timestamp or sequence, so neither is invented.
+A future runner must apply freshness, exchange-status, risk and execution checks;
+a parsed snapshot alone does not authorize trading.
+
+GET retries are bounded (two by default, three maximum). Retryable transport
+errors and 429/selected 5xx responses use backoff. Numeric Retry-After up to 30
+seconds is respected; longer or unrecognized directives are surfaced instead
+of retrying early. Authentication failures, malformed data and redirects are
+not retried. Responses always close, and context-managed owned sessions close.
+
+Pagination has explicit page bounds and rejects repeated or missing cursors.
+Hitting `max_pages` with a remaining cursor raises an incomplete-discovery error;
+already-yielded rows do not make an interrupted traversal a complete market list.
+This synchronous client must run outside an asyncio strategy/streaming event loop.
+
+## Evidence and remaining work
+
+Tests use synthetic fixtures shaped by these official sources, inspected on
+September 6, 2026; they are not captured live responses:
+
+- [Get Market](https://docs.kalshi.com/api-reference/market/get-market)
+- [Get Markets](https://docs.kalshi.com/api-reference/market/get-markets)
+- [Get Market Orderbook](https://docs.kalshi.com/api-reference/market/get-market-orderbook)
+- [Fixed-point representation](https://docs.kalshi.com/getting_started/fixed_point_migration)
+
+This slice delivers discovery, market snapshots and order-book reads, not the
+complete Kalshi adapter refactor. Remaining N2 work: streaming resynchronization,
+historical recording integration, account/settlement reads, gated order lifecycle
+and reconciliation, and integration with the strategy runner. No live/provider
+smoke, account validation, publication, or deployment is implied by fixture tests.
