@@ -41,6 +41,14 @@ neural --json replay demo
 See [Stable Kernel and Compatibility](./docs/architecture/stability.mdx) for
 the capability matrix, extras, and deprecation policy.
 
+## Strategy specifications
+
+The additive `neural.strategy.StrategySpec` interface validates versioned price-rule
+configurations without credentials or execution side effects. See
+[StrategySpec v1](./docs/architecture/strategy-spec.mdx) and the
+[example configuration](./examples/strategy-price-rule.json).
+Existing stable replay and cross-runtime contracts remain unchanged.
+
 ## CLI Bridge
 
 The base install ships a `neural` CLI intended to be the stable machine-readable bridge for the TypeScript Neural TUI.
