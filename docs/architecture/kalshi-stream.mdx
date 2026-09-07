@@ -1,0 +1,124 @@
+# Recoverable Kalshi book streams
+
+NRCL-88 adds `neural.kalshi_stream`, using the local NRCL-87 Decimal data
+types. Neural owns book reconstruction; Vaticor can later launch and observe
+this runtime. This slice does not implement strategy decisions, orders, or a
+hosted worker.
+
+## Developer interface
+
+Provide an explicitly constructed signer's `headers(method, path)` function.
+The stream never discovers credentials from the environment. Connection is
+authenticated even though this client subscribes only to market data.
+
+```python
+import asyncio
+from neural.kalshi_stream import BookRecording, KalshiBookStream
+
+# signer is a caller-owned KalshiSigner. No credentials in recordings.
+stream = KalshiBookStream(
+    "YOUR-NATIVE-MARKET-TICKER",
+    signer_headers=signer.headers,
+    demo=True,
+    max_reconnects=3,
+    idle_timeout=30,
+)
+
+def consume(event):
+    if event.kind == "reset":
+        # Downstream strategies must clear their own cached input here.
+        print("Book unavailable:", event.reason)
+    else:
+        print(event.update.seq, event.update.book.asks("yes"))
+
+async def main():
+    with BookRecording("new-book-session.jsonl", durable=True) as recording:
+        await stream.run(consume, recording=recording)
+
+asyncio.run(main())
+```
+
+Cancel the `run` task to stop. The socket closes and book state invalidates;
+cancellation propagates. The caller owns the recorder. Files use exclusive
+creation, so restarting requires a new path, not overwriting a prior session.
+Production is the default; `demo=True` selects the documented demo host.
+Nothing connects until `run` executes.
+
+## Recovery contract
+
+- One market and one `orderbook_delta` subscription per socket. Do not multiplex
+  tickers into this state machine: subscription sequence tracking would need to
+  be shared across those markets.
+- A snapshot establishes the starting sequence. Subsequent book messages must
+  use that subscription ID and exactly the next sequence number. Duplicates,
+  reordering, gaps, malformed numbers, and quantities below zero invalidate the
+  whole book. No questionable delta is published.
+- Recovery closes the old connection and subscribes again with newly signed
+  headers. Deltas cannot restore readiness; a replacement snapshot must arrive.
+  REST snapshots are not merged into a WebSocket sequence.
+- Receive timeout or disconnection also invalidates. Recovery has a total
+  reconnect budget, not an unlimited counter that resets after each snapshot.
+  Backoff starts at 250 ms and caps at 4 seconds. Exhaustion raises
+  `RecoveryRequired`. Authentication/handshake and server subscription errors
+  fail rather than retry blindly. Redirects are forbidden to protect signed
+  headers.
+- Consumer or recording failures stop the stream. Callbacks are synchronous and
+  must stay short; this is not a separate-thread worker or a trading hot path.
+- A sequence-valid book is **not** proof of current market status, freshness,
+  available balance, executable prices, or permission to trade. Consumers still
+  need their own freshness deadline and risk/status checks. A quiet market may
+  trigger conservative receive-timeout recovery.
+
+Snapshots retain local receive time; the wire snapshot supplies no source
+timestamp. Deltas preserve optional source timestamps separately, preferring
+millisecond precision when present. Source time does not describe the age of
+every unchanged level. Values remain Decimal with fixed-point string encoding.
+
+## Recording and replay
+
+Version `kalshi-book/1` JSONL contains connecting/disconnected reset boundaries,
+accepted raw book frames, ticker, and local receive timestamp. Authentication
+headers and subscription requests are not recorded. Each line is flushed before
+the consumer receives the event; `durable=True` also fsyncs it. Default flushing
+does not promise power-loss durability. Per-event fsync favors durability over
+throughput; this slice makes no HFT latency claim.
+
+```python
+from neural.kalshi_stream import replay_book_recording
+
+events = list(replay_book_recording("new-book-session.jsonl"))
+books = [event.update for event in events if event.update is not None]
+```
+
+Replay uses recorded file order, never timestamp sorting. It reproduces book
+updates and invalidations without sleeping or accessing a venue. Exhaust the
+iterator to verify its terminal boundary. Duplicate JSON keys, non-finite JSON,
+unknown versions, malformed records, cross-market frames, invalid session
+boundaries, sequence faults, oversized lines, and partial tails fail closed.
+An interrupted file missing its disconnected boundary is incomplete, not silently
+repaired or presented as a complete run. The format is not tamper-proof and has
+no provenance signature. Treat recordings as untrusted input.
+
+This book replay is intentionally separate from `neural.kernel.replay`, its
+price-event format, and its stable digest. It does not simulate fills, execute a
+StrategySpec, or prove profitable strategies.
+
+## Compatibility and evidence
+
+Wire authority checked September 6, 2026:
+[Kalshi orderbook updates](https://docs.kalshi.com/websockets/orderbook-updates)
+and [WebSocket quick start](https://docs.kalshi.com/getting_started/quick_start_websockets).
+Tests use synthetic messages shaped by those docs, plus an actual local
+WebSocket server with fake headers. They are not captured production traffic or
+proof of a successful Kalshi authenticated session.
+
+The transport uses the `websockets.legacy` API to support the existing
+`websockets>=11` dependency floor without changing package requirements. This API
+is deprecated in newer releases; tested versions are recorded in the delivery
+evidence. A future dependency-floor migration can replace it without changing
+book or recording contracts.
+
+Run `tests/exchanges/test_kalshi_stream.py` alongside NRCL-87 data tests and the
+existing kernel/contract regressions. Next product slice: feed these records
+into deterministic strategy evaluation and paper execution with durable worker
+checkpoints. Actual exchange connection tests remain separately authorized.
