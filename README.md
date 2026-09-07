@@ -41,6 +41,14 @@ neural --json replay demo
 See [Stable Kernel and Compatibility](./docs/architecture/stability.mdx) for
 the capability matrix, extras, and deprecation policy.
 
+## Current Kalshi data
+
+For explicit read-only REST access with decimal prices and fractional depth,
+use `neural.kalshi.KalshiDataClient`. See the
+[Kalshi data guide](./docs/architecture/kalshi-data.mdx) for examples, migration
+boundaries, authentication requirements, and unverified live behavior.
+The existing float-valued trading adapter remains a separate experimental API.
+
 ## CLI Bridge
 
 The base install ships a `neural` CLI intended to be the stable machine-readable bridge for the TypeScript Neural TUI.
