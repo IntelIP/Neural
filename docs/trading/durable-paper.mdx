@@ -1,0 +1,63 @@
+---
+title: Durable offline paper jobs
+description: Persist paper experiments and recover after process failure
+---
+
+# Durable offline paper jobs
+
+`neural.paper_worker` wraps the recorded-book simulator in a local SQLite queue.
+Use a private directory on a local disk. No cloud, credentials or venue calls.
+
+```sh
+python -m neural.paper_worker --database /private/path/paper.sqlite3 submit \
+  --strategy examples/strategy-price-rule.json --recording /path/to/books.jsonl \
+  --cash 100 --fee-per-contract 0.01
+python -m neural.paper_worker --database /private/path/paper.sqlite3 run-next
+python -m neural.paper_worker --database /private/path/paper.sqlite3 inspect JOB_ID
+```
+
+Replace the placeholder ticker and paths. `submit` returns a queued job and ID;
+`run-next` processes one queued job or returns JSON `null`; `inspect` reads its
+persisted status/result/error. A processed invalid recording returns `failed`
+with no result; command/input/storage errors exit nonzero. Callers must inspect
+the status, not just the CLI exit code.
+
+SDK: `PaperJobs(database).submit(spec, recording, initial_cash="100",
+fee_per_contract="0.01")`, `.run_next()` and `.inspect(job_id)`.
+
+## Persistence contract
+
+- Recording bytes, canonical strategy and model assumptions are stored together.
+  Identical bytes/configuration produce the same job ID, even after completion.
+  Decimal spelling differences normalize. Byte-different recordings are different
+  jobs even when semantically equivalent. Changing an external file cannot alter
+  an already submitted job.
+- SQLite uses FULL synchronous commits and a transaction across selection,
+  simulation and result storage. Concurrent workers serialize. Crash before commit
+  leaves the job queued; restart recomputes it. Crash after commit leaves the
+  terminal result available. There is one committed result, **not exactly-once
+  computation**. No incremental checkpoints or live-order recovery.
+- Deterministic invalid input becomes terminal `failed`; operating-system/storage
+  errors roll back and propagate so the job remains queued. There is no automatic
+  retry loop. Fix input and submit a new job after a deterministic failure.
+- One database writer at a time, five-second lock timeout, 32 MiB per recording
+  and at most 10,000 events. SDK order-age limit is 1–86,400 seconds; default 30.
+  Submission and inspection can report database-busy during processing. This is
+  a bounded single-host runner, not a hosted scheduler or multi-tenant service.
+- Queue has no automatic retention policy or total-disk quota. Operator owns
+  disk capacity, directory permissions and SQLite-safe backups. Do not use network
+  filesystems, share the database with untrusted writers, or delete active journals.
+  Temporary recording copies are normally deleted; forced process death may leave
+  an OS temporary directory. Input hashes detect corruption, not malicious tampering.
+
+All recorded-paper execution assumptions still apply: caller-supplied fee,
+single buy/exit cycle, no settlement or freshness certification. Model identity
+is part of each job; incompatible future models must fail rather than silently
+reinterpret queued work. No hosted worker or Vaticor UI is deployed here.
+
+```sh
+pytest tests/test_paper_worker.py -q
+```
+
+Tests exercise CLI submission/inspection, concurrent processes and process death
+after simulation but before commit, followed by successful restart recovery.

@@ -15,6 +15,8 @@ from neural.kalshi import _wire
 from neural.kalshi_stream import replay_book_recording
 from neural.strategy import StrategySpec, _decimal, _decimal_text
 
+PAPER_MODEL = "neural-paper/1"
+
 
 def _canonical(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -149,7 +151,7 @@ def simulate_recording(
         if not books:
             raise ValueError("recording contains no books")
         report = {
-            "model": "neural-paper/1",
+            "model": PAPER_MODEL,
             "strategy": spec.to_dict(),
             "strategy_id": spec.version_id,
             "assumptions": {
