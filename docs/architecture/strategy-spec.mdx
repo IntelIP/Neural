@@ -1,0 +1,76 @@
+---
+title: Versioned price-rule strategy
+description: Define portable strategy rules without authorizing execution
+---
+
+# StrategySpec v1 (NRCL-86)
+
+`neural.strategy` is an additive, dependency-free configuration interface.
+It does not replace `neural.kernel.replay` or the existing six-contract v1
+bundle. It does not execute strategies, connect to exchanges, or authorize
+paper/live orders. Those are subsequent runner and adapter milestones.
+
+```python
+from pathlib import Path
+from neural.strategy import StrategySpec, strategy_schema
+
+spec = StrategySpec.from_json(Path("examples/strategy-price-rule.json").read_text())
+print(spec.version_id)
+print(spec.to_json())
+schema = strategy_schema()  # JSON-serializable wire-shape schema for UI validators
+```
+
+The example market identifier is a placeholder, not a tradable recommendation.
+No account or credentials are needed to validate it.
+
+## Rules and limits
+
+All ten wire fields are required; unknown fields and duplicate JSON keys fail.
+`schema_version` is `1.0.0`; `kind` is `price_rule`; `venue` is `kalshi` or
+`polymarket_us`. Market IDs remain venue-native (ticker or slug), not display
+titles. Supporting a venue in the specification does not certify its adapter.
+
+`outcome` selects YES or NO. Prices refer to that outcome, not always YES.
+The intended runner buys when executable ask is at or below `entry_price`
+and sells existing holdings when executable bid is at or above `exit_price`.
+Require `0 < entry_price < exit_price < 1`. Entry size is `quantity`; exits
+are at most that quantity, capped by existing holdings. There is no shorting.
+
+`max_position` caps held plus reserved entry quantity. `max_exposure_usd`
+caps committed acquisition cost, including open-entry reservations and fees;
+it is not leveraged notional or a guaranteed maximum loss. The spec rejects
+limits below one entry's pre-fee cost. A runner must additionally enforce
+available cash, fees, venue increments, freshness, and account-wide limits.
+Multiple strategies must not each assume the same account budget is free.
+
+Decimal fields accept plain nonnegative strings with at most 18 integer and
+18 fractional digits. Floats, JSON numbers, exponent notation, non-finite
+values and silent rounding are rejected. Python construction additionally
+accepts `Decimal`; validated instances are frozen. No exchange-specific
+tick size is assumed at this contract layer.
+
+## Identity and approval
+
+`to_json()` sorts keys, removes whitespace, and strips insignificant decimal
+zeros without using ambient decimal precision. `version_id` is `sha256:` plus
+the hash of these UTF-8 bytes, including the schema version. Different venue,
+market, outcome, rules or limits change identity; `0.40` and `0.400` do not.
+IDs are derived, never accepted as a trusted input field.
+
+Vaticor must store human approval separately against this identity. A schema
+pass or hash is not an approval or signature. Editing rules requires creating
+and validating a new instance, then reapproval and replay before deployment.
+
+## Cross-runtime validation and migration
+
+`strategy_schema()` checks wire shape only. Cross-field comparisons (threshold
+ordering, quantity cap, affordable first entry) are enforced by `StrategySpec`.
+Consumers must obtain that semantic validation before accepting a strategy;
+client-side schema checks alone are insufficient.
+
+Existing v1 contracts, payload hashes and stable snapshot replay remain
+unchanged. Import `StrategySpec` explicitly from `neural.strategy`; it is not
+an additional member of the old `CONTRACT_NAMES` registry. Existing float-based
+strategy configurations require an explicit conversion from authoritative
+decimal values, not an automatic float-to-string migration. The CLI and hosted
+worker will consume this new interface in later stories.
