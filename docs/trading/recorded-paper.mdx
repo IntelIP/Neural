@@ -1,0 +1,60 @@
+---
+title: Recorded-book paper simulation
+description: Run one reproducible offline price-rule cycle without exchange access
+---
+
+# Recorded-book paper simulation
+
+`neural.paper` runs a validated StrategySpec over a complete `kalshi-book/1`
+recording from `neural.kalshi_stream`. No credentials, network calls, live
+orders, or automatic persistence. This is separate from the legacy paper client.
+
+```sh
+python -m neural.paper --strategy examples/strategy-price-rule.json \
+  --recording /path/to/books.jsonl --cash 100 --fee-per-contract 0.01
+```
+
+Use a strategy whose native ticker matches your recording. The example ticker
+is a placeholder. The fee above is an assumption, **not Kalshi's fee schedule**.
+Pass zero explicitly only for an idealized zero-fee experiment.
+
+Python callers use `simulate_recording(spec, path, initial_cash="100",
+fee_per_contract="0.01")`. The returned dictionary is JSON serializable.
+
+## Execution assumptions
+
+- One account, market, outcome and full buy/exit cycle. No re-entry after a fill,
+  shorts, partial fills, settlement, mark-to-market valuation or durable recovery.
+- A qualifying ask creates a buy intent; a qualifying bid creates an exit intent.
+  Only the next book can execute it. Full depth must be available within the
+  strategy limit; otherwise the whole order cancels. No same-event fills.
+- Buy reservation includes worst-case limit cost plus the explicit per-contract
+  fee. Cash, position and acquisition-cost exposure caps apply before entry.
+  A single pending intent prevents overlapping reservations. Fees apply both ways.
+- Disconnect cancels pending intent, preserving holdings. Pending orders expire
+  after 30 receive-time seconds (configurable). This is **not** a source freshness
+  or market-open check. Source timestamps, queue priority, impact, other traders,
+  actual venue fees and account-wide multi-strategy risk are not modeled.
+- Paper lot is 0.01 contracts; this is a model assumption, not venue certification.
+  Kalshi recordings only; Polymarket US remains a later adapter milestone.
+
+The entire recording must validate before a report is returned. Corrupt tails,
+sequence gaps, regressing receive times, crossed books, ticker mismatches and
+more than 10,000 events fail closed. Nothing is printed to stdout on CLI failure.
+
+## Report and reproducible check
+
+Report includes strategy identity, model assumptions, per-event decisions,
+fill levels and fees, cash, remaining holdings/acquisition cost and realized PnL.
+`recording_digest` hashes decoded semantic events, not original file bytes; it
+does not establish recording provenance. `result_id` hashes the canonical report
+excluding itself. Same validated input and assumptions produce the same result.
+
+Synthetic tests demonstrate YES and NO cycles without market access:
+
+```sh
+pytest tests/test_paper_recording.py -q
+```
+
+Passing this simulation does not establish profitability, live exchange
+compatibility, approval to trade, or a completed hosted MVP.
