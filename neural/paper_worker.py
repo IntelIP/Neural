@@ -37,7 +37,7 @@ class PaperJobs:
                 app == 0
                 and version == 0
                 and not db.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"
+                    "SELECT 1 FROM sqlite_master WHERE name NOT GLOB 'sqlite_*' LIMIT 1"
                 ).fetchone()
             ):
                 db.execute("""CREATE TABLE jobs (

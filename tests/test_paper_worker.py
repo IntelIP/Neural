@@ -106,16 +106,20 @@ def test_input_integrity_and_unknown_job(tmp_path):
         jobs.inspect("missing")
 
 
-def test_foreign_database_is_not_repurposed(tmp_path):
+@pytest.mark.parametrize(
+    "schema", ["CREATE TABLE important (value TEXT)", "CREATE VIEW important AS SELECT 1"]
+)
+def test_foreign_database_is_not_repurposed(tmp_path, schema):
     database = tmp_path / "foreign.sqlite3"
     with sqlite3.connect(database) as db:
-        db.execute("CREATE TABLE important (value TEXT)")
+        db.execute(schema)
+        before = db.execute("SELECT type,name,sql FROM sqlite_master").fetchall()
     with pytest.raises(ValueError, match="unsupported"):
         worker.PaperJobs(database)
     with sqlite3.connect(database) as db:
-        assert db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall() == [
-            ("important",)
-        ]
+        assert db.execute("SELECT type,name,sql FROM sqlite_master").fetchall() == before
+        assert db.execute("PRAGMA application_id").fetchone()[0] == 0
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 0
 
 
 def test_cli_submit_run_inspect(tmp_path):
