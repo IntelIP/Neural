@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "price_rule",
+  "venue": "kalshi",
+  "market_id": "EXAMPLE-BINARY-MARKET",
+  "outcome": "yes",
+  "entry_price": "0.40",
+  "exit_price": "0.55",
+  "quantity": "2.5",
+  "max_position": "20",
+  "max_exposure_usd": "10"
+}
