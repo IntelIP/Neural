@@ -38,9 +38,15 @@ def test_snapshot_dedup_and_restart(tmp_path, monkeypatch):
     assert restarted.inspect(identity) == result
 
 
-def test_bad_recording_is_terminal_failure(tmp_path):
+@pytest.mark.parametrize("overflow", [False, True])
+def test_bad_recording_is_terminal_failure(tmp_path, overflow):
     jobs, _, spec, path, database = enqueue(tmp_path)
-    path.write_text("bad\n")
+    if overflow:
+        path.write_text(
+            path.read_text().replace("2026-09-07T00:00:00+00:00", "0001-01-01T00:00:00+23:59")
+        )
+    else:
+        path.write_text("bad\n")
     identity = jobs.submit(spec, path, initial_cash="10", fee_per_contract="0.01")
     jobs.run_next()
     result = jobs.run_next()

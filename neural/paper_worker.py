@@ -165,7 +165,7 @@ class PaperJobs:
                     "UPDATE jobs SET status='completed',result=? WHERE id=?",
                     (_canonical(result), row["id"]),
                 )
-            except ValueError as exc:
+            except (ValueError, OverflowError) as exc:
                 db.execute(
                     "UPDATE jobs SET status='failed',error=? WHERE id=?", (str(exc), row["id"])
                 )
