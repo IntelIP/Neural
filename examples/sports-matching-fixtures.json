@@ -1,0 +1,504 @@
+{
+  "schema_version": "1.0.0",
+  "notice": "All event, team and venue IDs are synthetic. Real source rules illustrate policy differences; they do not establish listed cross-venue equivalence. The compatible case uses synthetic rules only.",
+  "synthetic_rule_source": {
+    "canonical_json": "{\"cancellation\":\"fair_value\",\"exceptional_payout\":\"fair_value\",\"extra_innings\":\"included\",\"forfeit\":\"official_awarded_winner\",\"postponement\":\"within_48_hours_of_original_start\",\"replay\":\"original_result\",\"settlement_source\":\"mlb_only\",\"shortened_game\":\"official_game_result\",\"venue_change\":\"contract_stands\",\"winner\":\"official_game_winner\"}",
+    "sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217"
+  },
+  "markets": {
+    "synthetic_kalshi": {
+      "venue": "kalshi",
+      "event_id": "fixture:kalshi:event-1",
+      "market_id": "fixture:kalshi:winner-1",
+      "outcome_id": "fixture:kalshi:home-wins",
+      "raw_home_team_id": "fixture:kalshi:ATL",
+      "raw_away_team_id": "fixture:kalshi:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [
+          {
+            "name": "winner",
+            "value": "official_game_winner",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "extra_innings",
+            "value": "included",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "forfeit",
+            "value": "official_awarded_winner",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "postponement",
+            "value": "within_48_hours_of_original_start",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "cancellation",
+            "value": "fair_value",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "shortened_game",
+            "value": "official_game_result",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "settlement_source",
+            "value": "mlb_only",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "exceptional_payout",
+            "value": "fair_value",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "venue_change",
+            "value": "contract_stands",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "replay",
+            "value": "original_result",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          }
+        ],
+        "complete": true
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    },
+    "synthetic_polymarket_us": {
+      "venue": "polymarket_us",
+      "event_id": "fixture:polymarket_us:event-1",
+      "market_id": "fixture:polymarket_us:winner-1",
+      "outcome_id": "fixture:polymarket_us:home-wins",
+      "raw_home_team_id": "fixture:polymarket_us:ATL",
+      "raw_away_team_id": "fixture:polymarket_us:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [
+          {
+            "name": "winner",
+            "value": "official_game_winner",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "extra_innings",
+            "value": "included",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "forfeit",
+            "value": "official_awarded_winner",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "postponement",
+            "value": "within_48_hours_of_original_start",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "cancellation",
+            "value": "fair_value",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "shortened_game",
+            "value": "official_game_result",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "settlement_source",
+            "value": "mlb_only",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "exceptional_payout",
+            "value": "fair_value",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "venue_change",
+            "value": "contract_stands",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          },
+          {
+            "name": "replay",
+            "value": "original_result",
+            "source_url": "https://example.invalid/nrcl-99/synthetic-rules-v1.json",
+            "source_sha256": "1dbef9a76551f101a76bf16c0612594dc964ec81795d1b30ae5b3919f9706217",
+            "retrieved_at": "2026-09-10T00:00:00Z",
+            "scope": "fixture"
+          }
+        ],
+        "complete": true
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    },
+    "kalshi_series_reference": {
+      "venue": "kalshi",
+      "event_id": "fixture:kalshi:event-1",
+      "market_id": "fixture:kalshi:winner-1",
+      "outcome_id": "fixture:kalshi:home-wins",
+      "raw_home_team_id": "fixture:kalshi:ATL",
+      "raw_away_team_id": "fixture:kalshi:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [
+          {
+            "name": "winner",
+            "value": "official_game_winner",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "extra_innings",
+            "value": "included",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "forfeit",
+            "value": "before_first_pitch_fair_value_after_start_official_awarded_winner",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "postponement",
+            "value": "within_48_hours_of_original_start",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "shortened_game",
+            "value": "official_game_result",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "settlement_source",
+            "value": "league_then_espn_cbs_fox_ap_wsj_official_broadcaster",
+            "source_url": "https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf",
+            "source_sha256": "46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7",
+            "retrieved_at": "2026-09-10T04:25:59.570992+00:00",
+            "scope": "series"
+          }
+        ],
+        "complete": false
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    },
+    "polymarket_us_listing_reference": {
+      "venue": "polymarket_us",
+      "event_id": "fixture:polymarket_us:event-1",
+      "market_id": "fixture:polymarket_us:winner-1",
+      "outcome_id": "fixture:polymarket_us:home-wins",
+      "raw_home_team_id": "fixture:polymarket_us:ATL",
+      "raw_away_team_id": "fixture:polymarket_us:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [
+          {
+            "name": "winner",
+            "value": "official_game_winner",
+            "source_url": "https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10",
+            "source_sha256": "7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899",
+            "retrieved_at": "2026-09-10T04:25:59.660275+00:00",
+            "scope": "listed_contract"
+          },
+          {
+            "name": "extra_innings",
+            "value": "included",
+            "source_url": "https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10",
+            "source_sha256": "7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899",
+            "retrieved_at": "2026-09-10T04:25:59.660275+00:00",
+            "scope": "listed_contract"
+          },
+          {
+            "name": "postponement",
+            "value": "rescheduled_date_within_14_days_of_original_date",
+            "source_url": "https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10",
+            "source_sha256": "7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899",
+            "retrieved_at": "2026-09-10T04:25:59.660275+00:00",
+            "scope": "listed_contract"
+          },
+          {
+            "name": "settlement_source",
+            "value": "mlb_only",
+            "source_url": "https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10",
+            "source_sha256": "7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899",
+            "retrieved_at": "2026-09-10T04:25:59.660275+00:00",
+            "scope": "listed_contract"
+          },
+          {
+            "name": "exceptional_payout",
+            "value": "last_fair_market_price",
+            "source_url": "https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10",
+            "source_sha256": "7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899",
+            "retrieved_at": "2026-09-10T04:25:59.660275+00:00",
+            "scope": "listed_contract"
+          }
+        ],
+        "complete": false
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    },
+    "novig_series_reference": {
+      "venue": "novig",
+      "event_id": "fixture:novig:event-1",
+      "market_id": "fixture:novig:winner-1",
+      "outcome_id": "fixture:novig:home-wins",
+      "raw_home_team_id": "fixture:novig:ATL",
+      "raw_away_team_id": "fixture:novig:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [
+          {
+            "name": "winner",
+            "value": "official_game_winner",
+            "source_url": "https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf",
+            "source_sha256": "a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc",
+            "retrieved_at": "2026-09-10T04:25:59.920332+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "forfeit",
+            "value": "without_on_field_result_void",
+            "source_url": "https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf",
+            "source_sha256": "a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc",
+            "retrieved_at": "2026-09-10T04:25:59.920332+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "postponement",
+            "value": "48_hours_regular_season_45_days_postseason_subject_to_date_updates",
+            "source_url": "https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf",
+            "source_sha256": "a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc",
+            "retrieved_at": "2026-09-10T04:25:59.920332+00:00",
+            "scope": "series"
+          },
+          {
+            "name": "exceptional_payout",
+            "value": "void_fair_value_process",
+            "source_url": "https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf",
+            "source_sha256": "a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc",
+            "retrieved_at": "2026-09-10T04:25:59.920332+00:00",
+            "scope": "series"
+          }
+        ],
+        "complete": false
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    },
+    "unknown_rules": {
+      "venue": "novig",
+      "event_id": "fixture:novig:event-1",
+      "market_id": "fixture:novig:winner-1",
+      "outcome_id": "fixture:novig:home-wins",
+      "raw_home_team_id": "fixture:novig:ATL",
+      "raw_away_team_id": "fixture:novig:TB",
+      "canonical_event_id": "fixture:mlb:2026-09-10:tb-atl:1",
+      "home_team_id": "mlb:atl",
+      "away_team_id": "mlb:tb",
+      "outcome_team_id": "mlb:atl",
+      "game_date": "2026-09-10",
+      "game_number": 1,
+      "period": "full_game",
+      "rules": {
+        "terms": [],
+        "complete": false
+      },
+      "schema_version": "1.0.0",
+      "sport": "baseball",
+      "league": "mlb",
+      "market_type": "winner"
+    }
+  },
+  "cases": [
+    {
+      "name": "ordinary_winner",
+      "left": "synthetic_kalshi",
+      "right": "synthetic_polymarket_us",
+      "right_overrides": {},
+      "expected": "compatible",
+      "expected_proposition": "compatible",
+      "expected_field": null
+    },
+    {
+      "name": "forfeit_without_on_field_result",
+      "left": "kalshi_series_reference",
+      "right": "novig_series_reference",
+      "right_overrides": {},
+      "expected": "different",
+      "expected_proposition": "compatible",
+      "expected_field": "rules:forfeit"
+    },
+    {
+      "name": "postponed_game",
+      "left": "kalshi_series_reference",
+      "right": "polymarket_us_listing_reference",
+      "right_overrides": {},
+      "expected": "different",
+      "expected_proposition": "compatible",
+      "expected_field": "rules:postponement"
+    },
+    {
+      "name": "doubleheader_game_two",
+      "left": "synthetic_kalshi",
+      "right": "synthetic_polymarket_us",
+      "right_overrides": {
+        "game_number": 2
+      },
+      "expected": "different",
+      "expected_proposition": "different",
+      "expected_field": "game_number"
+    },
+    {
+      "name": "partial_game_excluded",
+      "left": "synthetic_kalshi",
+      "right": "synthetic_polymarket_us",
+      "right_overrides": {
+        "period": "first_5_innings"
+      },
+      "expected": "different",
+      "expected_proposition": "different",
+      "expected_field": "scope:full_game_only"
+    },
+    {
+      "name": "missing_rules",
+      "left": "synthetic_kalshi",
+      "right": "unknown_rules",
+      "right_overrides": {},
+      "expected": "unknown",
+      "expected_proposition": "compatible",
+      "expected_field": "rules:incomplete_review"
+    },
+    {
+      "name": "missing_game_number",
+      "left": "synthetic_kalshi",
+      "right": "synthetic_polymarket_us",
+      "right_overrides": {
+        "game_number": null
+      },
+      "expected": "unknown",
+      "expected_proposition": "unknown",
+      "expected_field": "game_number"
+    }
+  ]
+}
