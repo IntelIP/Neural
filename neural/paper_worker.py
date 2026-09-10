@@ -79,8 +79,6 @@ class PaperJobs:
         max_events: int = 10000,
     ) -> str:
         """Snapshot input bytes and enqueue once; identical submissions share ID."""
-        if spec.venue != "kalshi":
-            raise ValueError("paper jobs support kalshi only")
         for name, value, ceiling in (
             ("max_events", max_events, 10000),
             ("max_order_age_seconds", max_order_age_seconds, 86400),
@@ -148,7 +146,9 @@ class PaperJobs:
                 ):
                     raise ValueError("stored job input integrity mismatch")
                 if config["model"] != PAPER_MODEL:
-                    raise ValueError("stored job model is unsupported")
+                    raise ValueError(
+                        f"stored job model is unsupported; resubmit under {PAPER_MODEL}"
+                    )
                 spec = StrategySpec.from_dict(config["strategy"])
                 with tempfile.TemporaryDirectory(prefix="neural-paper-") as directory:
                     path = Path(directory) / "recording.jsonl"

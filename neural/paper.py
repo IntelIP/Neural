@@ -12,10 +12,15 @@ from pathlib import Path
 from typing import Any
 
 from neural.kalshi import _wire
-from neural.kalshi_stream import replay_book_recording
+from neural.recordings import (
+    MAX_SOURCE_AGE_SECONDS,
+    RECORD_VERSION,
+    read_recording_metadata,
+    replay_book_recording,
+)
 from neural.strategy import StrategySpec, _decimal, _decimal_text
 
-PAPER_MODEL = "neural-paper/1"
+PAPER_MODEL = "neural-paper/2"
 
 
 def _canonical(value: Any) -> str:
@@ -36,8 +41,12 @@ def simulate_recording(
     Signals execute against the next book, fill-or-kill, within the same session.
     Fees are a caller-supplied assumption on each side, not a venue fee schedule.
     """
-    if spec.venue != "kalshi":
-        raise ValueError("paper recording runner supports kalshi only")
+    metadata = read_recording_metadata(path)
+    if (spec.venue, spec.market_id) != (metadata["venue"], metadata["market_id"]):
+        raise ValueError("recording venue/market does not match strategy")
+    if metadata["outcome"] is not None and metadata["outcome"] != spec.outcome:
+        raise ValueError("recording outcome does not match strategy")
+    normalized = metadata["version"] == RECORD_VERSION
     for name, value in (
         ("max_order_age_seconds", max_order_age_seconds),
         ("max_events", max_events),
@@ -56,8 +65,10 @@ def simulate_recording(
         previous: datetime | None = None
         trace: list[dict[str, Any]] = []
         digest = hashlib.sha256()
+        if normalized:
+            digest.update((_canonical(metadata) + "\n").encode())
         books = count = 0
-        for count, event in enumerate(replay_book_recording(path), 1):
+        for count, event in enumerate(replay_book_recording(path, expected_metadata=metadata), 1):
             if count > max_events:
                 raise ValueError("recording exceeds max_events")
             if previous is not None and event.received_at < previous:
@@ -81,12 +92,19 @@ def simulate_recording(
             if bids and asks and bids[0].price > asks[0].price:
                 raise ValueError("crossed recorded book")
             row.update(sid=update.sid, seq=update.seq)
+            if normalized:
+                row.update(
+                    source_at=update.source_at.isoformat() if update.source_at else None,
+                    quality="full_depth",
+                )
             if pending is not None:
                 side, created = pending
                 pending = None
                 row.update(action="cancel", side=side)
                 if (event.received_at - created).total_seconds() > max_order_age_seconds:
                     row["reason"] = "order_expired"
+                elif update.source_at is not None and update.source_at <= created:
+                    row["reason"] = "source_not_after_intent"
                 else:
                     remaining = spec.quantity
                     notional = Decimal(0)
@@ -150,7 +168,7 @@ def simulate_recording(
             trace.append(row)
         if not books:
             raise ValueError("recording contains no books")
-        report = {
+        report: dict[str, Any] = {
             "model": PAPER_MODEL,
             "strategy": spec.to_dict(),
             "strategy_id": spec.version_id,
@@ -169,6 +187,17 @@ def simulate_recording(
             "acquisition_cost": _decimal_text(cost),
             "realized_pnl": _decimal_text(realized),
         }
+        if normalized:
+            report["sports_market"] = metadata["sports_market"]
+            report["market_compatibility"] = {
+                "status": "unknown",
+                "reason": "comparison_requires_second_market",
+            }
+            report["recording"] = {
+                key: value for key, value in metadata.items() if key != "sports_market"
+            }
+            report["assumptions"]["max_source_age_seconds"] = MAX_SOURCE_AGE_SECONDS
+            report["assumptions"]["data_quality"] = "synthetic full-depth snapshots"
         report["result_id"] = hashlib.sha256(_canonical(report).encode()).hexdigest()
         return report
 

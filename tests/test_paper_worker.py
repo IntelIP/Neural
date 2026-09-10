@@ -38,6 +38,61 @@ def test_snapshot_dedup_and_restart(tmp_path, monkeypatch):
     assert restarted.inspect(identity) == result
 
 
+@pytest.mark.parametrize("old_status", ["completed", "queued"])
+def test_model_upgrade_never_reuses_or_reinterprets_v1_jobs(tmp_path, monkeypatch, old_status):
+    spec = StrategySpec("kalshi", "KX-EXAMPLE", "yes", "0.45", "0.65", "2", "2", "1")
+    path = recording(tmp_path)
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    # V1 filled this later-received, earlier-sourced delta; V2 must cancel.
+    rows[2]["frame"] = {
+        "type": "orderbook_delta",
+        "sid": 7,
+        "seq": 2,
+        "msg": {
+            "market_ticker": "KX-EXAMPLE",
+            "side": "yes",
+            "price_dollars": "0.3",
+            "delta_fp": "0",
+            "ts": "2026-09-07T00:00:00.500000Z",
+        },
+    }
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    database = tmp_path / "jobs.sqlite3"
+    jobs = worker.PaperJobs(database)
+    assumptions = {"initial_cash": "10", "fee_per_contract": "0.01"}
+    with monkeypatch.context() as prior_version:
+        prior_version.setattr(worker, "PAPER_MODEL", "neural-paper/1")
+        old_identity = jobs.submit(spec, path, **assumptions)
+    # Seed the pre-upgrade result as an opaque historical receipt.
+    old_result = {"model": "neural-paper/1", "cash": "10.56", "realized_pnl": "0.56"}
+    if old_status == "completed":
+        with jobs._transaction() as db:
+            db.execute(
+                "UPDATE jobs SET status='completed',result=? WHERE id=?",
+                (json.dumps(old_result), old_identity),
+            )
+    identity = jobs.submit(spec, path, **assumptions)
+    assert identity != old_identity
+    restarted = worker.PaperJobs(database)
+    if old_status == "queued":
+        rejected = restarted.run_next()
+        assert rejected["id"] == old_identity
+        assert rejected["status"] == "failed"
+        assert rejected["result"] is None
+        assert "resubmit under " + worker.PAPER_MODEL in rejected["error"]
+    result = restarted.run_next()
+    assert result["id"] == identity
+    assert result["status"] == "completed"
+    assert result["result"]["model"] == worker.PAPER_MODEL
+    assert result["result"]["cash"] == "10"
+    assert result["result"]["trace"][2]["reason"] == "source_not_after_intent"
+    assert restarted.submit(spec, path, **assumptions) == identity
+    assert worker.PaperJobs(database).inspect(identity) == result
+    if old_status == "completed":
+        assert restarted.inspect(old_identity)["result"] == old_result
+    assert restarted.run_next() is None
+
+
 @pytest.mark.parametrize("overflow", [False, True])
 def test_bad_recording_is_terminal_failure(tmp_path, overflow):
     jobs, _, spec, path, database = enqueue(tmp_path)

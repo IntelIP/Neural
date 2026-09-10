@@ -1,0 +1,12 @@
+{
+  "venue": "kalshi",
+  "market_id": "fixture:kalshi:winner-1",
+  "outcome": "yes",
+  "entry_price": "0.45",
+  "exit_price": "0.65",
+  "quantity": "2",
+  "max_position": "2",
+  "max_exposure_usd": "1",
+  "schema_version": "1.0.0",
+  "kind": "price_rule"
+}
