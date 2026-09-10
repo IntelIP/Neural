@@ -81,7 +81,7 @@ class RuleEvidence:
             if url.netloc.endswith(":") or (port is not None and port < 1):
                 raise ValueError("empty or unusable port")
             host = url.hostname.encode("idna").decode("ascii")
-            if ":" in host:
+            if url.netloc.startswith("["):
                 IPv6Address(host)
             else:
                 host = host.removesuffix(".")
