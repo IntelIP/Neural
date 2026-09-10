@@ -79,8 +79,6 @@ class PaperJobs:
         max_events: int = 10000,
     ) -> str:
         """Snapshot input bytes and enqueue once; identical submissions share ID."""
-        if spec.venue != "kalshi":
-            raise ValueError("paper jobs support kalshi only")
         for name, value, ceiling in (
             ("max_events", max_events, 10000),
             ("max_order_age_seconds", max_order_age_seconds, 86400),

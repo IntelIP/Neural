@@ -6,8 +6,9 @@ description: Run one reproducible offline price-rule cycle without exchange acce
 # Recorded-book paper simulation
 
 `neural.paper` runs a validated StrategySpec over a complete `kalshi-book/1`
-recording from `neural.kalshi_stream`. No credentials, network calls, live
-orders, or automatic persistence. This is separate from the legacy paper client.
+recording or a synthetic `neural-book/1` recording for Kalshi or Polymarket US.
+It makes no credential or network calls. The same simulator and durable paper
+queue handle both venues. This is separate from the legacy paper client.
 
 ```sh
 python -m neural.paper --strategy examples/strategy-price-rule.json \
@@ -32,11 +33,14 @@ fee_per_contract="0.01")`. The returned dictionary is JSON serializable.
   fee. Cash, position and acquisition-cost exposure caps apply before entry.
   A single pending intent prevents overlapping reservations. Fees apply both ways.
 - Disconnect cancels pending intent, preserving holdings. Pending orders expire
-  after 30 receive-time seconds (configurable). This is **not** a source freshness
-  or market-open check. Source timestamps, queue priority, impact, other traders,
-  actual venue fees and account-wide multi-strategy risk are not modeled.
+  after 30 receive-time seconds (configurable). This order deadline is separate
+  from source freshness: normalized books require a source timestamp no more
+  than 30 seconds before observation. Legacy Kalshi replay retains its previous
+  source handling. Market opening, queue priority, impact, other traders, actual
+  venue fees and account-wide multi-strategy risk are not modeled.
 - Paper lot is 0.01 contracts; this is a model assumption, not venue certification.
-  Kalshi recordings only; Polymarket US remains a later adapter milestone.
+  Full depth in a synthetic recording is a fixture assertion, not evidence of
+  liquidity available at a venue.
 
 The entire recording must validate before a report is returned. Corrupt tails,
 sequence gaps, regressing receive times, crossed books, ticker mismatches and
@@ -58,3 +62,65 @@ pytest tests/test_paper_recording.py -q
 
 Passing this simulation does not establish profitability, live exchange
 compatibility, approval to trade, or a completed hosted MVP.
+
+## Same strategy across synthetic sports venues
+
+The committed fixtures describe the same synthetic MLB full-game winner
+proposition with different native venue IDs. The price thresholds, quantity and
+risk caps remain identical. Only `venue` and `market_id` change in StrategySpec.
+
+```sh
+python -m neural.paper \
+  --strategy examples/recordings/synthetic-polymarket-us-strategy.json \
+  --recording examples/recordings/synthetic-polymarket-us.jsonl \
+  --cash 10 --fee-per-contract 0.01
+```
+
+Repeat with `synthetic-kalshi-strategy.json` and `synthetic-kalshi.jsonl`.
+Both fixtures yield cash `10.52` and realized PnL `0.52`, including the explicit
+`0.01` fee assumption on each traded contract in each direction. These are
+constructed examples, not measured venue performance or current fee schedules.
+Submitting either pair through `PaperJobs.submit` uses the same durable queue.
+
+The new `neural.recordings` boundary autodetects both formats.
+`describe_recording(path, max_events=10000)` validates the entire recording and
+returns venue/native market, selected outcome, event/book/reset counts,
+reconnect/disconnect counts, observation start/end, final book source timestamp,
+provenance and the attached `SportsMarket`. `replay_book_recording(path)` yields
+the existing stream-event shape; consumers must exhaust it to validate EOF.
+
+## Normalized recording contract
+
+`neural-book/1` is an offline synthetic format. It does not add a Polymarket US
+collector or turn a BBO quote into depth. Every JSONL line must end with a newline.
+
+- First line: exactly `version`, `kind: "header"`, `venue`, `market_id`, `outcome`,
+  `sports_market`, and `provenance: "synthetic"`. The sports contract must have
+  the same venue and native market. Its selected team outcome describes the
+  header's explicit YES or NO side; the importer owns that semantic mapping.
+- Session boundaries: `version`, `kind: "reset"`, `received_at`, and `reason`
+  (`connecting` or `disconnected`). Start connected, alternate boundaries, end
+  disconnected. Reconnect cancels pending orders and resets sequence tracking.
+- Book lines: `version`, `kind: "book"`, `received_at`, `source_at`, `sequence`,
+  `quality: "full_depth"`, `bids`, and `asks`. Both ladders describe the selected
+  outcome and contain `[price, quantity]` decimal-string pairs. Bids descend and
+  asks ascend with unique prices, positive quantities and prices in `[0,1]`.
+  Each session starts at sequence 1 and increments without gaps.
+
+Missing, one-sided, crossed, unordered, stale, future-dated or malformed books
+fail the entire replay. Source timestamps cannot regress within a session;
+observation timestamps cannot regress across the file. Prices and sizes retain
+up to 18 fractional digits without converting through binary floats.
+
+Normalized reports add `sports_market`, recording identity/provenance and
+source timestamps/full-depth quality in book trace rows. They explicitly leave
+`market_compatibility.status` as `unknown`: one recording alone cannot establish
+cross-venue equivalence. Compare two attached contracts with
+`compare_sports_markets(SportsMarket.from_dict(left),
+SportsMarket.from_dict(right)).to_dict()` to show `compatible`, `different` or
+`unknown` and reasons. Compatible fixture rules do not certify live contracts.
+Legacy Kalshi report shape and content identities remain unchanged.
+
+```sh
+pytest tests/test_recordings.py tests/test_paper_recording.py tests/test_paper_worker.py -q
+```
