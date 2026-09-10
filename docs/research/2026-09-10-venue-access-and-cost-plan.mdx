@@ -40,6 +40,19 @@ API reachability supports technical feasibility. **Retention/replay permission r
 
 ## Questions ready to send
 
+### Kalshi
+
+Use the existing authorized Kalshi API or business support channel for routing. Draft only; not sent.
+
+Subject: Neural/Vaticor — MLB replay rights and effective series fee policy
+
+We build Neural, an SDK for sports-market normalization and paper strategy replay, and Vaticor, its hosted user workflow. Initial scope is a read-only MLB pregame full-game winner study with no live orders.
+
+1. Which current agreement permits three games and nine paired snapshot times in one day, 30-day raw book/metadata retention for local and cloud replay, and 90-day derived comparison results? Please specify customer display, raw export, backups, deletion and cross-venue comparison rights. These periods are proposed requests, not assumed grants.
+2. For `KXMLBGAME`, which effective maker/taker coefficients and multipliers govern the study account? The series API reports `quadratic_with_maker_fees` and multiplier `0.5`, while the linked July 7 schedule lists maker/taker multipliers `1/1`. Please identify the controlling dated source and account or program exceptions.
+3. Please confirm rounding units, cumulative versus per-fill calculation, and how split matches affect fees. Does the fee-plus-position-cost rule round to a centicent, and what explains the schedule's cent-rounded examples? Is a supported fee preview available without submitting an order?
+4. Which access model supports customer-owned existing accounts, hosted read-only data and later user-configured unattended strategies? Please identify delegation, key custody, geography, data scopes and commercial requirements separately. We are not requesting permission to trade in this initial pilot.
+
 ### Polymarket US
 
 Suggested recipients: `institutional@polymarket.us`, `data@polymarket.us` (documented onboarding contacts). Draft only; not sent.
@@ -80,7 +93,9 @@ We build Neural, an SDK for sports-market normalization and paper strategy repla
 
 **Calculation:** sort executable offers for the selected outcome. Consume `x_i = min(available_i, Q − consumed)` until Q is reached. Principal is `Σ(x_i × p_i)` and VWAP is principal/Q. Add current venue trading fees using the exact series, account class, role, event phase, effective date and rounding policy. Public aggregated depth does not reveal individual match fragmentation: if this affects fee rounding, report a defensible interval or reject `fee_precision_unknown`. Funding/subscription costs remain separately labeled; no rebate assumed without eligibility. Total estimated acquisition cost = principal + trading fees; report dollars, per-contract cost and visible slippage versus top ask. This estimates displayed immediate execution, not realized fills, arbitrage profit or backtest queue position.
 
-**Decision output:** one row per snapshot, venue and requested size with eligibility/rejection reason, available quantity, VWAP, fee policy, fee/total interval and timestamps. Rank only strictly compatible qualified pairs with nonoverlapping total-cost intervals. Report ties/uncertain ordering explicitly. Report qualified coverage out of nine paired sets separately from cost advantage; rejected observations never become zeros. At least six qualified paired sets spanning two games is the predeclared minimum to make a limited trial preference; otherwise defer. Even a passing one-day pilot supports the next adapter choice only, not a claim of persistent venue superiority. Select the next implementation by supported account model, usable data and observed benefit together.
+**Decision output:** one row per snapshot, venue and requested size with eligibility/rejection reason, available quantity, VWAP, fee policy, fee/total interval and timestamps. Rank only strictly compatible qualified pairs with nonoverlapping total-cost intervals. Report ties/uncertain ordering explicitly. Report qualified coverage out of nine paired sets separately from cost advantage; rejected observations never become zeros.
+
+**Predeclared venue decision:** a cost-based preference requires at least six qualified paired sets spanning two games at each requested size, and the same venue must have a strictly lower total-cost interval in every qualified comparison across all three sizes. Any reversal, tie or overlapping interval among otherwise eligible observations means defer; missing the coverage threshold at any size also means defer. Do not change size weights, omit unfavorable qualified snapshots or choose a different primary size after seeing results. Account permissions and usable data remain prerequisites. If this rule defers, the provisional technical-readiness recommendation remains separate from cost evidence. A passing one-day pilot supports only the next bounded adapter decision, not persistent venue superiority.
 
 ## Conflicts and unknowns: fees before ranking
 
@@ -102,6 +117,8 @@ The following digests identify retrieved source bytes, not semantic version guar
 |---|---|---|
 | [Kalshi MLB contract terms](https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf) | 2026-09-10T04:25:59.570992+00:00 | `46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7` |
 | [Polymarket US market 714358](https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10) | 2026-09-10T04:25:59.660275+00:00 | `7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899` |
-| [Novig MLB Winner Series, linked from contract directory](https://support.novig.com/en/articles/16083642-contracts) | 2026-09-10T04:25:59.920332+00:00 | `a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc` |
+| [Novig MLB Winner Series PDF](https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf) | 2026-09-10T04:25:59.920332+00:00 | `a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc` |
+
+The Novig digest identifies the 400,144-byte PDF retrieved through a signed attachment URL, not the contract-directory HTML. The link above preserves that exact attachment path while omitting temporary access parameters; it does not promise permanent unauthenticated access. Obtain a fresh attachment link from the [contract directory](https://support.novig.com/en/articles/16083642-contracts) if needed. The original capture metadata binds the signed PDF path, byte count, retrieval time and digest.
 
 Polymarket US current entity-agreement SHA256: c6975964cff6441cef9c4a699201c01efc1c14c42cef66eca72e9a19c70053a4. Downloaded September 10, 2026; latest URL is mutable. This supports the distinction from stale search-index text.
