@@ -1,0 +1,124 @@
+---
+title: Venue access and matched-market cost plan
+description: NRCL-101 vendor access questions, recording rights, and a bounded sports execution-cost protocol.
+---
+
+# NRCL-101 — Vendor access and matched-market cost preparation
+
+Question: Which access model and data rights support a bounded sports recording pilot, and what evidence can justify the next execution venue?
+
+Prepared September 10, 2026. **Preparation complete; commercial permissions and comparative execution-cost study remain incomplete.** Reuses the September 9 venue brief. Delivered: vendor question drafts, access assessment, cost protocol and source references. No external messages, credentials, paid calls, orders or product-code changes. No contemporaneous matched-book study was run: settlement compatibility and recording/replay permissions are not established.
+
+## Conclusion and decision informed
+
+Keep **Polymarket US as the provisional next data/paper integration** on technical readiness. Do not choose a live execution venue yet. Novig remains a serious sports candidate. Its public activity and fee schedule justify obtaining exact access terms; they do not establish hosted-use rights or better execution.
+
+Current blockers to the cost study:
+
+1. Exact listed contract pairs with sufficient settlement coverage. Kalshi and Polymarket US sampled MLB rules already differ on postponement; Novig has additional forfeit and timing differences. Similar propositions can be displayed with differences, but cannot enter the strict equivalent-contract cost ranking.
+2. Written recording, retention, replay and derived-display permissions for the intended local/cloud use, or an applicable published grant. None found for our full requested use.
+3. Suitable Novig read-only access to event identities and contemporaneous depth, including data/recovery permissions.
+4. Effective Kalshi series fee policy: current API and linked schedule conflict, described below.
+
+## Confirmed facts: access and rights
+
+| Route | Confirmed | Unconfirmed for Neural/Vaticor |
+|---|---|---|
+| Polymarket US personal account | Retail app exposes API key creation; authenticated trading/portfolio/WebSocket API exists; public market-data gateway needs no key | Hosting a customer's key, unattended strategies, connection to existing accounts, read-only scopes, and storage/replay rights |
+| Polymarket US ISV | Firm authenticates and acts for onboarded retail participants; signed agreements, RSA/JWT credentials, preproduction test funds; documented flow includes KYC and funding integration | Whether a small software-only provider may link existing accounts without replacing onboarding/funding; automated-strategy permission; commercial cost and precise responsibilities |
+| Polymarket US institutional data | Market Data Agreement and requested `read:marketdata`, `read:l2marketdata`, `read:instruments` scopes | Retention limits, local/cloud replay, raw export, derived analytics, backups and post-termination deletion terms; agreement text not publicly retrieved |
+| Novig NBX | Client ID/secret requested from Novig; OAuth tokens; QA environment | Eligibility for personal read-only access versus market-maker access; third-party hosting, customer delegation, credential scopes and read-only depth entitlement |
+| Novig public/affiliate data | Public daily CSV downloads; affiliate documentation describes odds display and deeplinks | Whether CSV publication grants storage/replay/derivative rights; whether affiliate terms cover research and paper trading; hosted order routing |
+
+Sources: [Polymarket US authentication](https://docs.polymarket.us/api-reference/authentication), [ISV](https://docs.polymarket.us/partners/partner-types/isvs), [partner responsibilities](https://docs.polymarket.us/partners/your-role), [partner onboarding](https://docs.polymarket.us/partners/get-connected/onboarding), [data agreement route](https://docs.polymarket.us/data-guide/onboarding), [Novig authentication](https://docs.novig.com/api-reference/authentication), [Novig CSV schema](https://docs.novig.com/api-reference/trade-data), [Novig affiliates](https://docs.novig.com/affiliates/overview).
+
+**Current agreement constraints:** Novig Member Agreement v1.1, sections 5.4.1/5.4.4, requires personal or entity-authorized access and bars controlling another member's account or sharing access materials. Section 11.1 requires express written consent to reproduce, retransmit or distribute price/trading information and derivatives. This is not evidence that every API program uses identical terms; it prevents treating a member login or public CSV as a sufficient hosted/replay license. [Current Novig agreement](https://support.novig.com/en/articles/16075495-ludlow-exchange-llc-member-agreement)
+
+The **current downloaded** Polymarket US Entity Participant and Clearing Member Agreement, I.24, restricts redistribution unless expressly permitted; I.26 prohibits making login credentials available to another person/entity. This is an entity-participant agreement, not the unavailable ISV/data agreement or proof of retail-account scope. A stale search excerpt at the same URL describes older, broader “API Materials” restrictions; use the downloaded document, not that excerpt. General retail TOS page returned no readable body in this environment. [Current entity agreement](https://www.polymarketexchange.com/files/legal/latest/participant-agreement-corporate)
+
+API reachability supports technical feasibility. **Retention/replay permission remains unconfirmed.** Continue offline synthetic-fixture engineering; hold new retained venue recording datasets and customer-facing data redistribution until applicable terms answer the questions below. This is a scoped research decision, not a legal opinion on every personal API use.
+
+## Questions ready to send
+
+### Kalshi
+
+Use the existing authorized Kalshi API or business support channel for routing. Draft only; not sent.
+
+Subject: Neural/Vaticor — MLB replay rights and effective series fee policy
+
+We build Neural, an SDK for sports-market normalization and paper strategy replay, and Vaticor, its hosted user workflow. Initial scope is a read-only MLB pregame full-game winner study with no live orders.
+
+1. Which current agreement permits three games and nine paired snapshot times in one day, 30-day raw book/metadata retention for local and cloud replay, and 90-day derived comparison results? Please specify customer display, raw export, backups, deletion and cross-venue comparison rights. These periods are proposed requests, not assumed grants.
+2. For `KXMLBGAME`, which effective maker/taker coefficients and multipliers govern the study account? The series API reports `quadratic_with_maker_fees` and multiplier `0.5`, while the linked July 7 schedule lists maker/taker multipliers `1/1`. Please identify the controlling dated source and account or program exceptions.
+3. Please confirm rounding units, cumulative versus per-fill calculation, and how split matches affect fees. Does the fee-plus-position-cost rule round to a centicent, and what explains the schedule's cent-rounded examples? Is a supported fee preview available without submitting an order?
+4. Which access model supports customer-owned existing accounts, hosted read-only data and later user-configured unattended strategies? Please identify delegation, key custody, geography, data scopes and commercial requirements separately. We are not requesting permission to trade in this initial pilot.
+
+### Polymarket US
+
+Suggested recipients: `institutional@polymarket.us`, `data@polymarket.us` (documented onboarding contacts). Draft only; not sent.
+
+Subject: Neural/Vaticor — read-only sports replay pilot and existing-account integration
+
+We build Neural, an SDK for sports-market normalization and paper strategy replay, and Vaticor, its hosted user workflow. Initial scope is MLB pregame full-game winner markets with no live orders.
+
+1. Can customers use their existing Polymarket US accounts through our software, locally and later hosted, or must we onboard them through the ISV firm model? Does the answer differ for read-only data and user-configured unattended strategies?
+2. Which agreement and scopes permit a bounded internal trial: three games, nine snapshot times in one day, book/market metadata retained for 30 days, local and cloud replay, and derived comparison results retained for 90 days? Please specify raw-data export, customer display, backups and deletion obligations; proposed periods are requests, not assumed grants.
+3. Can an ISV link existing accounts without operating the documented partner funding flow? What delegation, key custody, user consent, geography checks and commercial charges apply?
+4. Please provide current ISV and Market Data Agreements, approved read-only access route, and current effective quantity/fee rounding rules. Are any additional permissions required for synthetic paper fills and cross-venue comparisons?
+
+### Novig
+
+Use the existing authorized Novig business/API contact if available. Otherwise draft for Novig support routing; do not infer the affiliate desk can approve trading access. Documented affiliate contact is `affiliates@novig.co`.
+
+Subject: Neural/Vaticor — NBX sports data pilot, replay rights and customer account model
+
+We build Neural, an SDK for sports-market normalization and paper strategy replay, and Vaticor, its hosted user workflow. Initial scope is MLB pregame full-game winner markets with no live orders.
+
+1. Can an individual or software provider receive read-only NBX credentials for event/outcome metadata and full books? Is market-maker status required, and which QA/production scopes and charges apply?
+2. Does an applicable license permit the same bounded pilot: three games, nine snapshot times in one day, 30-day raw-data retention for local/cloud replay and 90-day derived results? Please address public daily CSVs separately, including customer display, exports, backups and deletion requirements under Member Agreement section 11.1.
+3. Can users connect existing accounts to local software and later hosted, user-configured unattended strategies? What authorized delegation replaces sharing personal access materials under section 5.4, and how is physical-location eligibility enforced for hosted software?
+4. Which published contract version and market fields identify doubleheader game number, period, postponement window, fair-value settlement and rule updates? Please confirm current depth units, snapshot/reconnect guarantees, rate limits and fee/rounding rules for the proposed scope.
+
+## Implications: executable protocol after access and rule gates pass
+
+**Finite trial:** select three mutually listed MLB regular-season games and one exact team-win proposition per game. Exclude doubleheaders unless official game identity is verified. Target T−60, T−30 and T−10 minutes: nine paired snapshot sets in one trading day. At each set evaluate hypothetical immediate buys of **10, 100 and 1,000 contracts**. Use the same snapshot for all three sizes; no new market requests per size. Selection uses identity and availability, not favorable observed prices. No orders are submitted.
+
+**Permission:** record applicable agreement/version, permitted source, use, retention/deletion date and visibility before collection. Enforce the narrower granted scope if a vendor approves less than requested. A missing or contradictory permission means `access_unconfirmed` and no retained recording for that venue.
+
+**Contract gate:** same official game ID, teams, selected outcome, scheduled instance/game number, full-game period and extra-innings treatment. Compare exact listed rules for official-game threshold, postponement/resumption, cancellation/forfeit, settlement source and exceptional payout. Preserve URL, retrieved time and source digest. Missing rule coverage is `rules_unknown`; any material difference is `rules_different`. Both reject strict ranking. Do not average away fair-value settlement differences or assume YES on one team equals NO on another in every contingency.
+
+**Capture:** acquire venue snapshots concurrently. Preserve decimal price/quantity, venue IDs, side mapping, raw exchange timestamps and their documented meanings, request send/receive UTC, response duration, state and sequence/reconnect status. Proposed trial thresholds: response duration ≤2 seconds; local receive-time skew between venues ≤1 second; explicitly documented snapshot-as-of age ≤5 seconds. For a stream use a contiguous book plus documented live connection/heartbeat evidence; an old last-change time alone does not make an unchanged healthy book stale. If freshness cannot be established with the venue's semantics, reject `freshness_unknown`. Threshold failures reject `stale_or_skewed`. No forward fill across gaps. Each game must still be pregame and open; stop on ambiguous liveness or delayed/rescheduled identity.
+
+**Book and unit validation:** require positive finite depth and price in the instrument's allowed range; ordered noncrossed levels; known tick, order increment, minimum quantity, payout currency and contract multiplier. Preserve fractional displayed depth. Whole-contract order constraints do not justify truncating the incoming data. Unsupported size/increment rejects `quantity_unsupported`; unknown fill/quantity semantics reject `quantity_unknown`. Missing side, exhausted depth or truncated book rejects that size as `insufficient_depth`; never extrapolate a top quote to all sizes. A smaller size may still qualify.
+
+**Calculation:** sort executable offers for the selected outcome. Consume `x_i = min(available_i, Q − consumed)` until Q is reached. Principal is `Σ(x_i × p_i)` and VWAP is principal/Q. Add current venue trading fees using the exact series, account class, role, event phase, effective date and rounding policy. Public aggregated depth does not reveal individual match fragmentation: if this affects fee rounding, report a defensible interval or reject `fee_precision_unknown`. Funding/subscription costs remain separately labeled; no rebate assumed without eligibility. Total estimated acquisition cost = principal + trading fees; report dollars, per-contract cost and visible slippage versus top ask. This estimates displayed immediate execution, not realized fills, arbitrage profit or backtest queue position.
+
+**Decision output:** one row per snapshot, venue and requested size with eligibility/rejection reason, available quantity, VWAP, fee policy, fee/total interval and timestamps. Rank only strictly compatible qualified pairs with nonoverlapping total-cost intervals. Report ties/uncertain ordering explicitly. Report qualified coverage out of nine paired sets separately from cost advantage; rejected observations never become zeros.
+
+**Predeclared venue decision:** a cost-based preference requires at least six qualified paired sets spanning two games at each requested size, and the same venue must have a strictly lower total-cost interval in every qualified comparison across all three sizes. Any reversal, tie or overlapping interval among otherwise eligible observations means defer; missing the coverage threshold at any size also means defer. Do not change size weights, omit unfavorable qualified snapshots or choose a different primary size after seeing results. Account permissions and usable data remain prerequisites. If this rule defers, the provisional technical-readiness recommendation remains separate from cost evidence. A passing one-day pilot supports only the next bounded adapter decision, not persistent venue superiority.
+
+## Conflicts and unknowns: fees before ranking
+
+Live Kalshi `KXMLBGAME` series returns `fee_type=quadratic_with_maker_fees` and `fee_multiplier=0.5`. The linked July 7 fee PDF lists KXMLBGAME maker/taker multipliers 1/1. It describes fee-plus-position-cost rounding to a centicent while its illustrative table uses cents. Do not silently choose a value or use the earlier generic $1.75 comparison as the current MLB fee. Confirm the effective series/account policy or obtain a venue-supported preview. [Live series](https://api.elections.kalshi.com/trade-api/v2/series/KXMLBGAME), [fee schedule](https://kalshi.com/docs/kalshi-fee-schedule.pdf)
+
+Polymarket US documents a 0.06 taker coefficient with banker's rounding and cumulative adjustment across fills; Novig straight-contract fees depend on event liveness at match time and use five-decimal ledger precision. Freeze effective policies in the trial instead of a generic cross-venue fee constant. [Polymarket US fees](https://docs.polymarket.us/fees), [Novig fees](https://docs.novig.com/fees)
+
+## Engineer handoff: exact settlement evidence
+
+Kalshi series API returns `contract_terms_url=https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf`, `contract_url=https://assets.kalshi.com/regulatory/product-certifications/BASEBALLGAMEWIN.pdf`, and `settlement_sources`. Per-market capture should preserve `ticker`, `event_ticker`, `rules_primary`, `rules_secondary`, `expiration_time`, `expected_expiration_time` and `settlement_timer_seconds`. The source list is not a replacement for the PDF's settlement hierarchy.
+
+Kalshi exact terms pages 2–3: full-game default includes extra innings; governing-body official shortened-game result counts; postponement/resumption is within 48 hours of original scheduled start; pre-first-pitch forfeit uses fair price, after-start forfeit gives loser No/opponent Yes if declared winner. [Kalshi terms](https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf)
+
+The exact Polymarket US sample market `714358`, `aec-mlb-tb-atl-2026-09-10`, says full-game winner, extra innings included, MLB source, and a two-week rescheduling window before last-fair-market-price settlement. Its description lacks explicit forfeit/official-game threshold rules: those remain unknown for a strict fixture; FAQ guidance alone cannot fill exact-contract coverage. [Exact market](https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10)
+
+The following digests identify retrieved source bytes, not semantic version guarantees. The Polymarket US response includes mutable prices, so its digest is retrieval-specific. Raw bodies were not retained by the hash capture.
+
+| Source | Retrieved at (UTC) | SHA-256 |
+|---|---|---|
+| [Kalshi MLB contract terms](https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf) | 2026-09-10T04:25:59.570992+00:00 | `46b02443153f4692acb3bac3d3aedabe93e837b08c80323013c8dce117ebb6e7` |
+| [Polymarket US market 714358](https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10) | 2026-09-10T04:25:59.660275+00:00 | `7b5cc8e36072ab1a7c5b87347db949e1d19e9cb5fc8a4682c157dbef10aab899` |
+| [Novig MLB Winner Series PDF](https://novig.intercom-attachments-1.com/i/o/y5ui11zw/2574336132/b47910be4d7b2e11263be08e7901/MLB+Winner+Series.pdf) | 2026-09-10T04:25:59.920332+00:00 | `a60394032c519301b91a452c998ef4e77c5153ff92e4cee29d6d3d949b30b7dc` |
+
+The Novig digest identifies the 400,144-byte PDF retrieved through a signed attachment URL, not the contract-directory HTML. The link above preserves that exact attachment path while omitting temporary access parameters; it does not promise permanent unauthenticated access. Obtain a fresh attachment link from the [contract directory](https://support.novig.com/en/articles/16083642-contracts) if needed. The original capture metadata binds the signed PDF path, byte count, retrieval time and digest.
+
+Polymarket US current entity-agreement SHA256: c6975964cff6441cef9c4a699201c01efc1c14c42cef66eca72e9a19c70053a4. Downloaded September 10, 2026; latest URL is mutable. This supports the distinction from stale search-index text.
