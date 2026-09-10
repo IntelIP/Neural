@@ -83,6 +83,7 @@ fix = [
 ]
 sentiment = [
     "textblob>=0.17.1",
+    "nltk>=3.10.3",
     "vaderSentiment>=3.3.2",
     "transformers>=4.21.0",
     "torch>=1.12.0",
