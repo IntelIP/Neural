@@ -110,6 +110,66 @@ def test_missing_rule_hash_and_incomplete_review_cannot_claim_compatibility():
     assert compare_sports_markets(original, real).status == "unknown"
 
 
+@pytest.mark.parametrize("field", ["event_id", "market_id", "outcome_id", "canonical_event_id"])
+def test_fixture_rules_cannot_be_copied_onto_real_market_identities(field):
+    payload = market().to_dict()
+    payload[field] = "mlb:real-market-identity"
+    with pytest.raises(ValueError, match="fixture-prefixed"):
+        SportsMarket.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "https://exa mple.com/path",
+        "https://./x",
+        "https://example.com:notaport/path",
+        "https://example.com:65536/path",
+        "https://example.com:/path",
+        "https://-example.com/path",
+        "https://example..com/path",
+        "https://@example.com/path",
+    ],
+)
+def test_malformed_source_authorities_are_rejected(source_url):
+    with pytest.raises(ValueError):
+        replace(market().rules.terms[0], source_url=source_url)
+
+
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "https://example.com:443/path",
+        "https://example.com./path",
+        "https://[2001:db8::1]/path",
+        "https://bücher.example/path",
+    ],
+)
+def test_valid_source_authorities_remain_supported(source_url):
+    assert replace(market().rules.terms[0], source_url=source_url).source_url == source_url
+
+
+def test_lone_surrogates_cannot_escape_the_wire_boundary():
+    for field in (
+        "event_id",
+        "market_id",
+        "outcome_id",
+        "raw_home_team_id",
+        "raw_away_team_id",
+        "canonical_event_id",
+        "home_team_id",
+        "away_team_id",
+        "outcome_team_id",
+        "period",
+    ):
+        for surrogate in ("\ud800", "\udfff"):
+            with pytest.raises(ValueError, match="UTF-8"):
+                replace(market(), **{field: "fixture:" + surrogate})
+    for field in ("value", "source_url", "retrieved_at"):
+        with pytest.raises(ValueError, match="UTF-8"):
+            replace(market().rules.terms[0], **{field: "source\ud800"})
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
