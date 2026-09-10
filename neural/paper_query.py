@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -13,7 +14,7 @@ from typing import Any
 
 from neural.paper_worker import APPLICATION_ID, MAX_INPUT_BYTES
 from neural.sports import SportsMarket, compare_sports_markets
-from neural.strategy import StrategySpec, _decimal
+from neural.strategy import StrategySpec, _decimal_text
 
 
 class PaperJournal:
@@ -48,6 +49,11 @@ class PaperJournal:
                 raise ValueError("unsupported paper job database")
             yield db
         except sqlite3.Error as exc:
+            if isinstance(exc, sqlite3.OperationalError) and str(exc) in (
+                "database is locked",
+                "database table is locked",
+            ):
+                raise
             raise ValueError("cannot read paper job database") from exc
         finally:
             if db is not None:
@@ -165,13 +171,22 @@ class PaperJournal:
                 raise ValueError("saved comparison trace unavailable or invalid")
             with localcontext() as context:
                 context.prec = 100
-                total_fees = sum(
-                    (_decimal(event.get("fees", "0"), "fees") for event in trace), Decimal(0)
-                )
-            job["result"]["total_fees"] = str(total_fees)
+                total_fees = sum((self._trace_fee(event) for event in trace), Decimal(0))
+            job["result"]["total_fees"] = _decimal_text(total_fees)
             job["result"]["fill_count"] = sum(event["action"] == "fill" for event in trace)
             job["result"]["rejection_count"] = sum(event["action"] == "reject" for event in trace)
         return jobs
+
+    @staticmethod
+    def _trace_fee(event: dict[str, Any]) -> Decimal:
+        """Parse products of two 18-digit inputs without truncating their scale."""
+        value = event.get("fees", "0")
+        if (
+            not isinstance(value, str)
+            or re.fullmatch(r"(0|[1-9][0-9]{0,35})(\.[0-9]{1,36})?", value) is None
+        ):
+            raise ValueError("saved trace fees must be a finite nonnegative decimal product")
+        return Decimal(value)
 
     def compare_markets(self, first: str, second: str) -> dict[str, Any]:
         """Inspect sports terms separately; this never compares execution costs/PnL."""

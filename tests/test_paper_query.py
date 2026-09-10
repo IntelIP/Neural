@@ -100,6 +100,58 @@ def test_historical_models_stay_opaque_and_read_only(tmp_path, monkeypatch):
     assert database.read_bytes() == before
 
 
+def test_derived_fees_preserve_product_scale(tmp_path):
+    database = tmp_path / "tiny-fees.sqlite3"
+    jobs = worker.PaperJobs(database)
+    spec, recording = inputs()
+    ids = []
+    for entry in ("0.45", "0.46"):
+        ids.append(
+            jobs.submit(
+                replace(spec, entry_price=entry, quantity="0.01"),
+                recording,
+                initial_cash="10",
+                fee_per_contract="0.000000000000000001",
+            )
+        )
+        assert jobs.run_next()["status"] == "completed"
+    before = database.read_bytes()
+    for job in PaperJournal(jobs.database).compare(*ids):
+        assert job["result"]["total_fees"] == "0.00000000000000000002"
+        assert job["result"]["fill_count"] == 2
+    assert database.read_bytes() == before
+
+
+@pytest.mark.parametrize("fee", ["NaN", "Infinity", "-0.01", 0.01, "0." + "0" * 36 + "1"])
+def test_invalid_saved_fees_reject_comparison(tmp_path, fee):
+    jobs = worker.PaperJobs(tmp_path / "invalid-fees.sqlite3")
+    first, _ = enqueue(jobs)
+    second, _ = enqueue(jobs, entry="0.46")
+    jobs.run_next()
+    jobs.run_next()
+    result = jobs.inspect(first)["result"]
+    result["trace"][0]["fees"] = fee
+    with sqlite3.connect(jobs.database) as db:
+        db.execute("UPDATE jobs SET result=? WHERE id=?", (json.dumps(result), first))
+    with pytest.raises(ValueError, match="saved trace fees"):
+        PaperJournal(jobs.database).compare(first, second)
+
+
+def test_exclusive_lock_stays_distinguishable_from_invalid_data(tmp_path, monkeypatch):
+    database = tmp_path / "busy.sqlite3"
+    worker.PaperJobs(database)
+    before = database.read_bytes()
+    connect = sqlite3.connect
+    monkeypatch.setattr(
+        sqlite3, "connect", lambda *args, **kwargs: connect(*args, **{**kwargs, "timeout": 0})
+    )
+    with connect(database) as writer:
+        writer.execute("BEGIN EXCLUSIVE")
+        with pytest.raises(sqlite3.OperationalError, match="database is locked"):
+            PaperJournal(database).history()
+    assert database.read_bytes() == before
+
+
 @pytest.mark.parametrize(
     "change", [{"initial_cash": "11"}, {"fee_per_contract": "0.02"}, {"max_events": 1000}]
 )

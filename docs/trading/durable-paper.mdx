@@ -83,7 +83,8 @@ writer reservation, creating a queue, migrating its schema or running simulation
 Missing files raise `FileNotFoundError`; unknown jobs, invalid stored data and
 unsupported journal versions raise `ValueError`. History orders by insertion,
 newest first; offset is 0–100,000 and page size is 1–100. No timestamps are invented.
-Reading can still report database-busy if SQLite holds an exclusive lock.
+Reading preserves `sqlite3.OperationalError` for database-busy contention if SQLite
+holds an exclusive lock, so callers can distinguish it from invalid stored data.
 
 `recording(job_id)` verifies the stored configuration/job identity and the original
 recording's size and digest before returning its exact bytes. Inspection preserves
