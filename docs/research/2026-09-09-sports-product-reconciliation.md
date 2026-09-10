@@ -44,4 +44,3 @@ NRCL-100 and NRCL-101 have native blocked-by links to NRCL-98 and NRCL-99. NRCL-
 ## Next pull
 
 Refine NRCL-99 for one agreed sport and exact contract sources. Once the rule contract is ready, NRCL-100 adapter work and NRCL-101 access/cost validation can run beside each other. Keep at most three started stories; keep hosted paper and live execution as subsequent bounded milestones.
-

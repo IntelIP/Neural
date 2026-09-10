@@ -12,7 +12,7 @@ Research date: September 9, 2026 America/New_York. Public API observations occur
 
 Reasons: Polymarket US offers working unauthenticated sports discovery and books; Neural already references Polymarket US normalization examples; its current docs explicitly describe an ISV route for hosted customer workflows. Novig has meaningful observed MLB activity and attractive documented pregame trading fees, but the current public evidence does not establish a Vaticor customer-account automation model. Final live venue selection remains open.
 
-Local fit verified in `README.md`: stable product is a deterministic, dependency-free kernel beneath Vaticor; Kalshi data uses decimal prices and fractional depth; existing Polymarket US examples are listed. `docs/trading/recorded-paper.mdx` states recordings currently support Kalshi only. No implementation or live readiness inferred from those descriptions. 
+Local fit verified in `README.md`: stable product is a deterministic, dependency-free kernel beneath Vaticor; Kalshi data uses decimal prices and fractional depth; existing Polymarket US examples are listed. `docs/trading/recorded-paper.mdx` states recordings currently support Kalshi only. No implementation or live readiness inferred from those descriptions.
 
 ## Facts that change the plan
 

@@ -43,4 +43,3 @@ The synthetic round trip yields cash 10.56 from starting cash 10 and realized Pn
 - Existing docs explicitly limit the simulator: Kalshi only, local and loopback-only, synthetic fixtures, fill-or-kill depth handling; no partial-fill simulation, live feed compatibility, queue priority, slippage or certified exchange fee accuracy.
 - The original verification performed no hosted deployment, live trading, authenticated venue call or paid experiment.
 - Verification required no product code changes. This report preserves the original evidence.
-
