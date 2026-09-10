@@ -47,6 +47,10 @@ def read_recording_metadata(path: str | Path) -> dict[str, Any]:
         header = next(records, None)
     finally:
         records.close()
+    return _metadata(header)
+
+
+def _metadata(header: dict[str, Any] | None) -> dict[str, Any]:
     if header is None:
         raise ValueError("empty recording")
     if header.get("version") == KALSHI_VERSION:
@@ -105,22 +109,37 @@ def _levels(value: Any, side: str) -> tuple[BookLevel, ...]:
     return tuple(result)
 
 
-def replay_book_recording(path: str | Path) -> Iterator[StreamEvent]:
+def replay_book_recording(
+    path: str | Path, *, expected_metadata: dict[str, Any] | None = None
+) -> Iterator[StreamEvent]:
     """Replay either format; exhaust the iterator to validate the final boundary.
 
     Normalized records contain full bid/ask ladders for the header's selected
     outcome. The existing binary book type supplies the simulator boundary.
     """
-    metadata = read_recording_metadata(path)
+    records = _records(path)
+    try:
+        metadata = _metadata(next(records, None))
+        if expected_metadata is not None and metadata != expected_metadata:
+            raise ValueError("recording metadata changed before replay")
+        yield from _replay_records(path, records, metadata)
+    finally:
+        records.close()
+
+
+def _replay_records(
+    path: str | Path, records: Iterator[dict[str, Any]], metadata: dict[str, Any]
+) -> Iterator[StreamEvent]:
     if metadata["version"] == KALSHI_VERSION:
-        yield from replay_kalshi_recording(path)
+        for event in replay_kalshi_recording(path):
+            if event.update is not None and event.update.book.ticker != metadata["market_id"]:
+                raise ValueError("recording market changed before replay")
+            yield event
         return
     active = False
     session = sequence = 0
     previous: datetime | None = None
     previous_source: datetime | None = None
-    records = _records(path)
-    next(records)  # Header already validated above.
     for record in records:
         kind = record.get("kind")
         extra = (
@@ -181,7 +200,7 @@ def describe_recording(path: str | Path, *, max_events: int = 10000) -> dict[str
     result = read_recording_metadata(path)
     count = books = resets = connections = disconnects = 0
     start = end = last_source = None
-    for count, event in enumerate(replay_book_recording(path), 1):
+    for count, event in enumerate(replay_book_recording(path, expected_metadata=result), 1):
         if count > max_events:
             raise ValueError("recording exceeds max_events")
         if end is not None and event.received_at < end:

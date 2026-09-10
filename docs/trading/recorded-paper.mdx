@@ -35,8 +35,10 @@ fee_per_contract="0.01")`. The returned dictionary is JSON serializable.
 - Disconnect cancels pending intent, preserving holdings. Pending orders expire
   after 30 receive-time seconds (configurable). This order deadline is separate
   from source freshness: normalized books require a source timestamp no more
-  than 30 seconds before observation. Legacy Kalshi replay retains its previous
-  source handling. Market opening, queue priority, impact, other traders, actual
+  than 30 seconds before observation. A source-dated next book must be strictly
+  newer than the pending intent's receipt time, or the intent cancels with
+  `source_not_after_intent`. Legacy books without source timestamps retain their
+  receipt-time behavior. Market opening, queue priority, impact, other traders, actual
   venue fees and account-wide multi-strategy risk are not modeled.
 - Paper lot is 0.01 contracts; this is a model assumption, not venue certification.
   Full depth in a synthetic recording is a fixture assertion, not evidence of
@@ -88,6 +90,9 @@ returns venue/native market, selected outcome, event/book/reset counts,
 reconnect/disconnect counts, observation start/end, final book source timestamp,
 provenance and the attached `SportsMarket`. `replay_book_recording(path)` yields
 the existing stream-event shape; consumers must exhaust it to validate EOF.
+Replay parses normalized metadata and rows from one open file handle. Simulation
+and summary generation also compare that header with their accepted metadata,
+rejecting path replacement that would mix sports identity with another book.
 
 ## Normalized recording contract
 
@@ -119,7 +124,8 @@ cross-venue equivalence. Compare two attached contracts with
 `compare_sports_markets(SportsMarket.from_dict(left),
 SportsMarket.from_dict(right)).to_dict()` to show `compatible`, `different` or
 `unknown` and reasons. Compatible fixture rules do not certify live contracts.
-Legacy Kalshi report shape and content identities remain unchanged.
+Legacy Kalshi recordings without source timestamps retain their report shape
+and content identities; source-dated books also use the causal fill guard.
 
 ```sh
 pytest tests/test_recordings.py tests/test_paper_recording.py tests/test_paper_worker.py -q

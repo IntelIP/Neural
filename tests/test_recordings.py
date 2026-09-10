@@ -1,5 +1,6 @@
 """Synthetic cross-venue replay; no credentials, data capture or market calls."""
 
+import builtins
 import json
 from dataclasses import replace
 from decimal import Decimal, localcontext
@@ -50,7 +51,7 @@ def test_same_strategy_logic_uses_full_decimal_depth_across_venues():
         {"price": "0.4", "quantity": "0.75"},
         {"price": "0.42", "quantity": "1.25"},
     ]
-    assert poly["trace"][2]["source_at"] == "2026-09-10T18:00:01+00:00"
+    assert poly["trace"][2]["source_at"] == "2026-09-10T18:00:02+00:00"
     assert poly["market_compatibility"]["status"] == "unknown"
     comparison = compare_sports_markets(
         SportsMarket.from_dict(kalshi["sports_market"]),
@@ -168,3 +169,77 @@ def test_polymarket_jobs_snapshot_and_recover_without_venue_specific_worker(tmp_
     assert jobs.run_next()["status"] == "failed"
     assert PaperJobs(database).inspect(bad_identity)["result"] is None
     assert PaperJobs(database).run_next() is None
+
+
+@pytest.mark.parametrize("describe", [False, True])
+@pytest.mark.parametrize("replace_after_open", [1, 2])
+def test_atomic_path_replace_cannot_mix_report_metadata_and_books(
+    tmp_path, monkeypatch, describe, replace_after_open
+):
+    spec, fixture = inputs()
+    path = tmp_path / "recording.jsonl"
+    replacement = tmp_path / "replacement.jsonl"
+    path.write_bytes(fixture.read_bytes())
+    rows = [json.loads(line) for line in fixture.read_text().splitlines()]
+    rows[0]["outcome"] = "no"
+    rows[0]["sports_market"]["outcome_team_id"] = "mlb:tb"
+    replacement.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    consume = describe_recording if describe else lambda path: run(spec, path)
+    expected = consume(path)
+    original_open = builtins.open
+    opens = 0
+
+    def replace_on_open(file, *args, **kwargs):
+        nonlocal opens
+        source = original_open(file, *args, **kwargs)
+        if file == path:
+            opens += 1
+            if opens == replace_after_open:
+                replacement.replace(path)
+        return source
+
+    monkeypatch.setattr(builtins, "open", replace_on_open)
+    if replace_after_open == 1:
+        with pytest.raises(ValueError, match="metadata changed"):
+            consume(path)
+    else:
+        # The replay already opened A: its accepted metadata and every book
+        # still belong to A, even though the path now resolves to B.
+        assert consume(path) == expected
+
+
+def test_replay_header_and_rows_share_one_open_file(tmp_path, monkeypatch):
+    _, fixture = inputs()
+    path = tmp_path / "recording.jsonl"
+    replacement = tmp_path / "replacement.jsonl"
+    path.write_bytes(fixture.read_bytes())
+    replacement.write_text(fixture.read_text().replace('"outcome":"yes"', '"outcome":"no"'))
+    expected = list(replay_book_recording(path))
+    original_open = builtins.open
+
+    def replace_on_open(file, *args, **kwargs):
+        source = original_open(file, *args, **kwargs)
+        if file == path and replacement.exists():
+            replacement.replace(path)
+        return source
+
+    monkeypatch.setattr(builtins, "open", replace_on_open)
+    assert list(replay_book_recording(path)) == expected
+
+
+@pytest.mark.parametrize("side", ["buy", "sell"])
+@pytest.mark.parametrize("equal", [False, True])
+def test_delayed_source_cannot_fill_before_or_at_intent_time(tmp_path, side, equal):
+    def delay(rows):
+        signal, fill, second = (2, 3, 0) if side == "buy" else (4, 5, 2)
+        rows[signal]["source_at"] = f"2026-09-10T18:00:{second:02d}Z"
+        timestamp = f"{second + 1:02d}" if equal else f"{second:02d}.500000"
+        rows[fill]["source_at"] = f"2026-09-10T18:00:{timestamp}Z"
+
+    spec, path = changed_recording(tmp_path, delay)
+    result = run(spec, path)
+    row = result["trace"][2 if side == "buy" else 4]
+    assert row["action"] == "cancel"
+    assert row["reason"] == "source_not_after_intent"
+    assert result["position"] == ("0" if side == "buy" else "2")
+    assert result["realized_pnl"] == "0"

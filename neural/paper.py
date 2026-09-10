@@ -68,7 +68,7 @@ def simulate_recording(
         if normalized:
             digest.update((_canonical(metadata) + "\n").encode())
         books = count = 0
-        for count, event in enumerate(replay_book_recording(path), 1):
+        for count, event in enumerate(replay_book_recording(path, expected_metadata=metadata), 1):
             if count > max_events:
                 raise ValueError("recording exceeds max_events")
             if previous is not None and event.received_at < previous:
@@ -103,6 +103,8 @@ def simulate_recording(
                 row.update(action="cancel", side=side)
                 if (event.received_at - created).total_seconds() > max_order_age_seconds:
                     row["reason"] = "order_expired"
+                elif update.source_at is not None and update.source_at <= created:
+                    row["reason"] = "source_not_after_intent"
                 else:
                     remaining = spec.quantity
                     notional = Decimal(0)
