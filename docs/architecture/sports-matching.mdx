@@ -1,0 +1,121 @@
+---
+title: Sports proposition matching
+description: Compare MLB winner propositions while preserving settlement differences and unknown rules
+---
+
+`neural.sports` adds a versioned, offline contract for MLB team-winner markets.
+It separates **the sporting proposition** from **the settlement policy**.
+Matching teams and a game does not establish economically equivalent contracts.
+
+## API and existing consumers
+
+```python
+from neural.sports import SportsMarket, compare_sports_markets
+
+left = SportsMarket.from_dict(left_payload)
+right = SportsMarket.from_dict(right_payload)
+comparison = compare_sports_markets(left, right)
+print(comparison.to_dict())
+```
+
+The output contains `status`, `proposition`, `settlement`, `differences`, and
+`unknowns`. Each status is `compatible`, `different`, or `unknown`. Field names
+identify the reason; the input contracts retain each rule value and its source
+for display. The function makes no network calls or settlement decisions.
+
+This is additive to `StrategySpec` and `neural.contracts` v1. Their schemas,
+hashes and replay behavior remain unchanged. Existing `NormalizedMarket`
+consumers can retain `SportsMarket.to_dict()` under
+`market.metadata["sports_proposition"]`; keep `market_id` equal to the native
+identifier already used by the adapter. No broker abstraction or dependency is
+introduced. Novig is accepted as a metadata venue, not as an executable adapter.
+
+## Version 1 identity
+
+Wire payloads require every documented dataclass field, reject extra fields,
+and use `schema_version: "1.0.0"`. `sport`, `league`, and `market_type` are fixed
+to `baseball`, `mlb`, and `winner`. Identity fields are:
+
+| Fields | Meaning |
+| --- | --- |
+| `venue`, `event_id`, `market_id`, `outcome_id` | Original venue and native identifiers; never replaced with canonical IDs |
+| `raw_home_team_id`, `raw_away_team_id` | Original venue team IDs, or null when absent |
+| `canonical_event_id`, `home_team_id`, `away_team_id` | Caller-resolved identities in a shared namespace; null when unresolved |
+| `outcome_team_id` | The selected team-wins proposition, not a venue-specific yes/no label |
+| `game_date` | Original official local schedule date (`YYYY-MM-DD`), retained after postponement |
+| `game_number` | 1 or 2, explicitly established; null when unknown |
+| `period` | `full_game` for the supported comparison; other named segments remain representable but excluded |
+
+The canonical event ID must identify one game, not a matchup or date bucket.
+Use an authoritative common game identifier or an explicitly reviewed mapping.
+An adapter must not invent mappings by lowercasing team names, translating an
+unknown game number to 1, or truncating a UTC start timestamp into a local game
+date. A rescheduled start time belongs in venue metadata; it does not silently
+create a new canonical game. Home/away changes require mapping review.
+
+Every canonical field must agree and be known before settlement comparison.
+Two missing values produce `unknown`. Game 1 and game 2 are different even if
+an upstream mapper accidentally reuses the event ID. Opposite team outcomes
+are different. Partial-game markets are excluded even when both periods agree.
+
+## Rule evidence and compatibility
+
+`SettlementRules` contains `terms` and `complete`. Each `RuleEvidence` contains:
+
+- `name`: one of `winner`, `extra_innings`, `forfeit`, `postponement`,
+  `cancellation`, `shortened_game`, `settlement_source`, `exceptional_payout`,
+  `venue_change`, or `replay`.
+- `value`: a reviewed semantic policy identifier. Preserve material exceptions,
+  deadlines, source hierarchies, and payout procedures in its meaning. Raw text
+  similarity is not semantic equality.
+- `source_url`, `source_sha256`, `retrieved_at`: HTTPS source, exact retrieved
+  content digest (null if unavailable), and timezone-aware observation time.
+  The digest is a content version, not a claimed publisher revision number.
+- `scope`: `listed_contract`, `series`, `guidance`, or explicitly synthetic
+  `fixture`.
+
+`complete` defaults to false. Set it only after reviewing the listed contract
+and applicable supplemental rules against every v1 dimension. If an exception
+cannot be represented faithfully, leave review incomplete. Series PDFs and
+general FAQs can surface documented differences, but cannot establish complete
+listed-contract compatibility. A missing rule or snapshot also prevents it.
+
+For matching propositions, a known policy difference yields `different`, even
+if other fields remain unknown; those unknowns are still returned. Equal rule
+values require full source coverage to produce `compatible`. Source URLs need
+not be identical across venues: compare reviewed meanings, retain both sources.
+Synthetic rules can compare with synthetic rules, but cannot certify real
+contract evidence. `compatible` describes these reviewed v1 dimensions; it is
+neither a legal guarantee nor a risk-free arbitrage claim.
+
+## Offline fixture demonstration
+
+```bash
+uv run python examples/sports_matching_demo.py
+uv run pytest --no-cov tests/contracts/test_sports_matching.py
+```
+
+The JSON fixture uses synthetic game, team and native venue IDs throughout.
+The ordinary-winner compatible pair uses identical **synthetic** rules. Other
+cases demonstrate forfeit differences, postponed-game differences, doubleheader
+separation, partial-game exclusion, missing rules and an unknown game number.
+The demo tests matching and rule comparison, not game settlement or fill quality.
+
+Rule-reference cases retain source hashes observed September 10, 2026:
+
+- [Kalshi BASEBALLGAMEWIN terms](https://assets.kalshi.com/contract_terms/BASEBALLGAMEWIN.pdf)
+  distinguish forfeits before first pitch from those after play starts and use
+  a 48-hour postponement window. The fixture marks this as series evidence.
+- [Polymarket US listed TB–ATL market](https://gateway.polymarket.us/v1/market/slug/aec-mlb-tb-atl-2026-09-10)
+  names MLB, includes extra innings, and specifies a rescheduling date within
+  two weeks or last fair market price. Its response hash includes mutable market
+  data. The fixture does not infer unlisted forfeit or shortened-game rules from
+  the general FAQ.
+- [Novig contract directory](https://support.novig.com/en/articles/16083642-contracts)
+  links the MLB Winner Series PDF. Its rule-reference fixture records the linked
+  PDF URL without temporary access parameters and the PDF content hash. The
+  series voids a forfeit without an on-field result; postponement terms include
+  season-dependent windows and date-update exceptions.
+
+These are bounded policy examples, not verified market mappings or a complete
+current rules database. The recorded inputs do not claim three-venue equivalence.

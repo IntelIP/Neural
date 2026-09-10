@@ -1,4 +1,10 @@
 {
   "title": "Architecture",
-  "pages": ["start-here", "overview", "contracts", "stability"]
+  "pages": [
+    "start-here",
+    "overview",
+    "contracts",
+    "sports-matching",
+    "stability"
+  ]
 }
