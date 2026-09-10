@@ -88,7 +88,8 @@ Synthetic rules require `fixture:`-prefixed native event, market and outcome
 IDs, plus a `fixture:`-prefixed canonical event ID when known. Copying fixture
 rules onto real market identities is rejected. Synthetic rules can compare
 with synthetic rules, but cannot certify real contract evidence. Source URLs
-must have valid HTTPS hostnames and ports; wire text must encode as UTF-8.
+must have valid HTTPS DNS names or unscoped IPv6 hosts and valid ports. IPv6
+zone identifiers are unsupported for rule sources. Wire text must encode as UTF-8.
 `compatible` describes these reviewed v1 dimensions; it is
 neither a legal guarantee nor a risk-free arbitrage claim.
 

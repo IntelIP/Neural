@@ -130,6 +130,8 @@ def test_fixture_rules_cannot_be_copied_onto_real_market_identities(field):
         "https://example..com/path",
         "https://@example.com/path",
         "https://[v1.foo]/rules",
+        "https://[fe80::1%bad zone]/rules",
+        "https://[fe80::1%25en0]/rules",
     ],
 )
 def test_malformed_source_authorities_are_rejected(source_url):

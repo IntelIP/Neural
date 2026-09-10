@@ -82,6 +82,8 @@ class RuleEvidence:
                 raise ValueError("empty or unusable port")
             host = url.hostname.encode("idna").decode("ascii")
             if url.netloc.startswith("["):
+                if "%" in host:
+                    raise ValueError("IPv6 zone identifiers are not supported for rule sources")
                 IPv6Address(host)
             else:
                 host = host.removesuffix(".")
