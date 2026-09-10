@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, fields
 from datetime import date, datetime
+from ipaddress import IPv6Address
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
@@ -35,6 +36,10 @@ def _text(value: Any, name: str, *, optional: bool = False) -> None:
         raise ValueError(f"{name}: expected nonempty text without surrounding whitespace")
     if any(ord(char) < 32 for char in value):
         raise ValueError(f"{name}: control characters are forbidden")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"{name}: text must be valid UTF-8") from exc
 
 
 def _wire(cls: Any, payload: Any) -> dict[str, Any]:
@@ -64,8 +69,27 @@ class RuleEvidence:
         for name in ("value", "source_url", "retrieved_at"):
             _text(getattr(self, name), name)
         url = urlsplit(self.source_url)
-        if url.scheme != "https" or not url.hostname or url.username or url.password:
+        if (
+            url.scheme != "https"
+            or not url.hostname
+            or url.username is not None
+            or url.password is not None
+        ):
             raise ValueError("rule source must be an HTTPS URL without credentials")
+        try:
+            port = url.port  # Reject nonnumeric and out-of-range ports.
+            if url.netloc.endswith(":") or (port is not None and port < 1):
+                raise ValueError("empty or unusable port")
+            host = url.hostname.encode("idna").decode("ascii")
+            if ":" in host:
+                IPv6Address(host)
+            else:
+                host = host.removesuffix(".")
+                label = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+                if len(host) > 253 or re.fullmatch(rf"{label}(?:\.{label})*", host) is None:
+                    raise ValueError("malformed hostname")
+        except (ValueError, UnicodeError) as exc:
+            raise ValueError("rule source must have a valid hostname and port") from exc
         if self.source_sha256 is not None and (
             not isinstance(self.source_sha256, str)
             or re.fullmatch(r"[0-9a-f]{64}", self.source_sha256) is None
@@ -171,6 +195,11 @@ class SportsMarket:
             date.fromisoformat(self.game_date)
         if not isinstance(self.rules, SettlementRules):
             raise ValueError("rules must be SettlementRules")
+        if any(term.scope == "fixture" for term in self.rules.terms):
+            for name in ("event_id", "market_id", "outcome_id", "canonical_event_id"):
+                value = getattr(self, name)
+                if value is not None and not value.startswith("fixture:"):
+                    raise ValueError(f"{name}: fixture rules require fixture-prefixed identities")
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> SportsMarket:

@@ -84,8 +84,12 @@ For matching propositions, a known policy difference yields `different`, even
 if other fields remain unknown; those unknowns are still returned. Equal rule
 values require full source coverage to produce `compatible`. Source URLs need
 not be identical across venues: compare reviewed meanings, retain both sources.
-Synthetic rules can compare with synthetic rules, but cannot certify real
-contract evidence. `compatible` describes these reviewed v1 dimensions; it is
+Synthetic rules require `fixture:`-prefixed native event, market and outcome
+IDs, plus a `fixture:`-prefixed canonical event ID when known. Copying fixture
+rules onto real market identities is rejected. Synthetic rules can compare
+with synthetic rules, but cannot certify real contract evidence. Source URLs
+must have valid HTTPS hostnames and ports; wire text must encode as UTF-8.
+`compatible` describes these reviewed v1 dimensions; it is
 neither a legal guarantee nor a risk-free arbitrage claim.
 
 ## Offline fixture demonstration
