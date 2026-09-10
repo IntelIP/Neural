@@ -20,7 +20,7 @@ from neural.recordings import (
 )
 from neural.strategy import StrategySpec, _decimal, _decimal_text
 
-PAPER_MODEL = "neural-paper/1"
+PAPER_MODEL = "neural-paper/2"
 
 
 def _canonical(value: Any) -> str:

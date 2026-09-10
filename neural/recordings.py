@@ -72,8 +72,8 @@ def _metadata(header: dict[str, Any] | None) -> dict[str, Any]:
     if header["venue"] not in ("kalshi", "polymarket_us"):
         raise ValueError("unsupported recording venue")
     _ticker(header["market_id"])
-    if header["outcome"] not in ("yes", "no"):
-        raise ValueError("recording outcome must be yes or no")
+    if header["outcome"] != "yes":
+        raise ValueError("normalized sports recordings support the YES team-wins outcome only")
     if header["provenance"] != "synthetic":
         raise ValueError("normalized recording currently supports synthetic provenance only")
     market = SportsMarket.from_dict(header["sports_market"])
@@ -114,8 +114,8 @@ def replay_book_recording(
 ) -> Iterator[StreamEvent]:
     """Replay either format; exhaust the iterator to validate the final boundary.
 
-    Normalized records contain full bid/ask ladders for the header's selected
-    outcome. The existing binary book type supplies the simulator boundary.
+    Normalized records contain full bid/ask ladders for the named YES team-wins
+    proposition only. The existing binary book type supplies the boundary.
     """
     records = _records(path)
     try:
@@ -186,8 +186,7 @@ def _replay_records(
         with localcontext() as context:
             context.prec = 80
             opposite = tuple(BookLevel(Decimal(1) - level.price, level.quantity) for level in asks)
-        yes, no = (bids, opposite) if metadata["outcome"] == "yes" else (opposite, bids)
-        book = OrderBookSnapshot(metadata["market_id"], yes, no, at, 0)
+        book = OrderBookSnapshot(metadata["market_id"], bids, opposite, at, 0)
         yield StreamEvent("book", at, BookUpdate(book, session, sequence, source_at))
     if active or previous is None:
         raise ValueError("empty or incomplete recording: terminal reset required")

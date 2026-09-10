@@ -80,12 +80,19 @@ def test_summary_preserves_native_identity_and_counts():
         describe_recording(path, max_events=5)
 
 
-@pytest.mark.parametrize("outcome", ["yes", "no"])
-def test_selected_outcome_book_is_explicit(tmp_path, outcome):
-    spec, path = changed_recording(tmp_path, lambda rows: rows[0].update(outcome=outcome))
-    assert run(replace(spec, outcome=outcome), path)["cash"] == "10.52"
+def test_no_strategy_cannot_reuse_yes_sports_proposition():
+    spec, path = inputs()
+    assert run(spec, path)["sports_market"]["outcome_team_id"] == "mlb:atl"
     with pytest.raises(ValueError, match="outcome"):
-        run(replace(spec, outcome="no" if outcome == "yes" else "yes"), path)
+        run(replace(spec, outcome="no"), path)
+
+
+def test_no_header_cannot_label_opposite_trade_as_yes_team(tmp_path):
+    spec, path = changed_recording(tmp_path, lambda rows: rows[0].update(outcome="no"))
+    with pytest.raises(ValueError, match="YES team-wins outcome only"):
+        run(replace(spec, outcome="no"), path)
+    with pytest.raises(ValueError, match="YES team-wins outcome only"):
+        describe_recording(path)
 
 
 @pytest.mark.parametrize(
@@ -181,8 +188,8 @@ def test_atomic_path_replace_cannot_mix_report_metadata_and_books(
     replacement = tmp_path / "replacement.jsonl"
     path.write_bytes(fixture.read_bytes())
     rows = [json.loads(line) for line in fixture.read_text().splitlines()]
-    rows[0]["outcome"] = "no"
     rows[0]["sports_market"]["outcome_team_id"] = "mlb:tb"
+    rows[2]["asks"] = rows[3]["asks"] = [["0.44", "3"]]
     replacement.write_text("".join(json.dumps(row) + "\n" for row in rows))
     consume = describe_recording if describe else lambda path: run(spec, path)
     expected = consume(path)
@@ -213,7 +220,10 @@ def test_replay_header_and_rows_share_one_open_file(tmp_path, monkeypatch):
     path = tmp_path / "recording.jsonl"
     replacement = tmp_path / "replacement.jsonl"
     path.write_bytes(fixture.read_bytes())
-    replacement.write_text(fixture.read_text().replace('"outcome":"yes"', '"outcome":"no"'))
+    rows = [json.loads(line) for line in fixture.read_text().splitlines()]
+    rows[0]["sports_market"]["outcome_team_id"] = "mlb:tb"
+    rows[2]["asks"] = [["0.44", "3"]]
+    replacement.write_text("".join(json.dumps(row) + "\n" for row in rows))
     expected = list(replay_book_recording(path))
     original_open = builtins.open
 

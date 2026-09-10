@@ -21,6 +21,9 @@ Pass zero explicitly only for an idealized zero-fee experiment.
 
 Python callers use `simulate_recording(spec, path, initial_cash="100",
 fee_per_contract="0.01")`. The returned dictionary is JSON serializable.
+The current model is `neural-paper/2`, available as `neural.paper.PAPER_MODEL`.
+Model 2 versions source-causal fills and the synthetic sports recording boundary;
+its report and durable job identities differ from model 1 even for identical input.
 
 ## Execution assumptions
 
@@ -101,8 +104,10 @@ collector or turn a BBO quote into depth. Every JSONL line must end with a newli
 
 - First line: exactly `version`, `kind: "header"`, `venue`, `market_id`, `outcome`,
   `sports_market`, and `provenance: "synthetic"`. The sports contract must have
-  the same venue and native market. Its selected team outcome describes the
-  header's explicit YES or NO side; the importer owns that semantic mapping.
+  the same venue and native market. `outcome` must be `"yes"`: the attached
+  sports identity is the named YES team-wins proposition. Normalized NO-side
+  recordings are rejected because the sports contract cannot identify an
+  opposite binary side. Legacy Kalshi recordings still support YES and NO.
 - Session boundaries: `version`, `kind: "reset"`, `received_at`, and `reason`
   (`connecting` or `disconnected`). Start connected, alternate boundaries, end
   disconnected. Reconnect cancels pending orders and resets sequence tracking.
@@ -124,8 +129,9 @@ cross-venue equivalence. Compare two attached contracts with
 `compare_sports_markets(SportsMarket.from_dict(left),
 SportsMarket.from_dict(right)).to_dict()` to show `compatible`, `different` or
 `unknown` and reasons. Compatible fixture rules do not certify live contracts.
-Legacy Kalshi recordings without source timestamps retain their report shape
-and content identities; source-dated books also use the causal fill guard.
+Legacy Kalshi recordings without source timestamps retain their trading behavior
+and report shape; the new model version changes content identities. Source-dated
+books also use the causal fill guard.
 
 ```sh
 pytest tests/test_recordings.py tests/test_paper_recording.py tests/test_paper_worker.py -q

@@ -55,6 +55,13 @@ single buy/exit cycle, no settlement or freshness certification. Model identity
 is part of each job; incompatible future models must fail rather than silently
 reinterpret queued work. No hosted worker or Vaticor UI is deployed here.
 
+The current model is `neural-paper/2` (`neural.paper.PAPER_MODEL`). The model
+participates in the job ID, so resubmitting model-1 inputs under model 2 creates
+a new job instead of returning an old result. Completed model-1 jobs remain
+available through `inspect`. Queued model-1 jobs fail explicitly as unsupported;
+submit the original strategy, recording and assumptions again to run model 2.
+Old results are not silently recalculated or relabeled with the new model.
+
 ```sh
 pytest tests/test_paper_worker.py -q
 ```

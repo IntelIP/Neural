@@ -146,7 +146,9 @@ class PaperJobs:
                 ):
                     raise ValueError("stored job input integrity mismatch")
                 if config["model"] != PAPER_MODEL:
-                    raise ValueError("stored job model is unsupported")
+                    raise ValueError(
+                        f"stored job model is unsupported; resubmit under {PAPER_MODEL}"
+                    )
                 spec = StrategySpec.from_dict(config["strategy"])
                 with tempfile.TemporaryDirectory(prefix="neural-paper-") as directory:
                     path = Path(directory) / "recording.jsonl"
