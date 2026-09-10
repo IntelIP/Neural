@@ -25,12 +25,14 @@ class PaperJournal:
     """
 
     def __init__(self, database: str | Path):
+        """Select an existing local journal path without opening or creating it."""
         if str(database) in ("", ":memory:"):
             raise ValueError("paper journal requires an existing database file")
         self.database = Path(database).resolve()
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:
+        """Open a read snapshot and reject journals outside the supported schema."""
         if not self.database.exists():
             raise FileNotFoundError("paper job database not found")
         db = None
@@ -53,6 +55,7 @@ class PaperJournal:
 
     @staticmethod
     def _view(row: sqlite3.Row) -> dict[str, Any]:
+        """Decode a saved row while checking configuration identity and state."""
         try:
             if not isinstance(row["config"], str):
                 raise ValueError("stored job configuration is invalid")
@@ -78,6 +81,7 @@ class PaperJournal:
 
     @classmethod
     def _job(cls, db: sqlite3.Connection, identity: str) -> dict[str, Any]:
+        """Read one complete saved job from the caller's snapshot."""
         if not isinstance(identity, str):
             raise ValueError("job identity must be a string")
         row = db.execute(
@@ -124,6 +128,7 @@ class PaperJournal:
             return raw
 
     def _pair(self, first: str, second: str) -> list[dict[str, Any]]:
+        """Read two distinct completed jobs from a single consistent snapshot."""
         if first == second:
             raise ValueError("choose two distinct completed experiments")
         with self._connection() as db:
@@ -134,6 +139,7 @@ class PaperJournal:
 
     @staticmethod
     def _assumptions(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Separate fixed replay inputs from tunable strategy thresholds and caps."""
         config = dict(job["config"])
         strategy = config.pop("strategy", None)
         StrategySpec.from_dict(strategy)
