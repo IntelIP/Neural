@@ -62,8 +62,49 @@ available through `inspect`. Queued model-1 jobs fail explicitly as unsupported;
 submit the original strategy, recording and assumptions again to run model 2.
 Old results are not silently recalculated or relabeled with the new model.
 
+## Read-only experiment queries
+
+The experimental `neural.paper_query.PaperJournal` API lets consumers use saved
+experiments without reading Neural's tables or starting a worker:
+
+```python
+from neural.paper_query import PaperJournal
+
+journal = PaperJournal("/private/path/paper.sqlite3")
+page = journal.history(offset=0, limit=25)  # jobs, has_more; no result traces
+if page["jobs"]:
+    job_id = page["jobs"][0]["id"]
+    saved = journal.inspect(job_id)  # id, status, error, config, result
+    original_bytes = journal.recording(job_id)
+```
+
+Queries open an existing journal in SQLite read-only mode, without acquiring a
+writer reservation, creating a queue, migrating its schema or running simulation.
+Missing files raise `FileNotFoundError`; unknown jobs, invalid stored data and
+unsupported journal versions raise `ValueError`. History orders by insertion,
+newest first; offset is 0–100,000 and page size is 1–100. No timestamps are invented.
+Reading can still report database-busy if SQLite holds an exclusive lock.
+
+`recording(job_id)` verifies the stored configuration/job identity and the original
+recording's size and digest before returning its exact bytes. Inspection preserves
+historical results as recorded; it does not recalculate them or certify their
+correctness. The caller selects the runtime archive and verifies its wheel and
+environment identity. This API does not authenticate users or grant data rights.
+
+`compare(first_id, second_id)` returns two completed jobs with derived
+`total_fees`, `fill_count` and `rejection_count` in their result objects. Recording,
+model, market/outcome, cash, fees and simulation limits must match; strategy
+thresholds and risk limits may differ. Summaries use exact decimals and never
+write back to the journal. Missing historical traces reject comparison explicitly.
+
+`compare_markets(first_id, second_id)` separately returns `ids`, supplied `markets`
+and a sports `comparison`. It can inspect cross-venue contract metadata, but never
+compares performance or execution costs. Missing sports metadata rejects the
+request. Keep the existing `PaperJobs` write/worker API for submission and processing;
+its methods and the journal format are unchanged.
+
 ```sh
-pytest tests/test_paper_worker.py -q
+pytest tests/test_paper_worker.py tests/test_paper_query.py -q
 ```
 
 Tests exercise CLI submission/inspection, concurrent processes and process death
