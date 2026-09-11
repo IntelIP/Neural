@@ -1,5 +1,6 @@
 """Read-only consumer behavior over current, historical and damaged journals."""
 
+import hashlib
 import json
 import sqlite3
 from dataclasses import replace
@@ -12,10 +13,10 @@ from neural.paper_query import PaperJournal
 from tests.test_recordings import inputs
 
 
-def enqueue(jobs, *, venue="polymarket-us", entry="0.45", **assumptions):
+def enqueue(jobs, *, venue="polymarket-us", entry="0.45", quantity=None, **assumptions):
     spec, path = inputs(venue)
     identity = jobs.submit(
-        replace(spec, entry_price=entry),
+        replace(spec, entry_price=entry, quantity=quantity or spec.quantity),
         path,
         **{"initial_cash": "10", "fee_per_contract": "0.01", **assumptions},
     )
@@ -51,9 +52,14 @@ def test_reopen_compare_and_source_bytes_across_synthetic_venues(tmp_path):
     for job in compared:
         assert job["result"]["cash"] == "10.52"
         assert job["result"]["realized_pnl"] == "0.52"
-        assert job["result"]["total_fees"] == "0.04"
-        assert job["result"]["fill_count"] == 2
-        assert job["result"]["rejection_count"] == 0
+        assert job["summary"]["total_fees"] == "0.04"
+        assert job["summary"]["fill_count"] == 2
+        assert job["summary"]["rejection_count"] == 0
+        assert job["result"] == jobs.inspect(job["id"])["result"]
+        report = dict(job["result"])
+        result_id = report.pop("result_id")
+        encoded = json.dumps(report, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        assert hashlib.sha256(encoded.encode()).hexdigest() == result_id
     assert "total_fees" not in journal.inspect(first)["result"]
     with pytest.raises(ValueError, match="same recording"):
         journal.compare(identities[0], first)
@@ -117,8 +123,8 @@ def test_derived_fees_preserve_product_scale(tmp_path):
         assert jobs.run_next()["status"] == "completed"
     before = database.read_bytes()
     for job in PaperJournal(jobs.database).compare(*ids):
-        assert job["result"]["total_fees"] == "0.00000000000000000002"
-        assert job["result"]["fill_count"] == 2
+        assert job["summary"]["total_fees"] == "0.00000000000000000002"
+        assert job["summary"]["fill_count"] == 2
     assert database.read_bytes() == before
 
 
@@ -153,7 +159,8 @@ def test_exclusive_lock_stays_distinguishable_from_invalid_data(tmp_path, monkey
 
 
 @pytest.mark.parametrize(
-    "change", [{"initial_cash": "11"}, {"fee_per_contract": "0.02"}, {"max_events": 1000}]
+    "change",
+    [{"initial_cash": "11"}, {"fee_per_contract": "0.02"}, {"max_events": 1000}, {"quantity": "1"}],
 )
 def test_incompatible_assumptions_and_unfinished_jobs_reject(tmp_path, change):
     jobs = worker.PaperJobs(tmp_path / "jobs.sqlite3")

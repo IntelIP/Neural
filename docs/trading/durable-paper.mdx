@@ -93,8 +93,9 @@ correctness. The caller selects the runtime archive and verifies its wheel and
 environment identity. This API does not authenticate users or grant data rights.
 
 `compare(first_id, second_id)` returns two completed jobs with derived
-`total_fees`, `fill_count` and `rejection_count` in their result objects. Recording,
-model, market/outcome, cash, fees and simulation limits must match; strategy
+`total_fees`, `fill_count` and `rejection_count` in a separate `summary` object on
+each job. Saved `result` objects and their `result_id` values remain unchanged. Recording,
+model, market/outcome, quantity, cash, fees and simulation limits must match; strategy
 thresholds and risk limits may differ. Summaries use exact decimals and never
 write back to the journal. Missing historical traces reject comparison explicitly.
 

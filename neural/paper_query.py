@@ -151,7 +151,7 @@ class PaperJournal:
         StrategySpec.from_dict(strategy)
         return config, {
             key: strategy[key]
-            for key in ("schema_version", "kind", "venue", "market_id", "outcome")
+            for key in ("schema_version", "kind", "venue", "market_id", "outcome", "quantity")
         }
 
     def compare(self, first: str, second: str) -> list[dict[str, Any]]:
@@ -160,7 +160,7 @@ class PaperJournal:
         if self._assumptions(jobs[0]) != self._assumptions(jobs[1]):
             raise ValueError(
                 "comparison requires the same recording, model, market, outcome, "
-                "cash, fees and simulation limits"
+                "quantity, cash, fees and simulation limits"
             )
         for job in jobs:
             trace = job["result"].get("trace")
@@ -172,9 +172,11 @@ class PaperJournal:
             with localcontext() as context:
                 context.prec = 100
                 total_fees = sum((self._trace_fee(event) for event in trace), Decimal(0))
-            job["result"]["total_fees"] = _decimal_text(total_fees)
-            job["result"]["fill_count"] = sum(event["action"] == "fill" for event in trace)
-            job["result"]["rejection_count"] = sum(event["action"] == "reject" for event in trace)
+            job["summary"] = {
+                "total_fees": _decimal_text(total_fees),
+                "fill_count": sum(event["action"] == "fill" for event in trace),
+                "rejection_count": sum(event["action"] == "reject" for event in trace),
+            }
         return jobs
 
     @staticmethod
