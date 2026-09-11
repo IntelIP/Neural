@@ -32,9 +32,10 @@ def _extract_game_context(raw: dict[str, Any]) -> dict[str, Any]:
         "home_team": home_team,
         "away_team": away_team,
         "game_date": raw.get("gameStartTime") or raw.get("startDate") or raw.get("endDate"),
-        "market_type": raw.get("sportsMarketTypeV2") or raw.get("sportsMarketType") or raw.get("marketType"),
+        "market_type": raw.get("sportsMarketTypeV2")
+        or raw.get("sportsMarketType")
+        or raw.get("marketType"),
     }
-
 
 
 @dataclass(slots=True)

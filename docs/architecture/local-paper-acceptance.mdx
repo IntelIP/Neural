@@ -1,0 +1,61 @@
+---
+title: Local Paper MVP Acceptance
+description: Kalshi-first edge cases, supported venue boundaries, and release-candidate gates
+---
+
+## Goal and scope
+
+NRCL-107 qualifies a local paper MVP: reproducible Kalshi experiments, explicit
+Polymarket US synthetic support, and safe rejection of unsupported behavior.
+NRCL-105 supplies the Vaticor consumer migration. This acceptance contract does
+not resume deferred NRCL-101/102, authorize capture, or qualify hosted/live trading.
+
+## Executable acceptance matrix
+
+Paths below are repository-relative. Each row names behavior and the test that
+asserts it; running a suite is evidence only for those supported behaviors.
+
+| Boundary | Required positive and negative behavior | Executable evidence |
+| --- | --- | --- |
+| Kalshi decimal data | Preserve decimal strings and native identity; reject malformed prices, unexpected markets, redirects, and incomplete pagination | `tests/exchanges/test_kalshi_data.py`: `test_exact_decimal_market_and_serialization`, `test_invalid_price_fails_closed`, `test_pagination_never_silently_truncates`, `test_bad_identity_and_redirect` |
+| HTTP failure handling | Bounded retries for 429/5xx/timeouts; no retry on auth failure or beyond allowed Retry-After | Same file: `test_bounded_retries`, `test_no_unauthorized_or_early_retry`, `test_network_retries_exhaust_and_malformed_json_closes` |
+| Book continuity | Gaps, duplicate/out-of-order sequence and malformed deltas invalidate the book; fresh snapshot restores it | `tests/exchanges/test_kalshi_stream.py`: `test_exact_snapshot_delta_removal_and_recovery`, `test_sequence_and_shape_fail_closed`, `test_bad_delta_invalidates` |
+| Stream recovery | Disconnect, timeout, cancellation, or gap clears book before teardown; reconnect budget enforced; recordings replay deterministically | Same file: `test_invalidate_before_socket_teardown`, `test_gap_reconnect_recording_and_replay`, `test_retry_budget_and_invalidation` |
+| Authentication boundary | Exercise local WebSocket handshake; redirects cannot forward credentials | Same file: `test_local_wire_transport_and_auth`, `test_redirect_rejected_before_credentials_forwarded`. These do not establish venue-authenticated access. |
+| Normalized venue data | Both synthetic venues reject empty/one-sided/crossed books, bad ordering, stale/future timestamps, sequence gaps, malformed depth, false provenance and incomplete sessions | `tests/test_recordings.py`: `test_quality_faults_fail_before_returning_a_report`, `test_source_age_boundary_to_microsecond` |
+| Exact fill and budget boundaries | Both venues cancel orders below full executable depth; exact depth fills; fees included in reserved cash down to a decimal unit; exit fees cannot make cash negative | Same file: `test_fill_or_kill_at_exact_depth_boundary`, `test_reserved_cash_boundary_includes_fees`, `test_exit_fees_never_make_cash_negative` |
+| Model limits | Reject off-lot quantity, invalid numeric assumptions and unsupported venues/outcomes; expire old intents; retain unrealized positions | `tests/test_paper_recording.py`: `test_reject_invalid_model_inputs`, `test_expiry_and_terminal_cancel`, `test_open_position_remains_unrealized`; `tests/test_recordings.py`: `test_unsupported_venue_cannot_create_strategy_or_recording`, `test_no_strategy_cannot_reuse_yes_sports_proposition` |
+| Causality and reconnect | A source observation before/at the intent cannot fill it; reconnect cancels intent while preserving holdings | `tests/test_recordings.py`: `test_delayed_source_cannot_fill_before_or_at_intent_time`; `tests/test_paper_recording.py`: `test_reconnect_cancels_intent_and_preserves_holdings` |
+| Determinism | Same supported logic yields expected decimal traces on both synthetic venues while identities remain distinct | `tests/test_recordings.py`: `test_same_strategy_logic_uses_full_decimal_depth_across_venues`; `tests/kernel/test_replay.py` |
+| Durable execution | Duplicate submissions reuse identity; process death rolls back; concurrent workers publish once; corrupt input becomes terminal failure | `tests/test_paper_worker.py`: `test_snapshot_dedup_and_restart`, `test_process_death_after_simulation_rolls_back`, `test_concurrent_processes_publish_one_result`, `test_bad_recording_is_terminal_failure` |
+| Historical reads | Preserve original journal/recording bytes, reject unknown/damaged or WAL archives, retain old model results without reinterpretation | `tests/test_paper_query.py`: `test_reopen_compare_and_source_bytes_across_synthetic_venues`, `test_reads_do_not_acquire_writer_lock_or_initialize_journal`, `test_historical_models_stay_opaque_and_read_only`, `test_damaged_journals_fail_without_repairing_them`, `test_wal_archive_rejected_without_creating_sidecars` |
+| Fair comparison | Reject different recordings, quantities, assumptions and unfinished jobs; preserve tiny fee products | Same file: `test_incompatible_assumptions_and_unfinished_jobs_reject`, `test_derived_fees_preserve_product_scale` |
+| Settlement matching | Compare identity and rule evidence; distinguish ordinary winner, forfeit/postponement, doubleheader and partial-game cases; unknown never implies equivalent | `tests/contracts/test_sports_matching.py`: `test_customer_comparison_cases`, `test_missing_identity_on_both_sides_is_unknown`, `test_missing_rule_hash_and_incomplete_review_cannot_claim_compatibility` |
+| Public support discovery | Capability names resolve to importable modules without promoting experimental APIs or loading optional stacks during kernel import | `tests/kernel/test_capabilities.py` |
+
+## Release-candidate gates
+
+1. Run the full SDK suite and required Ruff, Black, and mypy checks on the candidate.
+   Run documentation/example validators and the documentation site's typecheck/build.
+2. Build the wheel from the candidate; record commit and artifact digest. Install
+   in an isolated environment and exercise capabilities, replay, saved jobs and
+   read-only comparison outside the source checkout.
+3. With Vaticor's reviewed NRCL-105 integration, run installed-wheel integration
+   tests and browser save/run/reopen/clone/compare journeys on both synthetic venues.
+   Include invalid imports, incompatible comparisons and restart/archive behavior.
+4. Required hosted checks and exact-candidate review must pass. Attach evidence
+   and limitations to Plane and the PR. Merge, release publication and deployment
+   remain distinct approvals and outcomes.
+
+## Compatibility and limits
+
+The current patch adds capability descriptions and regression coverage; it does
+not migrate journals, remove 0.4.x imports, or change simulation model identity.
+Existing capability JSON fields remain unchanged; consumers must accept added
+capability rows. Public paper APIs remain experimental.
+
+Real venue wire fixtures, actual account authentication, fee schedules, permitted
+retention/replay, real-game quality and live order behavior require separate
+evidence. Novig remains a research candidate. See the
+[support matrix](./stability#local-paper-venue-support) and
+[access and cost plan](../research/2026-09-10-venue-access-and-cost-plan).

@@ -66,9 +66,7 @@ class DocumentationValidator:
                     page_path.is_dir() and (page_path / "meta.json").exists()
                 ):
                     relative_meta = meta_file.relative_to(self.docs_dir)
-                    self.errors.append(
-                        f"Navigation entry not found in {relative_meta}: {page}"
-                    )
+                    self.errors.append(f"Navigation entry not found in {relative_meta}: {page}")
 
     def validate_required_sections(self) -> None:
         """Check for required documentation sections."""

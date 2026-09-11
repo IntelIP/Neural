@@ -40,6 +40,10 @@ matrix.
 | Kernel normalization | Stable | base wheel | Public `neural.kernel` contract |
 | Kernel replay | Stable | base wheel | Deterministic output and digest |
 | CLI diagnostics | Stable | base wheel | JSON envelope retained |
+| Kalshi market data and book streaming | Experimental | base wheel | Read-only; stream authentication supplied by caller |
+| Sports matching and price-rule specification | Experimental | base wheel | Explicit identity, settlement evidence, and unsupported combinations |
+| Recording replay and paper simulation | Experimental | base wheel | Synthetic normalized sports inputs; next-book fill-or-kill |
+| Durable paper jobs and read-only journal | Experimental | base wheel | Local persistence; supported journal versions only |
 | Kalshi auth and collection | Experimental | `neural-sdk[trading]` | May change before 1.0 |
 | Paper and venue adapters | Experimental | `neural-sdk[trading]` | Paper-first; no live authority |
 | Strategy and backtesting | Experimental | `neural-sdk[analysis]` | May change before 1.0 |
@@ -49,6 +53,39 @@ matrix.
 
 Existing imports remain available during the `0.4.x` compatibility window.
 New code should use `neural.kernel` for stable contracts.
+
+## Local paper venue support
+
+The newer local paper APIs above are distinct from the older optional trading
+adapters. Their presence in the base wheel does not promote them to stable APIs.
+
+| Behavior | Kalshi | Polymarket US | Novig |
+| --- | --- | --- | --- |
+| Native market discovery and decimal books in the local paper data path | `neural.kalshi`; read-only | No native capture client in this path | Unsupported |
+| Native book streaming/recovery | `neural.kalshi_stream`; caller supplies signer | Unsupported | Unsupported |
+| Legacy `kalshi-book/1` replay | YES/NO; provenance unverified | Unsupported | Unsupported |
+| Normalized `neural-book/1` replay | Synthetic, full-depth YES team-wins | Synthetic, full-depth YES team-wins | Unsupported |
+| Price-rule paper simulation and local jobs | Supported within model limits | Supported on normalized fixtures within model limits | Unsupported |
+| Authenticated venue or real-game acceptance | Separate permission-gated verification | Deferred real-data pilot | Access and adapter evidence unresolved |
+| Live execution acceptance | Not established by this MVP | Not established by this MVP | Not established by this MVP |
+
+`polymarket_us` means Polymarket US. International `polymarket`, `novig`, and
+unknown venue identifiers are rejected by the price-rule and recording APIs.
+Existing provider-specific modules elsewhere in the package are not proof that
+the local paper pipeline supports their live capture or execution paths.
+
+The simulator runs at most one buy/exit cycle. It uses the next eligible book,
+fill-or-kill semantics, a 0.01 model lot, and caller-supplied per-contract fees
+on both sides. Insufficient executable depth cancels the whole order; no partial
+fill is booked. Fees are exact decimal assumptions, not implemented venue fee
+schedules. No queue priority, slippage model beyond recorded depth, settlement,
+or profitability claim is implied. A valid live stream sequence alone is not
+proof of market freshness. Normalized replay enforces source age and ordering.
+
+See [Local Paper MVP Acceptance](./local-paper-acceptance) for executable
+acceptance cases and the release-candidate gates. Additional venue support must
+pass those shared cases with explicit venue-specific assumptions before this
+matrix is expanded. Novig research does not enable an adapter.
 
 ## Compatibility policy
 

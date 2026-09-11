@@ -40,11 +40,19 @@ class FakeAdapter:
                         "marketSides": [
                             {
                                 "description": "Chicago",
-                                "team": {"name": "Chicago Bulls", "ordering": "away", "league": "nba"},
+                                "team": {
+                                    "name": "Chicago Bulls",
+                                    "ordering": "away",
+                                    "league": "nba",
+                                },
                             },
                             {
                                 "description": "New York",
-                                "team": {"name": "New York Knicks", "ordering": "home", "league": "nba"},
+                                "team": {
+                                    "name": "New York Knicks",
+                                    "ordering": "home",
+                                    "league": "nba",
+                                },
                             },
                         ],
                     }
@@ -138,7 +146,6 @@ def test_get_markets_df_enriches_sports_rows() -> None:
     assert markets.iloc[0]["away_team"] == "Chicago Bulls"
     assert markets.iloc[0]["market_type"] == "moneyline"
     assert markets.iloc[0]["game_date"] == pd.Timestamp("2026-03-10T23:00:00Z")
-
 
 
 def test_market_history_uses_adapter_public_candles_api() -> None:

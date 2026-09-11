@@ -54,7 +54,15 @@ async def fetch_daily_nba_markets(
     if not markets.empty:
         preview_columns = [
             column
-            for column in ("ticker", "title", "home_team", "away_team", "game_date", "yes_ask", "volume")
+            for column in (
+                "ticker",
+                "title",
+                "home_team",
+                "away_team",
+                "game_date",
+                "yes_ask",
+                "volume",
+            )
             if column in markets.columns
         ]
         if preview_columns:
@@ -64,11 +72,14 @@ async def fetch_daily_nba_markets(
     return output_path
 
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch and store a daily NBA market snapshot.")
-    parser.add_argument("--status", default="open", help="Kalshi market status filter, default: open")
-    parser.add_argument("--limit", type=int, default=200, help="Maximum markets to fetch, default: 200")
+    parser.add_argument(
+        "--status", default="open", help="Kalshi market status filter, default: open"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=200, help="Maximum markets to fetch, default: 200"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -81,7 +92,6 @@ def parse_args() -> argparse.Namespace:
         help="Use authenticated Kalshi API access instead of the public market endpoint",
     )
     return parser.parse_args()
-
 
 
 def main() -> None:
