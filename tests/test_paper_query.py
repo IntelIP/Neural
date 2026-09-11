@@ -128,7 +128,7 @@ def test_derived_fees_preserve_product_scale(tmp_path):
     assert database.read_bytes() == before
 
 
-@pytest.mark.parametrize("fee", ["NaN", "Infinity", "-0.01", 0.01, "0." + "0" * 36 + "1"])
+@pytest.mark.parametrize("fee", ["NaN", "Infinity", "-0.01", 0.01, "0." + "0" * 36 + "1", "0.01"])
 def test_invalid_saved_fees_reject_comparison(tmp_path, fee):
     jobs = worker.PaperJobs(tmp_path / "invalid-fees.sqlite3")
     first, _ = enqueue(jobs)
@@ -205,7 +205,15 @@ def test_pagination_is_bounded_before_opening_storage(tmp_path, offset, limit):
 
 
 @pytest.mark.parametrize(
-    "result", ['{"cash": NaN}', '{"cash": Infinity}', '{"cash": -Infinity}', "{"]
+    "result",
+    [
+        '{"cash": NaN}',
+        '{"cash": Infinity}',
+        '{"cash": -Infinity}',
+        '{"cash": 1e999}',
+        '{"cash": -1e999}',
+        "{",
+    ],
 )
 def test_invalid_result_does_not_prevent_verified_recording_recovery(tmp_path, result):
     database = tmp_path / "damaged-output.sqlite3"
@@ -250,6 +258,23 @@ def test_wal_archive_rejected_without_creating_sidecars(tmp_path):
     with pytest.raises(ValueError, match="WAL paper journals"):
         PaperJournal(database).history()
     assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == before
+
+
+@pytest.mark.parametrize(
+    "status,result,error",
+    [("completed", None, None), ("queued", "{}", None), ("failed", "{}", "failure")],
+)
+def test_history_rejects_invalid_result_presence(tmp_path, status, result, error):
+    database = tmp_path / "bad-state.sqlite3"
+    jobs = worker.PaperJobs(database)
+    enqueue(jobs)
+    with sqlite3.connect(database) as db:
+        db.execute("PRAGMA ignore_check_constraints=ON")
+        db.execute("UPDATE jobs SET status=?,result=?,error=?", (status, result, error))
+    before = database.read_bytes()
+    with pytest.raises(ValueError, match="stored job result"):
+        PaperJournal(database).history()
+    assert database.read_bytes() == before
 
 
 @pytest.mark.parametrize(

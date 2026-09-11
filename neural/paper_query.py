@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sqlite3
 from collections.abc import Iterator
@@ -69,12 +70,24 @@ class PaperJournal:
         raise ValueError("stored job JSON contains a non-finite constant")
 
     @staticmethod
+    def _finite_float(value: str) -> float:
+        """Decode standard JSON numbers without allowing floating-point overflow."""
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("stored job JSON contains a non-finite number")
+        return number
+
+    @staticmethod
     def _view(row: sqlite3.Row) -> dict[str, Any]:
         """Decode a saved row while checking configuration identity and state."""
         try:
             if not isinstance(row["config"], str):
                 raise ValueError("stored job configuration is invalid")
-            config = json.loads(row["config"], parse_constant=PaperJournal._reject_constant)
+            config = json.loads(
+                row["config"],
+                parse_constant=PaperJournal._reject_constant,
+                parse_float=PaperJournal._finite_float,
+            )
             if (
                 not isinstance(config, dict)
                 or hashlib.sha256(row["config"].encode()).hexdigest() != row["id"]
@@ -87,11 +100,19 @@ class PaperJournal:
             ):
                 raise ValueError("stored job error is invalid")
             view["config"] = config
+            if "has_result" in row.keys() and (
+                (row["status"] == "completed") != bool(row["has_result"])
+            ):
+                raise ValueError("stored job result is invalid")
             if "result" in row.keys():
                 if row["result"] is not None and not isinstance(row["result"], str):
                     raise ValueError("stored job result is invalid")
                 result = (
-                    json.loads(row["result"], parse_constant=PaperJournal._reject_constant)
+                    json.loads(
+                        row["result"],
+                        parse_constant=PaperJournal._reject_constant,
+                        parse_float=PaperJournal._finite_float,
+                    )
                     if row["result"] is not None
                     else None
                 )
@@ -125,7 +146,8 @@ class PaperJournal:
             raise ValueError("limit must be an integer from 1 to 100")
         with self._connection() as db:
             rows = db.execute(
-                "SELECT id,status,error,config FROM jobs ORDER BY rowid DESC LIMIT ? OFFSET ?",
+                "SELECT id,status,error,config,result IS NOT NULL AS has_result "
+                "FROM jobs ORDER BY rowid DESC LIMIT ? OFFSET ?",
                 (limit + 1, offset),
             ).fetchall()
             return {
@@ -208,7 +230,10 @@ class PaperJournal:
             or re.fullmatch(r"(0|[1-9][0-9]{0,35})(\.[0-9]{1,36})?", value) is None
         ):
             raise ValueError("saved trace fees must be a finite nonnegative decimal product")
-        return Decimal(value)
+        fee = Decimal(value)
+        if event["action"] != "fill" and fee != 0:
+            raise ValueError("saved trace fees require a fill event")
+        return fee
 
     def compare_markets(self, first: str, second: str) -> dict[str, Any]:
         """Inspect sports terms separately; this never compares execution costs/PnL."""
