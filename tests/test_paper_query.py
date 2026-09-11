@@ -158,6 +158,23 @@ def test_exclusive_lock_stays_distinguishable_from_invalid_data(tmp_path, monkey
     assert database.read_bytes() == before
 
 
+def test_fill_without_fee_rejects_comparison(tmp_path):
+    database = tmp_path / "missing-fee.sqlite3"
+    jobs = worker.PaperJobs(database)
+    first, _ = enqueue(jobs)
+    second, _ = enqueue(jobs, entry="0.46")
+    jobs.run_next()
+    jobs.run_next()
+    result = jobs.inspect(first)["result"]
+    next(event for event in result["trace"] if event["action"] == "fill").pop("fees")
+    with sqlite3.connect(jobs.database) as db:
+        db.execute("UPDATE jobs SET result=? WHERE id=?", (json.dumps(result), first))
+    before = database.read_bytes()
+    with pytest.raises(ValueError, match="saved trace fees"):
+        PaperJournal(jobs.database).compare(first, second)
+    assert database.read_bytes() == before
+
+
 @pytest.mark.parametrize(
     "change",
     [{"initial_cash": "11"}, {"fee_per_contract": "0.02"}, {"max_events": 1000}, {"quantity": "1"}],
@@ -187,7 +204,9 @@ def test_pagination_is_bounded_before_opening_storage(tmp_path, offset, limit):
     assert not database.exists()
 
 
-@pytest.mark.parametrize("damage", ["config", "recording", "result", "version", "not_sqlite"])
+@pytest.mark.parametrize(
+    "damage", ["config", "recording", "result", "result_bytes", "version", "not_sqlite"]
+)
 def test_damaged_journals_fail_without_repairing_them(tmp_path, damage):
     database = tmp_path / "jobs.sqlite3"
     jobs = worker.PaperJobs(database)
@@ -203,6 +222,8 @@ def test_damaged_journals_fail_without_repairing_them(tmp_path, damage):
                 db.execute("UPDATE jobs SET recording=?", (b"changed",))
             elif damage == "result":
                 db.execute("UPDATE jobs SET result=?", ("[]",))
+            elif damage == "result_bytes":
+                db.execute("UPDATE jobs SET result=?", (b"\xff",))
             else:
                 db.execute("PRAGMA user_version=99")
     before = database.read_bytes()

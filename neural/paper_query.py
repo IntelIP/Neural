@@ -75,6 +75,8 @@ class PaperJournal:
             view = {key: row[key] for key in ("id", "status", "error")}
             view["config"] = config
             if "result" in row.keys():
+                if row["result"] is not None and not isinstance(row["result"], str):
+                    raise ValueError("stored job result is invalid")
                 result = json.loads(row["result"]) if row["result"] is not None else None
                 if (result is not None and not isinstance(result, dict)) or (
                     (row["status"] == "completed") != (result is not None)
@@ -182,7 +184,7 @@ class PaperJournal:
     @staticmethod
     def _trace_fee(event: dict[str, Any]) -> Decimal:
         """Parse products of two 18-digit inputs without truncating their scale."""
-        value = event.get("fees", "0")
+        value = event.get("fees") if event["action"] == "fill" else event.get("fees", "0")
         if (
             not isinstance(value, str)
             or re.fullmatch(r"(0|[1-9][0-9]{0,35})(\.[0-9]{1,36})?", value) is None
