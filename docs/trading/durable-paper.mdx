@@ -85,9 +85,14 @@ unsupported journal versions raise `ValueError`. History orders by insertion,
 newest first; offset is 0–100,000 and page size is 1–100. No timestamps are invented.
 Reading preserves `sqlite3.OperationalError` for database-busy contention if SQLite
 holds an exclusive lock, so callers can distinguish it from invalid stored data.
+Only rollback-journal databases are supported. WAL-format journals are rejected
+before SQLite opens them, preventing creation of WAL/SHM sidecars. The caller must
+not change journal mode or replace the database during a read.
 
 `recording(job_id)` verifies the stored configuration/job identity and the original
-recording's size and digest before returning its exact bytes. Inspection preserves
+recording's size and digest before returning its exact bytes.
+Results are not decoded when recovering recording bytes; a damaged output does not
+prevent recovery of an intact, verified input. Inspection preserves
 historical results as recorded; it does not recalculate them or certify their
 correctness. The caller selects the runtime archive and verifies its wheel and
 environment identity. This API does not authenticate users or grant data rights.

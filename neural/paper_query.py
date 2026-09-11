@@ -36,6 +36,10 @@ class PaperJournal:
         """Open a read snapshot and reject journals outside the supported schema."""
         if not self.database.exists():
             raise FileNotFoundError("paper job database not found")
+        with self.database.open("rb") as source:
+            header = source.read(20)
+        if header.startswith(b"SQLite format 3\x00") and header[18:20] != b"\x01\x01":
+            raise ValueError("WAL paper journals are unsupported; use a rollback-journal archive")
         db = None
         try:
             db = sqlite3.connect(self.database.as_uri() + "?mode=ro", uri=True, timeout=5)
@@ -60,12 +64,17 @@ class PaperJournal:
                 db.close()
 
     @staticmethod
+    def _reject_constant(value: str) -> Any:
+        """Reject nonstandard JSON numbers that cannot be written by the worker."""
+        raise ValueError("stored job JSON contains a non-finite constant")
+
+    @staticmethod
     def _view(row: sqlite3.Row) -> dict[str, Any]:
         """Decode a saved row while checking configuration identity and state."""
         try:
             if not isinstance(row["config"], str):
                 raise ValueError("stored job configuration is invalid")
-            config = json.loads(row["config"])
+            config = json.loads(row["config"], parse_constant=PaperJournal._reject_constant)
             if (
                 not isinstance(config, dict)
                 or hashlib.sha256(row["config"].encode()).hexdigest() != row["id"]
@@ -73,11 +82,19 @@ class PaperJournal:
             ):
                 raise ValueError("stored job input integrity mismatch")
             view = {key: row[key] for key in ("id", "status", "error")}
+            if (row["error"] is not None and not isinstance(row["error"], str)) or (
+                (row["status"] == "failed") != (row["error"] is not None)
+            ):
+                raise ValueError("stored job error is invalid")
             view["config"] = config
             if "result" in row.keys():
                 if row["result"] is not None and not isinstance(row["result"], str):
                     raise ValueError("stored job result is invalid")
-                result = json.loads(row["result"]) if row["result"] is not None else None
+                result = (
+                    json.loads(row["result"], parse_constant=PaperJournal._reject_constant)
+                    if row["result"] is not None
+                    else None
+                )
                 if (result is not None and not isinstance(result, dict)) or (
                     (row["status"] == "completed") != (result is not None)
                 ):
@@ -88,13 +105,14 @@ class PaperJournal:
             raise ValueError("stored job data is invalid") from exc
 
     @classmethod
-    def _job(cls, db: sqlite3.Connection, identity: str) -> dict[str, Any]:
-        """Read one complete saved job from the caller's snapshot."""
+    def _job(
+        cls, db: sqlite3.Connection, identity: str, *, include_result: bool = True
+    ) -> dict[str, Any]:
+        """Read one saved job, optionally excluding its unrelated output."""
         if not isinstance(identity, str):
             raise ValueError("job identity must be a string")
-        row = db.execute(
-            "SELECT id,status,error,config,result FROM jobs WHERE id=?", (identity,)
-        ).fetchone()
+        fields = "id,status,error,config,result" if include_result else "id,status,error,config"
+        row = db.execute(f"SELECT {fields} FROM jobs WHERE id=?", (identity,)).fetchone()
         if row is None:
             raise ValueError("unknown paper job")
         return cls._view(row)
@@ -123,7 +141,7 @@ class PaperJournal:
     def recording(self, identity: str) -> bytes:
         """Return original input bytes after checking size and the saved digest."""
         with self._connection() as db:
-            job = self._job(db, identity)
+            job = self._job(db, identity, include_result=False)
             raw = db.execute(
                 "SELECT CASE WHEN length(recording) BETWEEN 1 AND ? THEN recording END "
                 "FROM jobs WHERE id=?",

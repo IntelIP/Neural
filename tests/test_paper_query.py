@@ -205,6 +205,54 @@ def test_pagination_is_bounded_before_opening_storage(tmp_path, offset, limit):
 
 
 @pytest.mark.parametrize(
+    "result", ['{"cash": NaN}', '{"cash": Infinity}', '{"cash": -Infinity}', "{"]
+)
+def test_invalid_result_does_not_prevent_verified_recording_recovery(tmp_path, result):
+    database = tmp_path / "damaged-output.sqlite3"
+    jobs = worker.PaperJobs(database)
+    identity, source = enqueue(jobs)
+    jobs.run_next()
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE jobs SET result=? WHERE id=?", (result, identity))
+    before = database.read_bytes()
+    journal = PaperJournal(database)
+    with pytest.raises(ValueError):
+        journal.inspect(identity)
+    assert journal.recording(identity) == source.read_bytes()
+    assert database.read_bytes() == before
+
+
+@pytest.mark.parametrize("status,error", [("failed", b"bad"), ("failed", None), ("queued", "bad")])
+def test_invalid_error_state_rejects_history_and_inspection(tmp_path, status, error):
+    database = tmp_path / "bad-error.sqlite3"
+    jobs = worker.PaperJobs(database)
+    identity, _ = enqueue(jobs)
+    with sqlite3.connect(database) as db:
+        db.execute("PRAGMA ignore_check_constraints=ON")
+        db.execute("UPDATE jobs SET status=?,error=?", (status, error))
+    before = database.read_bytes()
+    journal = PaperJournal(database)
+    with pytest.raises(ValueError, match="stored job error"):
+        journal.inspect(identity)
+    with pytest.raises(ValueError, match="stored job error"):
+        journal.history()
+    assert database.read_bytes() == before
+
+
+def test_wal_archive_rejected_without_creating_sidecars(tmp_path):
+    database = tmp_path / "wal.sqlite3"
+    worker.PaperJobs(database)
+    db = sqlite3.connect(database)
+    db.execute("PRAGMA journal_mode=WAL")
+    db.close()
+    before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+    assert set(before) == {database.name}
+    with pytest.raises(ValueError, match="WAL paper journals"):
+        PaperJournal(database).history()
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == before
+
+
+@pytest.mark.parametrize(
     "damage", ["config", "recording", "result", "result_bytes", "version", "not_sqlite"]
 )
 def test_damaged_journals_fail_without_repairing_them(tmp_path, damage):
