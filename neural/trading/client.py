@@ -386,5 +386,3 @@ def _run_coro_sync(coro: Any) -> Any:
         "Cannot execute sync paper-trading call inside a running event loop. "
         "Use await TradingClient.place_order_async(..., paper=True)."
     )
-
-

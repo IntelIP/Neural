@@ -6,6 +6,11 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 
+### Local paper MVP qualification (NRCL-107)
+
+- Expose experimental Kalshi data/streaming, sports matching, price-rule, recording, simulation, and journal capabilities through the existing capability matrix. Public JSON fields and existing imports remain unchanged.
+- Document supported venue boundaries and executable edge cases. Extend both synthetic venues' malformed-book, exact-depth, fee/cash, timestamp-boundary, and unsupported-venue regression coverage. Novig and international Polymarket remain unsupported by the local paper pipeline; this does not enable live trading or real-data capture.
+
 ### Added
 - **Exchange Core:** Added exchange abstraction contracts and normalized models in `neural/exchanges/`.
 - **Kalshi Adapter Routing:** Refactored `TradingClient` to route Kalshi behavior through an exchange adapter without breaking default usage.

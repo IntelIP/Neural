@@ -315,8 +315,6 @@ def test_numeric_parsing_helpers_return_none_for_invalid_values() -> None:
     assert _to_float(object()) is None
 
 
-
-
 def test_list_markets_paginates_until_sport_filter_is_satisfied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -345,8 +343,20 @@ def test_list_markets_paginates_until_sport_filter_is_satisfied(
                                     "active": True,
                                     "closed": False,
                                     "marketSides": [
-                                        {"team": {"name": "A", "league": "nfl", "ordering": "away"}},
-                                        {"team": {"name": "B", "league": "nfl", "ordering": "home"}},
+                                        {
+                                            "team": {
+                                                "name": "A",
+                                                "league": "nfl",
+                                                "ordering": "away",
+                                            }
+                                        },
+                                        {
+                                            "team": {
+                                                "name": "B",
+                                                "league": "nfl",
+                                                "ordering": "home",
+                                            }
+                                        },
                                     ],
                                 }
                             ]
@@ -364,8 +374,20 @@ def test_list_markets_paginates_until_sport_filter_is_satisfied(
                                     "active": True,
                                     "closed": False,
                                     "marketSides": [
-                                        {"team": {"name": "A", "league": "nba", "ordering": "away"}},
-                                        {"team": {"name": "B", "league": "nba", "ordering": "home"}},
+                                        {
+                                            "team": {
+                                                "name": "A",
+                                                "league": "nba",
+                                                "ordering": "away",
+                                            }
+                                        },
+                                        {
+                                            "team": {
+                                                "name": "B",
+                                                "league": "nba",
+                                                "ordering": "home",
+                                            }
+                                        },
                                     ],
                                 }
                             ]

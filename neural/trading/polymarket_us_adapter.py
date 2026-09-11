@@ -63,7 +63,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         api_secret = self.api_secret or creds.get("api_secret")
         passphrase = self.passphrase or creds.get("passphrase")
         self.base_url = (self.base_url or get_polymarket_us_base_url()).rstrip("/")
-        self.public_base_url = (self.public_base_url or DEFAULT_POLYMARKET_US_PUBLIC_BASE_URL).rstrip("/")
+        self.public_base_url = (
+            self.public_base_url or DEFAULT_POLYMARKET_US_PUBLIC_BASE_URL
+        ).rstrip("/")
         self._http = self.session or requests.Session()
 
         if api_key is None or api_secret is None or passphrase is None:
@@ -122,7 +124,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
 
     def get_quote(self, market_id: str) -> NormalizedQuote:
         market_lookup_path = (
-            f"/v1/market/id/{market_id}" if str(market_id).isdigit() else f"/v1/market/slug/{market_id}"
+            f"/v1/market/id/{market_id}"
+            if str(market_id).isdigit()
+            else f"/v1/market/slug/{market_id}"
         )
         market_payload = self._request_public("GET", market_lookup_path)
         market_row = market_payload.get("market") or market_payload.get("data") or market_payload
@@ -210,7 +214,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         if end_ts_ms is not None:
             params["end_ts"] = end_ts_ms
 
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/candles", params=params, require_auth=True)
+        payload = self._request(
+            "GET", f"/api/v1/markets/{market_id}/candles", params=params, require_auth=True
+        )
         rows = payload.get("candles") or payload.get("data") or []
         if not isinstance(rows, list):
             return []
@@ -226,7 +232,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         params: dict[str, Any] = {"limit": limit}
         if cursor:
             params["cursor"] = cursor
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/trades", params=params, require_auth=True)
+        payload = self._request(
+            "GET", f"/api/v1/markets/{market_id}/trades", params=params, require_auth=True
+        )
         rows = payload.get("trades") or payload.get("data") or []
         clean_rows = rows if isinstance(rows, list) else []
         return {
@@ -245,7 +253,9 @@ class PolymarketUSAdapter(BaseExchangeAdapter):
         params: dict[str, Any] = {"limit": limit}
         if cursor:
             params["cursor"] = cursor
-        payload = self._request("GET", f"/api/v1/markets/{market_id}/events", params=params, require_auth=True)
+        payload = self._request(
+            "GET", f"/api/v1/markets/{market_id}/events", params=params, require_auth=True
+        )
         rows = payload.get("events") or payload.get("data") or []
         clean_rows = rows if isinstance(rows, list) else []
         return {

@@ -7,7 +7,9 @@ from pathlib import Path
 def _load_example_module():
     root = Path(__file__).resolve().parents[2]
     module_path = root / "examples" / "13_deterministic_cross_provider_replay.py"
-    spec = importlib.util.spec_from_file_location("deterministic_cross_provider_replay", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "deterministic_cross_provider_replay", module_path
+    )
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)

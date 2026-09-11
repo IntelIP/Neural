@@ -27,8 +27,8 @@ def run(spec, path):
     return simulate_recording(spec, path, initial_cash="10", fee_per_contract="0.01")
 
 
-def changed_recording(tmp_path, change):
-    spec, fixture = inputs()
+def changed_recording(tmp_path, change, venue="polymarket-us"):
+    spec, fixture = inputs(venue)
     rows = [json.loads(line) for line in fixture.read_text().splitlines()]
     change(rows)
     path = tmp_path / "modified.jsonl"
@@ -95,6 +95,7 @@ def test_no_header_cannot_label_opposite_trade_as_yes_team(tmp_path):
         describe_recording(path)
 
 
+@pytest.mark.parametrize("venue", ["kalshi", "polymarket-us"])
 @pytest.mark.parametrize(
     "change,reason",
     [
@@ -123,12 +124,89 @@ def test_no_header_cannot_label_opposite_trade_as_yes_team(tmp_path):
         (lambda rows: rows.pop(1), "outside recording session"),
     ],
 )
-def test_quality_faults_fail_before_returning_a_report(tmp_path, change, reason):
-    spec, path = changed_recording(tmp_path, change)
+def test_quality_faults_fail_before_returning_a_report(tmp_path, change, reason, venue):
+    spec, path = changed_recording(tmp_path, change, venue)
     with pytest.raises(ValueError, match=reason):
         run(spec, path)
     with pytest.raises(ValueError):
         describe_recording(path)
+
+
+@pytest.mark.parametrize("venue", ["kalshi", "polymarket-us"])
+@pytest.mark.parametrize("side", ["buy", "sell"])
+@pytest.mark.parametrize("depth", ["1.99", "2.00"])
+def test_fill_or_kill_at_exact_depth_boundary(tmp_path, venue, side, depth):
+    def change(rows):
+        index, ladder, price = (3, "asks", "0.42") if side == "buy" else (5, "bids", "0.7")
+        rows[index][ladder] = [[price, depth]]
+
+    spec, path = changed_recording(tmp_path, change, venue)
+    result = run(spec, path)
+    row = result["trace"][2 if side == "buy" else 4]
+    if depth == "1.99":
+        assert row["action"] == "cancel"
+        assert row["reason"] == "insufficient_executable_depth"
+        assert result["position"] == ("0" if side == "buy" else "2")
+        assert result["cash"] == ("10" if side == "buy" else "9.155")
+        assert result["realized_pnl"] == "0"
+    else:
+        assert row["action"] == "fill"
+        assert row["levels"] == [{"price": "0.42" if side == "buy" else "0.7", "quantity": "2"}]
+        assert row["fees"] == "0.02"
+
+
+@pytest.mark.parametrize("venue", ["kalshi", "polymarket-us"])
+@pytest.mark.parametrize("cash", ["0.919999999999999999", "0.92"])
+def test_reserved_cash_boundary_includes_fees(venue, cash):
+    spec, path = inputs(venue)
+    result = simulate_recording(spec, path, initial_cash=cash, fee_per_contract="0.01")
+    if cash == "0.92":
+        assert result["trace"][1]["action"] == "intent"
+        assert result["trace"][1]["reserved_cash"] == "0.92"
+        assert result["realized_pnl"] == "0.52"
+    else:
+        assert result["trace"][1]["reason"] == "insufficient_cash"
+        assert result["cash"] == cash
+        assert result["position"] == "0"
+        assert not any(row["action"] == "fill" for row in result["trace"])
+
+
+@pytest.mark.parametrize("venue", ["kalshi", "polymarket-us"])
+@pytest.mark.parametrize("source", ["2026-09-10T17:59:31Z", "2026-09-10T17:59:30.999999Z"])
+def test_source_age_boundary_to_microsecond(tmp_path, venue, source):
+    spec, path = changed_recording(tmp_path, lambda rows: rows[2].update(source_at=source), venue)
+    if source.endswith("31Z"):
+        assert run(spec, path)["cash"] == "10.52"
+    else:
+        with pytest.raises(ValueError, match="stale"):
+            run(spec, path)
+
+
+@pytest.mark.parametrize("venue", ["novig", "polymarket", "unknown"])
+def test_unsupported_venue_cannot_create_strategy_or_recording(tmp_path, venue):
+    spec, _ = inputs()
+    with pytest.raises(ValueError, match="venue"):
+        replace(spec, venue=venue)
+    _, path = changed_recording(tmp_path, lambda rows: rows[0].update(venue=venue))
+    with pytest.raises(ValueError, match="venue"):
+        describe_recording(path)
+
+
+@pytest.mark.parametrize("venue", ["kalshi", "polymarket-us"])
+@pytest.mark.parametrize("cash", ["3.439999999999999999", "3.44"])
+def test_exit_fees_never_make_cash_negative(venue, cash):
+    spec, path = inputs(venue)
+    spec = replace(spec, max_exposure_usd="3")
+    result = simulate_recording(spec, path, initial_cash=cash, fee_per_contract="1")
+    if cash == "3.44":
+        assert result["trace"][4]["action"] == "fill"
+        assert result["cash"] == result["position"] == "0"
+        assert result["realized_pnl"] == "-3.44"
+    else:
+        assert result["trace"][4]["reason"] == "insufficient_cash_for_fees"
+        assert result["cash"] == "0.614999999999999999"
+        assert result["position"] == "2"
+        assert result["realized_pnl"] == "0"
 
 
 def test_wrong_venue_rejected_even_when_market_ids_match():

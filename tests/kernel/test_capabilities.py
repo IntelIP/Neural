@@ -23,6 +23,28 @@ def test_unknown_capability_fails_clearly() -> None:
         get_capability("missing")
 
 
+@pytest.mark.parametrize(
+    "name,module",
+    [
+        ("data.kalshi", "neural.kalshi"),
+        ("stream.kalshi", "neural.kalshi_stream"),
+        ("sports.matching", "neural.sports"),
+        ("strategy.price_rule", "neural.strategy"),
+        ("recordings.paper", "neural.recordings"),
+        ("simulation.paper", "neural.paper"),
+        ("experiments.paper", "neural.paper_worker"),
+    ],
+)
+def test_local_paper_capabilities_are_experimental_base_install(name, module) -> None:
+    import importlib
+
+    capability = get_capability(name)
+    assert capability.module == module
+    assert capability.status is CapabilityStatus.EXPERIMENTAL
+    assert capability.extra is None
+    assert importlib.import_module(module).__name__ == module
+
+
 def test_stable_kernel_import_does_not_load_optional_stacks() -> None:
     code = """
 import json

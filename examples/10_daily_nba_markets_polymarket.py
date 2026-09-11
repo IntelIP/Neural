@@ -81,9 +81,7 @@ def fetch_daily_polymarket_markets(
     output_path = output_dir / f"polymarket_{sport.lower()}_markets_{snapshot_date}.csv"
     markets.to_csv(output_path, index=False)
 
-    print(
-        f"Wrote {len(markets)} Polymarket {sport.upper()} markets to {output_path.as_posix()}"
-    )
+    print(f"Wrote {len(markets)} Polymarket {sport.upper()} markets to {output_path.as_posix()}")
     if not markets.empty:
         preview_columns = [
             column
@@ -122,7 +120,9 @@ def parse_args() -> argparse.Namespace:
         default="open",
         help="Optional status filter applied after fetch, default: open",
     )
-    parser.add_argument("--limit", type=int, default=200, help="Maximum markets to fetch, default: 200")
+    parser.add_argument(
+        "--limit", type=int, default=200, help="Maximum markets to fetch, default: 200"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
