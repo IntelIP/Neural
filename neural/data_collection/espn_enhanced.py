@@ -243,9 +243,7 @@ class ESPNGameCastSource(DataSource):
 
         return final_score, direction
 
-    def _process_play(
-        self, play: dict[str, Any], drive_info: dict[str, Any] | None = None
-    ) -> PlayData:
+    def _process_play(self, play: dict[str, Any]) -> PlayData:
         """Process raw play data into structured format."""
         play_id = play.get("id", str(play.get("sequenceNumber", 0)))
         description = play.get("text", "")
@@ -364,7 +362,7 @@ class ESPNGameCastSource(DataSource):
 
                                     # Only process new plays
                                     if self.last_play_id is None or play_id != self.last_play_id:
-                                        processed_play = self._process_play(play, drive)
+                                        processed_play = self._process_play(play)
                                         new_plays.append(processed_play)
                                         all_plays.append(processed_play)
 
